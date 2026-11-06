@@ -4,7 +4,7 @@ import { useEffect } from "react";
 import { BackHandler, ScrollView } from "react-native";
 import { removeCardFromHand } from "../state/hand-slice";
 import { useAppDispatch, useAppSelector } from "../state/hooks";
-import { screenOpened } from "../state/navigation-slice";
+import { cardRevealRequested, screenOpened } from "../state/navigation-slice";
 import {
   BreakdownRow,
   selectBreakdown,
@@ -17,6 +17,7 @@ import { Card } from "./gluestack/card";
 import { Divider } from "./gluestack/divider";
 import { Heading } from "./gluestack/heading";
 import { HStack } from "./gluestack/hstack";
+import { Pressable } from "./gluestack/pressable";
 import { Text } from "./gluestack/text";
 import { VStack } from "./gluestack/vstack";
 import { Screen } from "./Screen";
@@ -91,7 +92,8 @@ function CardFigures({ row }: { row: BreakdownRow }) {
 export function BreakdownScreen() {
   const dispatch = useAppDispatch();
   const { stats, rows, sum, blanked } = useAppSelector(selectBreakdown);
-  const { isComplete, reviewLabel } = useAppSelector(selectHandProgress);
+  const { isComplete, reviewLabel, choicesText } =
+    useAppSelector(selectHandProgress);
   const score = useAppSelector(selectScore) ?? NO_VALUE;
   const tiles = [
     {
@@ -150,7 +152,13 @@ export function BreakdownScreen() {
           <Text
             testID="breakdown-count"
             size="sm"
-            className={isComplete ? "text-primary" : "text-muted-foreground"}
+            className={
+              choicesText
+                ? "font-body-semibold text-warning-foreground"
+                : isComplete
+                  ? "text-primary"
+                  : "text-muted-foreground"
+            }
           >
             {reviewLabel}
           </Text>
@@ -185,12 +193,24 @@ export function BreakdownScreen() {
           <VStack
             key={row.id}
             testID={`breakdown-card-${row.id}`}
-            className="gap-1.5 rounded-2xl bg-muted pt-1 pr-1 pb-3 pl-3.5"
+            className={
+              row.choicePending
+                ? "gap-1.5 rounded-2xl border-[1.5px] border-warning bg-muted pt-1 pr-1 pb-3 pl-3.5"
+                : "gap-1.5 rounded-2xl bg-muted pt-1 pr-1 pb-3 pl-3.5"
+            }
           >
             <HStack className="items-center gap-2.5">
               <SuitDot suit={row.suit} />
               <Text className="flex-1 font-body-semibold">
-                {row.name}{" "}
+                {row.name}
+                {row.chosenName && (
+                  <Text
+                    testID={`chosen-card-${row.id}`}
+                    className="font-body-semibold text-accent-foreground"
+                  >
+                    {` → ${row.chosenName}`}
+                  </Text>
+                )}{" "}
                 <Text size="xs" className="text-muted-foreground">
                   {SUITS[row.suit].label}
                 </Text>
@@ -213,6 +233,21 @@ export function BreakdownScreen() {
                 <ButtonIcon as={X} className="h-4.5 w-4.5 text-icon" />
               </Button>
             </HStack>
+            {row.choicePending && (
+              <Pressable
+                testID={`choice-needed-${row.id}`}
+                accessibilityRole="button"
+                onPress={() => dispatch(cardRevealRequested(row.id))}
+                className="min-h-11 justify-center pr-13.5 pl-5"
+              >
+                <Text
+                  size="sm"
+                  className="font-body-semibold text-warning-foreground"
+                >
+                  Choice needed: choose on the cards screen ›
+                </Text>
+              </Pressable>
+            )}
             <CardFigures row={row} />
           </VStack>
         ))}

@@ -6,9 +6,12 @@ import {
   waitFor,
 } from "@testing-library/react-native";
 import { AddCardToHandUseCase } from "../../../application/add-card-to-hand.usecase";
+import { ChooseCardUseCase } from "../../../application/choose-card.usecase";
 import { ClearHandUseCase } from "../../../application/clear-hand.usecase";
+import { LoadCardsUseCase } from "../../../application/load-cards.usecase";
 import { RemoveCardFromHandUseCase } from "../../../application/remove-card-from-hand.usecase";
 import type { Card, CardId } from "../../../domain/card";
+import type { Hand } from "../../../domain/hand";
 import type { CardScore, HandScore } from "../../../domain/score";
 import { createAppStore } from "../state/store";
 import { App } from "./App";
@@ -51,6 +54,28 @@ const knights: Card = {
 };
 const cards = [king, queen, knights];
 
+// Clears the penalty on a Flood or Flame of the player's choice.
+const island: Card = {
+  id: "island",
+  name: "Island",
+  suit: "flood",
+  baseStrength: 14,
+  bonus: {
+    text: "",
+    effects: [{ kind: "clearPenalty", targets: [{ chosen: true }] }],
+  },
+  choice: { kind: "cardInHand", from: [{ suit: "flood" }, { suit: "flame" }] },
+};
+const swamp: Card = {
+  id: "swamp",
+  name: "Swamp",
+  suit: "flood",
+  baseStrength: 18,
+};
+const withIsland = [...cards, island, swamp];
+
+const handOf = (...cardIds: CardId[]): Hand => ({ cardIds, choices: {} });
+
 const eightCards: Card[] = Array.from({ length: 8 }, (_, index) => ({
   id: `card-${index}`,
   name: `Card ${index}`,
@@ -79,35 +104,63 @@ const totalOnly = (total: number) => ({
   total,
 });
 
-const sumStrengths = async (cardIds: readonly CardId[]) =>
-  handScoreOf(
-    [...cards, ...eightCards]
-      .filter((card) => cardIds.includes(card.id))
-      .map(({ id, baseStrength }) => ({
-        cardId: id,
-        blanked: false,
-        base: baseStrength,
-        bonus: 0,
-        penalty: 0,
-        total: baseStrength,
-      })),
+// Adds up base strengths. For the Island, it also reports its options as the rules would: the other Floods in the hand.
+const sumStrengths = async ({ cardIds, choices }: Hand) => {
+  const handCards = [...withIsland, ...eightCards].filter((card) =>
+    cardIds.includes(card.id),
   );
+
+  return handScoreOf(
+    handCards.map(({ id, baseStrength, choice }) => ({
+      cardId: id,
+      blanked: false,
+      base: baseStrength,
+      bonus: 0,
+      penalty: 0,
+      total: baseStrength,
+      ...(choice && {
+        choice: {
+          chosenId: choices[id] ?? null,
+          optionIds: handCards
+            .filter((other) => other.id !== id && other.suit === "flood")
+            .map((other) => other.id),
+        },
+      }),
+    })),
+  );
+};
 
 async function renderApp({
   scoreHand = sumStrengths,
   loadCards = async () => cards,
+  chooseCard,
 }: {
-  scoreHand?: (cardIds: readonly CardId[]) => Promise<number | HandScore>;
+  scoreHand?: (hand: Hand) => Promise<number | HandScore>;
   loadCards?: () => Promise<Card[]>;
+  chooseCard?: (
+    hand: Hand,
+    chooserId: CardId,
+    targetId: CardId,
+  ) => Promise<Hand>;
 } = {}) {
   const store = createAppStore({
     addCardToHand: new AddCardToHandUseCase(),
+    // Checks choices against the same cards that loading serves, unless faked.
+    chooseCard: chooseCard
+      ? { execute: chooseCard }
+      : new ChooseCardUseCase({
+          cardCatalog: {
+            getByIds: async (cardIds) =>
+              (await loadCards()).filter((card) => cardIds.includes(card.id)),
+          },
+        }),
     clearHand: new ClearHandUseCase(),
-    loadCards: { execute: loadCards },
+    // The real use case, so card views and choice descriptions are built as in the app.
+    loadCards: new LoadCardsUseCase({ cardCatalog: { getAll: loadCards } }),
     removeCardFromHand: new RemoveCardFromHandUseCase(),
     scoreHand: {
-      execute: async (cardIds) => {
-        const score = await scoreHand(cardIds);
+      execute: async (hand) => {
+        const score = await scoreHand(hand);
         return typeof score === "number" ? totalOnly(score) : score;
       },
     },
@@ -139,7 +192,7 @@ describe("scoring", () => {
     await renderApp({ scoreHand });
 
     await expectScore("0");
-    expect(scoreHand).toHaveBeenCalledWith([]);
+    expect(scoreHand).toHaveBeenCalledWith(handOf());
   });
 
   it("updates the score each time a card is tapped", async () => {
@@ -147,11 +200,13 @@ describe("scoring", () => {
     const { tapCard } = await renderApp({ scoreHand });
 
     await tapCard("king");
-    await waitFor(() => expect(scoreHand).toHaveBeenLastCalledWith(["king"]));
+    await waitFor(() =>
+      expect(scoreHand).toHaveBeenLastCalledWith(handOf("king")),
+    );
     await expectScore("8");
     await tapCard("queen");
     await waitFor(() =>
-      expect(scoreHand).toHaveBeenLastCalledWith(["king", "queen"]),
+      expect(scoreHand).toHaveBeenLastCalledWith(handOf("king", "queen")),
     );
 
     await expectScore("14");
@@ -240,7 +295,7 @@ describe("the home screen", () => {
     );
     expect(screen.getByTestId("show-breakdown")).toBeDisabled();
     expect(screen.getByTestId("clear-hand")).toBeDisabled();
-    await waitFor(() => expect(scoreHand).toHaveBeenLastCalledWith([]));
+    await waitFor(() => expect(scoreHand).toHaveBeenLastCalledWith(handOf()));
     await expectScore("0");
   });
 
@@ -259,7 +314,9 @@ describe("the home screen", () => {
     expect(screen.getByTestId("card-tile-king")).not.toBeChecked();
     expect(screen.getByTestId("card-tile-queen")).toBeChecked();
     expect(screen.getByTestId("hand-count")).toHaveTextContent("1 of 7 cards");
-    await waitFor(() => expect(scoreHand).toHaveBeenLastCalledWith(["queen"]));
+    await waitFor(() =>
+      expect(scoreHand).toHaveBeenLastCalledWith(handOf("queen")),
+    );
     await expectScore("6");
   });
 
@@ -513,5 +570,218 @@ describe("the breakdown screen", () => {
     expect(screen.getByTestId("breakdown-base")).toHaveTextContent("–");
     expect(screen.getByTestId("card-total-king")).toHaveTextContent("–");
     expect(screen.getByTestId("breakdown-card-king")).toBeOnTheScreen();
+  });
+});
+
+describe("choosing a card", () => {
+  const renderWithIsland = (
+    options: Omit<Parameters<typeof renderApp>[0], "loadCards"> = {},
+  ) => renderApp({ ...options, loadCards: async () => withIsland });
+
+  const expectCount = (text: string) =>
+    waitFor(() =>
+      expect(screen.getByTestId("hand-count")).toHaveTextContent(text),
+    );
+
+  it("shows a pending strip under a selected card that needs a choice, and flags it on the bar", async () => {
+    const { tapCard } = await renderWithIsland();
+
+    await tapCard("king");
+
+    expect(screen.queryByTestId("choice-strip-king")).toBeNull();
+    expect(screen.queryByTestId("choice-strip-island")).toBeNull();
+
+    await tapCard("island");
+
+    expect(screen.getByTestId("choice-strip-island")).toHaveTextContent(
+      "Choose…",
+    );
+    expect(screen.getByTestId("choice-strip-island")).toHaveProp(
+      "accessibilityLabel",
+      "Choose a card for Island",
+    );
+    await expectCount("1 choice needed ›");
+    expect(screen.getByTestId("hand-pips")).toHaveProp(
+      "accessibilityLabel",
+      "1 choice needed. Go to the card",
+    );
+  });
+
+  it("leads the pips to the card that needs a choice, not the breakdown", async () => {
+    const { press, tapCard } = await renderWithIsland();
+
+    await tapCard("island");
+    await press("hand-pips");
+
+    expect(screen.queryByTestId("breakdown-total")).toBeNull();
+    expect(screen.getByTestId("card-grid")).toBeOnTheScreen();
+  });
+
+  it("still opens the breakdown from the button", async () => {
+    const { showBreakdown, tapCard } = await renderWithIsland();
+
+    await tapCard("island");
+    await showBreakdown();
+
+    expect(screen.getByTestId("breakdown-total")).toBeOnTheScreen();
+  });
+
+  it("lists only the cards in the hand that may be chosen, with none current", async () => {
+    const { press, tapCard } = await renderWithIsland();
+
+    await tapCard("island");
+    await tapCard("swamp");
+    await tapCard("king");
+    await expectScore("40");
+    await press("choice-strip-island");
+
+    expect(await screen.findByTestId("choice-sheet-title")).toHaveTextContent(
+      "Island",
+    );
+    expect(screen.getByTestId("choice-sheet-instruction")).toHaveTextContent(
+      "Choose one Flood or Flame in your hand.",
+    );
+    expect(screen.getByTestId("choice-option-swamp")).not.toBeSelected();
+    expect(screen.queryByTestId("choice-option-king")).toBeNull();
+    expect(screen.queryByTestId("choice-option-island")).toBeNull();
+  });
+
+  it("says when there is nothing to choose", async () => {
+    const { press, tapCard } = await renderWithIsland();
+
+    await tapCard("island");
+    await expectScore("14");
+    await press("choice-strip-island");
+
+    expect(
+      await screen.findByText(
+        "No Flood or Flame in your hand yet. Add one, then come back.",
+      ),
+    ).toBeOnTheScreen();
+  });
+
+  it("closes without choosing", async () => {
+    const { press, tapCard } = await renderWithIsland();
+
+    await tapCard("island");
+    await press("choice-strip-island");
+    await screen.findByTestId("choice-sheet-title");
+    await press("close-choice-sheet");
+
+    await waitFor(() =>
+      expect(screen.queryByTestId("choice-sheet-title")).toBeNull(),
+    );
+    expect(screen.getByTestId("choice-strip-island")).toHaveTextContent(
+      "Choose…",
+    );
+  });
+
+  it("makes the choice, closing the sheet, showing the choice and rescoring with it", async () => {
+    const scoreHand = jest.fn(sumStrengths);
+    const { press, showBreakdown, tapCard } = await renderWithIsland({
+      scoreHand,
+    });
+
+    await tapCard("island");
+    await tapCard("swamp");
+    await expectScore("32");
+    await press("choice-strip-island");
+    await press("choice-option-swamp");
+
+    await waitFor(() =>
+      expect(screen.queryByTestId("choice-sheet-title")).toBeNull(),
+    );
+    expect(screen.getByTestId("choice-strip-island")).toHaveTextContent(
+      "Swamp",
+    );
+    expect(screen.getByTestId("choice-strip-island")).toHaveProp(
+      "accessibilityLabel",
+      "Island: Swamp. Change",
+    );
+    await expectCount("2 of 7 cards");
+    await waitFor(() =>
+      expect(scoreHand).toHaveBeenLastCalledWith({
+        cardIds: ["island", "swamp"],
+        choices: { island: "swamp" },
+      }),
+    );
+
+    await press("choice-strip-island");
+
+    expect(await screen.findByTestId("choice-option-swamp")).toBeSelected();
+
+    await press("close-choice-sheet");
+    await showBreakdown();
+
+    expect(screen.getByTestId("chosen-card-island")).toHaveTextContent(
+      "→ Swamp",
+    );
+    expect(screen.queryByTestId("choice-needed-island")).toBeNull();
+  });
+
+  it("stays pending while the choice is in flight, and when it fails", async () => {
+    const responses: { reject: (error: Error) => void }[] = [];
+    const { press, tapCard } = await renderWithIsland({
+      chooseCard: () => new Promise((_, reject) => responses.push({ reject })),
+    });
+
+    await tapCard("island");
+    await tapCard("swamp");
+    await expectScore("32");
+    await press("choice-strip-island");
+    await press("choice-option-swamp");
+
+    expect(screen.getByTestId("choice-strip-island")).toHaveTextContent(
+      "Choose…",
+    );
+
+    await act(async () => responses[0].reject(new Error("no choice")));
+
+    expect(screen.getByTestId("choice-strip-island")).toHaveTextContent(
+      "Choose…",
+    );
+    expect(screen.getByTestId("choice-sheet-title")).toBeOnTheScreen();
+    await expectCount("1 choice needed ›");
+  });
+
+  it("goes back to pending when the chosen card is removed", async () => {
+    const { press, tapCard } = await renderWithIsland();
+
+    await tapCard("island");
+    await tapCard("swamp");
+    await expectScore("32");
+    await press("choice-strip-island");
+    await press("choice-option-swamp");
+    await waitFor(() =>
+      expect(screen.getByTestId("choice-strip-island")).toHaveTextContent(
+        "Swamp",
+      ),
+    );
+
+    await tapCard("swamp");
+
+    expect(screen.getByTestId("choice-strip-island")).toHaveTextContent(
+      "Choose…",
+    );
+    await expectCount("1 choice needed ›");
+  });
+
+  it("flags a pending choice on the breakdown, and returns to the grid from it", async () => {
+    const { press, showBreakdown, tapCard } = await renderWithIsland();
+
+    await tapCard("island");
+    await showBreakdown();
+
+    expect(screen.getByTestId("breakdown-count")).toHaveTextContent(
+      "1 choice needed",
+    );
+    expect(screen.getByTestId("choice-needed-island")).toHaveTextContent(
+      "Choice needed: choose on the cards screen ›",
+    );
+
+    await press("choice-needed-island");
+
+    expect(screen.queryByTestId("breakdown-total")).toBeNull();
+    expect(screen.getByTestId("choice-strip-island")).toBeOnTheScreen();
   });
 });

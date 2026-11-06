@@ -5,11 +5,13 @@ export function effectsOf(card: Card): readonly CardEffect[] {
   return [...(card.bonus?.effects ?? []), ...(card.penalty?.effects ?? [])];
 }
 
-// Checks if the card matches the specified matcher. A matcher can either specify a suit, optionally excepting specific cards, or a specific card ID.
+// Checks if the card matches the specified matcher. A matcher can either specify a suit, optionally excepting specific cards, or a specific card ID. A matcher for a chosen card matches nothing until the choice is resolved into a card ID.
 export function matches(card: Card, matcher: CardMatcher): boolean {
-  return "suit" in matcher
-    ? card.suit === matcher.suit && !matcher.except?.includes(card.id)
-    : card.id === matcher.cardId;
+  if ("suit" in matcher) {
+    return card.suit === matcher.suit && !matcher.except?.includes(card.id);
+  }
+
+  return "cardId" in matcher && card.id === matcher.cardId;
 }
 
 // Checks if a matcher names the specified suit. A matcher naming a specific card doesn't count, even if that card is of the suit.

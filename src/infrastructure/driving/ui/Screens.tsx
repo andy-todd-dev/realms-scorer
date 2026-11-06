@@ -3,14 +3,14 @@ import { StatusBar, View } from "react-native";
 import { loadCards } from "../state/cards-slice";
 import { useAppDispatch, useAppSelector } from "../state/hooks";
 import { scoreHand } from "../state/score-slice";
-import { selectHandCardIds, selectScreen } from "../state/selectors";
+import { selectHand, selectScreen } from "../state/selectors";
 import { BreakdownScreen } from "./BreakdownScreen";
 import { HomeScreen } from "./HomeScreen";
 
 export function Screens() {
   const dispatch = useAppDispatch();
   const screen = useAppSelector(selectScreen);
-  const cardIds = useAppSelector(selectHandCardIds);
+  const hand = useAppSelector(selectHand);
 
   useEffect(() => {
     dispatch(loadCards());
@@ -19,7 +19,7 @@ export function Screens() {
   // Lives above the screens so it follows the hand, not which screen is showing.
   useEffect(() => {
     dispatch(scoreHand());
-  }, [dispatch, cardIds]);
+  }, [dispatch, hand]);
 
   return (
     <>

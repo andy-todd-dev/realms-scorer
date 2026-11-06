@@ -12,13 +12,12 @@
 <link href="https://fonts.googleapis.com/css2?family=Marcellus&amp;family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
 <style>
 body{margin:0}
-a{color:#E3B75B}a:hover{color:#F0CD82}
 </style>
 </helmet>
-<div style="width: 390px; height: 844px; box-sizing: border-box; background: #141821; color: #EDE9E0; font-family: Inter, system-ui, sans-serif; display: flex; flex-direction: column; overflow: hidden">
+<div style="position: relative; width: 390px; height: 844px; box-sizing: border-box; background: #141821; color: #EDE9E0; font-family: Inter, system-ui, sans-serif; display: flex; flex-direction: column; overflow: hidden">
 
   <header style="display: flex; align-items: center; gap: 8px; padding: 16px 16px 8px">
-    <h1 style="margin: 0; flex: 1; font-family: Marcellus, Georgia, serif; font-size: 24px; font-weight: 400">Realms Scorer</h1>
+    <h1 style="margin: 0; flex: 1; font-family: Marcellus, Georgia, serif; font-size: 24px; font-weight: 400">Realm Scorer</h1>
     <button type="button" onClick="{{clear}}" style="min-height: 44px; padding: 0 12px; border: 0; background: transparent; color: #C9CED8; font: 500 14px Inter, sans-serif; display: flex; align-items: center; gap: 6px">
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12a9 9 0 1 0 3-6.7"></path><path d="M3 4v5h5"></path></svg>
       Clear
@@ -36,46 +35,103 @@ a{color:#E3B75B}a:hover{color:#F0CD82}
           <span aria-hidden="true" style="width: 10px; height: 10px; border-radius: 5px; box-sizing: border-box; border: 1px solid #8D95A3; background: {{s.color}}"></span>
           {{s.label}}
         </h2>
-        <div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px">
+        <div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; align-items: start">
           <sc-for list="{{s.cards}}" as="c" hint-placeholder-count="5">
-            <button type="button" aria-pressed="{{c.pressed}}" onClick="{{c.toggle}}" style="position: relative; min-height: 48px; padding: 6px 8px; border-radius: 8px; border: 1.5px solid {{c.border}}; background: {{c.bg}}; color: #EDE9E0; font: 500 14px/1.25 Inter, sans-serif; text-align: left; display: flex; align-items: center">
-              <span style="padding-right: 14px">{{c.name}}</span>
-              <sc-if value="{{c.on}}" hint-placeholder-val="{{ false }}">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="{{accent}}" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="position: absolute; top: 6px; right: 6px"><path d="M5 12l5 5 9-10"></path></svg>
+            <div style="display: flex; flex-direction: column">
+              <button type="button" aria-pressed="{{c.pressed}}" onClick="{{c.toggle}}" style="position: relative; min-height: 48px; padding: 6px 8px; border-radius: {{c.radius}}; border: 1.5px solid {{c.border}}; background: {{c.bg}}; color: #EDE9E0; font: 500 14px/1.25 Inter, sans-serif; text-align: left; display: flex; align-items: center">
+                <span style="padding-right: 14px">{{c.name}}</span>
+                <sc-if value="{{c.on}}" hint-placeholder-val="{{ false }}">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="{{accent}}" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="position: absolute; top: 6px; right: 6px"><path d="M5 12l5 5 9-10"></path></svg>
+                </sc-if>
+              </button>
+              <sc-if value="{{c.showChoice}}" hint-placeholder-val="{{ false }}">
+                <button type="button" id="{{c.anchor}}" onClick="{{c.openChoice}}" aria-label="{{c.choiceLabel}}" style="min-height: 44px; padding: 4px 6px 4px 8px; border-radius: 0 0 8px 8px; border: 1.5px solid {{c.choiceBorder}}; border-top: 0; background: {{c.choiceBg}}; color: {{c.choiceFg}}; font: 600 12px/1.3 Inter, sans-serif; text-align: left; display: flex; align-items: center; gap: 4px">
+                  <span style="flex: 1">{{c.choiceText}}</span>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none"><path d="M9 6l6 6-6 6"></path></svg>
+                </button>
               </sc-if>
-            </button>
+            </div>
           </sc-for>
         </div>
       </section>
     </sc-for>
   </div>
 
-  <section aria-label="Score" style="padding: 10px 16px 28px; background: #1A1F2A; border-top: 1px solid #2C3343; display: flex; align-items: center; gap: 12px">
+  <section aria-label="Score" style="padding: 12px 16px 28px; background: #1A1F2A; border-top: 1px solid #2C3343; display: flex; align-items: center; justify-content: space-between; gap: 16px">
     <div style="display: flex; flex-direction: column; min-width: 56px">
-      <span style="font-size: 12px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: #A9B0BD">Score</span>
-      <span style="font-family: Marcellus, Georgia, serif; font-size: 30px; line-height: 1.1; color: {{accent}}">{{score}}</span>
+      <span style="font-size: 12px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: {{scoreLabelColor}}">{{scoreLabel}}</span>
+      <span style="font-family: Marcellus, Georgia, serif; font-size: 30px; line-height: 1.1; color: {{scoreColor}}">{{score}}</span>
     </div>
-    <a href="Breakdown.dc.html" aria-label="{{pipsLabel}}" style="flex: 1; min-height: 44px; text-decoration: none; display: flex; flex-direction: column; align-items: flex-start; justify-content: center; gap: 6px">
-      <span aria-hidden="true" style="display: flex; gap: 4px">
+    <a href="{{pipsHref}}" aria-label="{{pipsLabel}}" style="flex: 1; min-height: 44px; text-decoration: none; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px">
+      <span aria-hidden="true" style="display: flex; gap: {{pipGap}}; padding: {{trayPad}}; border-radius: 9999px; background: {{trayBg}}; box-shadow: {{trayShadow}}">
         <sc-for list="{{pips}}" as="p" hint-placeholder-count="7">
-          <span style="width: 12px; height: 12px; border-radius: 6px; box-sizing: border-box; border: {{p.border}}; background: {{p.color}}"></span>
+          <sc-if value="{{p.filled}}" hint-placeholder-val="{{ true }}">
+            <svg width="14" height="14" viewBox="0 0 24 24" aria-hidden="true" style="display: block; overflow: visible; filter: {{gem.glow}}"><circle cx="12" cy="12" r="10.5" fill="{{gem.body}}"></circle><path d="M16.62 13.91L13.91 16.62L10.09 16.62L7.38 13.91L7.38 10.09L10.09 7.38L13.91 7.38L16.62 10.09Z" fill="{{gem.table}}"></path><path d="M16.62 13.91L19.07 19.07L13.91 16.62M10.09 16.62L4.93 19.07L7.38 13.91M7.38 10.09L4.93 4.93L10.09 7.38M13.91 7.38L19.07 4.93L16.62 10.09M16.62 13.91L22.5 12L16.62 10.09M13.91 16.62L12 22.5L10.09 16.62M7.38 13.91L1.5 12L7.38 10.09M10.09 7.38L12 1.5L13.91 7.38" fill="none" stroke="{{gem.lines}}" stroke-width="0.9" stroke-linejoin="round"></path><circle cx="12" cy="12" r="10.5" fill="none" stroke="{{gem.lines}}" stroke-width="0.9"></circle><circle cx="9.6" cy="9.6" r="1.3" fill="{{gem.glint}}"></circle><circle cx="12" cy="12" r="11" fill="none" stroke="{{gem.bezel}}" stroke-width="1.8"></circle></svg>
+          </sc-if>
+          <sc-if value="{{p.empty}}" hint-placeholder-val="{{ false }}">
+            <svg width="14" height="14" viewBox="0 0 24 24" aria-hidden="true" style="display: block"><circle cx="12" cy="12" r="10" fill="none" stroke="#4A5262" stroke-width="1.75" stroke-dasharray="2.6 2.2"></circle></svg>
+          </sc-if>
         </sc-for>
       </span>
-      <span style="font-size: 12px; color: {{countColor}}">{{countText}}</span>
+      <span style="font-size: 12px; font-weight: {{countWeight}}; color: {{countColor}}">{{countText}}</span>
     </a>
-    <sc-if value="{{hasCards}}" hint-placeholder-val="{{ true }}">
-      <a href="Breakdown.dc.html" style="flex: none; min-height: 48px; padding: 0 12px 0 16px; border-radius: 12px; background: {{accent}}; color: #1A1408; text-decoration: none; font-weight: 600; font-size: 14px; display: flex; align-items: center; gap: 4px">
-        Show breakdown
+    <sc-if value="{{canShow}}" hint-placeholder-val="{{ true }}">
+      <a href="Breakdown.dc.html" aria-label="Show score breakdown" style="flex: none; min-height: 48px; padding: 0 12px 0 16px; border-radius: 12px; background: {{accent}}; color: #1A1408; text-decoration: none; font-weight: 600; font-size: 14px; display: flex; align-items: center; gap: 4px">
+        Breakdown
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6"></path></svg>
       </a>
     </sc-if>
-    <sc-if value="{{empty}}" hint-placeholder-val="{{ false }}">
-      <span aria-disabled="true" style="flex: none; min-height: 48px; padding: 0 16px; border-radius: 12px; border: 1px dashed #3A4252; color: #A9B0BD; font-weight: 600; font-size: 14px; display: flex; align-items: center">Show breakdown</span>
+    <sc-if value="{{cannotShow}}" hint-placeholder-val="{{ false }}">
+      <span aria-disabled="true" style="flex: none; min-height: 48px; padding: 0 16px; border-radius: 12px; border: 1px dashed #3A4252; color: #A9B0BD; font-weight: 600; font-size: 14px; display: flex; align-items: center">Breakdown</span>
     </sc-if>
   </section>
+
+  <sc-if value="{{sheetOpen}}" hint-placeholder-val="{{ false }}">
+    <div style="position: absolute; left: 0; top: 0; right: 0; bottom: 0; background: rgba(5, 6, 10, 0.65); display: flex; flex-direction: column">
+      <button type="button" aria-label="Close" onClick="{{closeSheet}}" style="flex: 1; min-height: 120px; border: 0; background: transparent"></button>
+      <div role="dialog" aria-label="{{sheetTitle}}" style="max-height: 660px; background: #1E2430; border-radius: 24px 24px 0 0; display: flex; flex-direction: column; padding: 8px 0 28px">
+        <span aria-hidden="true" style="align-self: center; width: 36px; height: 4px; border-radius: 2px; background: #4A5262"></span>
+        <div style="display: flex; align-items: center; gap: 4px; padding: 8px 8px 0 12px">
+          <sc-if value="{{sheetStep2}}" hint-placeholder-val="{{ false }}">
+            <button type="button" aria-label="Back to cards" onClick="{{sheetBack}}" style="width: 44px; height: 44px; border: 0; background: transparent; color: #EDE9E0; display: flex; align-items: center; justify-content: center">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 6l-6 6 6 6"></path></svg>
+            </button>
+          </sc-if>
+          <h2 style="margin: 0; flex: 1; padding-left: 4px; font-family: Marcellus, Georgia, serif; font-size: 20px; font-weight: 400">{{sheetTitle}}</h2>
+          <button type="button" aria-label="Close" onClick="{{closeSheet}}" style="width: 44px; height: 44px; border: 0; background: transparent; color: #C9CED8; display: flex; align-items: center; justify-content: center">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"></path></svg>
+          </button>
+        </div>
+        <p style="margin: 0 20px 12px 16px; font-size: 14px; color: #A9B0BD; line-height: 1.45">{{sheetRule}}</p>
+        <div style="flex: 1; min-height: 0; overflow-y: auto; padding: 0 16px; display: flex; flex-direction: column; gap: 14px">
+          <sc-for list="{{sheetGroups}}" as="g" hint-placeholder-count="3">
+            <div role="group" aria-label="{{g.label}}" style="display: flex; flex-direction: column; gap: 4px">
+              <h3 style="margin: 0 0 2px; display: flex; align-items: center; gap: 8px; font-size: 12px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: #C9CED8">
+                <sc-if value="{{g.color}}" hint-placeholder-val="{{ true }}"><span aria-hidden="true" style="width: 10px; height: 10px; border-radius: 5px; box-sizing: border-box; border: 1px solid #8D95A3; background: {{g.color}}"></span></sc-if>
+                {{g.label}}
+              </h3>
+              <sc-for list="{{g.items}}" as="o" hint-placeholder-count="5">
+                <button type="button" onClick="{{o.pick}}" aria-pressed="{{o.pressed}}" style="min-height: 48px; padding: 0 12px; border-radius: 12px; border: 1.5px solid {{o.border}}; background: {{o.bg}}; color: #EDE9E0; font: 500 16px Inter, sans-serif; text-align: left; display: flex; align-items: center; gap: 10px">
+                  <span aria-hidden="true" style="width: 10px; height: 10px; border-radius: 5px; box-sizing: border-box; border: 1px solid #8D95A3; background: {{o.color}}"></span>
+                  <span style="flex: 1">{{o.name}}</span>
+                  <span style="font-size: 12px; color: #A9B0BD">{{o.sub}}</span>
+                  <sc-if value="{{o.current}}" hint-placeholder-val="{{ false }}">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="{{accent}}" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12l5 5 9-10"></path></svg>
+                  </sc-if>
+                </button>
+              </sc-for>
+            </div>
+          </sc-for>
+          <sc-if value="{{sheetEmpty}}" hint-placeholder-val="{{ false }}">
+            <p style="margin: 0; padding: 16px; border-radius: 12px; border: 1px dashed #3A4252; font-size: 14px; color: #A9B0BD; line-height: 1.45">{{sheetEmptyText}}</p>
+          </sc-if>
+        </div>
+      </div>
+    </div>
+  </sc-if>
 </div>
 </x-dc>
-<script type="text/x-dc" data-dc-script data-props='{"accent":{"editor":"color","default":"#E3B75B","options":["#E3B75B","#7FC4E8","#9DD49A"]},"$preview":{"width":390,"height":844}}'>
+<script type="text/x-dc" data-dc-script data-props='{"accent":{"editor":"color","default":"#E3B75B","options":["#E3B75B","#7FC4E8","#9DD49A"]},"openSheetFor":{"editor":null,"default":""},"gem":{"editor":"enum","options":["Diamond","Aquamarine","Cyan","Gold"],"default":"Diamond","section":"Gems"},"goldSetting":{"editor":"boolean","default":true,"section":"Gems"},"glow":{"editor":"boolean","default":true,"section":"Gems"},"darkTray":{"editor":"boolean","default":true,"section":"Gems"},"$preview":{"width":390,"height":844}}'>
 const SUITS = [
   { label: 'Army', color: '#000000', cards: ['Dwarvish Infantry', 'Elven Archers', 'Knights', 'Light Cavalry', 'Rangers'] },
   { label: 'Artifact', color: '#E67E22', cards: ['Book of Changes', 'Gem of Order', 'Protection Rune', 'Shield of Keth', 'World Tree'] },
@@ -89,45 +145,176 @@ const SUITS = [
   { label: 'Wild', color: '#E6E8EA', cards: ['Doppelgänger', 'Mirage', 'Shapeshifter'] },
   { label: 'Wizard', color: '#EE7FB8', cards: ['Beastmaster', 'Collector', 'Enchantress', 'Necromancer', 'Warlock Lord'] }
 ];
+// Cards that need the player to choose another card. "game" = any card in the game; "hand" = another card in the hand.
+const CHOICES = {
+  'Shapeshifter': { kind: 'game', suits: ['Artifact', 'Leader', 'Wizard', 'Weapon', 'Beast'], title: 'Shapeshifter copies…', rule: 'Choose any Artifact, Leader, Wizard, Weapon or Beast card in the game. Shapeshifter takes its name and suit.' },
+  'Mirage': { kind: 'game', suits: ['Army', 'Land', 'Weather', 'Flood', 'Flame'], title: 'Mirage copies…', rule: 'Choose any Army, Land, Weather, Flood or Flame card in the game. Mirage takes its name and suit.' },
+  'Doppelgänger': { kind: 'hand', suits: null, title: 'Doppelgänger copies…', rule: 'Choose one other card in your hand.' },
+  'Island': { kind: 'hand', suits: ['Flood', 'Flame'], title: 'Island clears the penalty on…', rule: 'Choose one Flood or Flame card in your hand.' },
+  'Book of Changes': { kind: 'hand', suits: null, suitStep: true, title: 'Book of Changes changes…', rule: 'Choose one other card in your hand, then the suit it becomes.' }
+};
 // Sample points only, so the mockup's score moves as cards are tapped. Real scoring comes from the app's engine.
 const SAMPLE_POINTS = { 'Unicorn': 39, 'Rangers': 25, 'Bell Tower': 23, 'Enchantress': 20, 'Princess': 18, 'Island': 14, 'Mountain': 9 };
+const suitOf = (n) => SUITS.find((s) => s.cards.includes(n));
 class Component extends DCLogic {
-  state = { hand: ['Princess', 'Unicorn', 'Rangers', 'Enchantress', 'Bell Tower'] };
+  state = (() => {
+    const open = this.props.openSheetFor || '';
+    const hand = ['Princess', 'Unicorn', 'Rangers', 'Enchantress', 'Bell Tower', 'Doppelgänger', open || 'Book of Changes'];
+    return { hand, choices: { 'Doppelgänger': 'Unicorn' }, sheet: open ? { card: open, step: 1 } : null };
+  })();
   toggle(name) {
-    const hand = this.state.hand;
-    this.setState({ hand: hand.includes(name) ? hand.filter((n) => n !== name) : hand.concat(name) });
+    const { hand, choices } = this.state;
+    if (hand.includes(name)) {
+      const next = { ...choices };
+      delete next[name];
+      this.setState({ hand: hand.filter((n) => n !== name), choices: next });
+    } else {
+      this.setState({ hand: hand.concat(name) });
+    }
+  }
+  isValid(card, choice, hand) {
+    const rule = CHOICES[card];
+    if (!choice) return false;
+    const target = rule.suitStep ? choice.target : choice;
+    if (rule.kind === 'game') return true;
+    if (!hand.includes(target) || target === card) return false;
+    if (rule.suits && !rule.suits.includes(suitOf(target).label)) return false;
+    return !rule.suitStep || !!choice.suit;
+  }
+  describe(card, choice) {
+    if (card === 'Shapeshifter' || card === 'Mirage') return 'as ' + choice + ' (' + suitOf(choice).label + ')';
+    if (card === 'Doppelgänger') return 'copies ' + choice;
+    if (card === 'Island') return 'clears ' + choice;
+    return choice.target + ' → ' + choice.suit;
+  }
+  pick(card, target) {
+    const rule = CHOICES[card];
+    if (rule.suitStep) {
+      this.setState({ sheet: { card, step: 2, picked: target } });
+      return;
+    }
+    this.setState({ choices: { ...this.state.choices, [card]: target }, sheet: null });
+  }
+  pickSuit(card, target, suit) {
+    this.setState({ choices: { ...this.state.choices, [card]: { target, suit } }, sheet: null });
+  }
+  sheetVals(hand, accent) {
+    const sheet = this.state.sheet;
+    if (!sheet) return { sheetOpen: false, sheetGroups: [], sheetEmpty: false };
+    const card = sheet.card;
+    const rule = CHOICES[card];
+    const current = this.state.choices[card];
+    const curTarget = current && (rule.suitStep ? current.target : current);
+    const row = (name, color, sub, isCurrent, pick) => ({
+      name, color, sub, current: isCurrent, pressed: isCurrent ? 'true' : 'false',
+      border: isCurrent ? accent : '#2C3343', bg: isCurrent ? '#2E2A1E' : '#1A1F2A', pick
+    });
+    let groups = [];
+    let title = rule.title;
+    let ruleText = rule.rule;
+    if (sheet.step === 2) {
+      title = sheet.picked + ' becomes…';
+      ruleText = 'Choose the suit ' + sheet.picked + ' takes on.';
+      groups = [{ label: 'New suit', color: '', items: SUITS.filter((s) => s.label !== 'Wild' && s.label !== suitOf(sheet.picked).label).map((s) =>
+        row(s.label, s.color, '', !!current && current.target === sheet.picked && current.suit === s.label, () => this.pickSuit(card, sheet.picked, s.label))) }];
+    } else if (rule.kind === 'game') {
+      groups = SUITS.filter((s) => rule.suits.includes(s.label)).map((s) => ({
+        label: s.label, color: s.color,
+        items: s.cards.map((n) => row(n, s.color, '', curTarget === n, () => this.pick(card, n)))
+      }));
+    } else {
+      const items = SUITS.flatMap((s) => s.cards.filter((n) => hand.includes(n) && n !== card && (!rule.suits || rule.suits.includes(s.label)))
+        .map((n) => row(n, s.color, s.label, curTarget === n, () => this.pick(card, n))));
+      groups = items.length ? [{ label: 'In your hand', color: '', items }] : [];
+    }
+    return {
+      sheetOpen: true,
+      sheetStep2: sheet.step === 2,
+      sheetTitle: title,
+      sheetRule: ruleText,
+      sheetGroups: groups,
+      sheetEmpty: groups.length === 0,
+      sheetEmptyText: rule.suits ? 'No ' + rule.suits.join(' or ') + ' cards in your hand yet. Add one, then come back.' : 'No other cards in your hand yet. Add some, then come back.'
+    };
   }
   renderVals() {
     const accent = this.props.accent ?? '#E3B75B';
-    const hand = this.state.hand;
-    // Progress pips: one colour for every selected card, dashed outlines for empty slots.
+    const { hand, choices } = this.state;
+    const pendingCards = SUITS.flatMap((s) => s.cards).filter((n) => hand.includes(n) && CHOICES[n] && !this.isValid(n, choices[n], hand));
+    const pending = pendingCards.length;
     const slots = Math.max(7, hand.length);
     const pips = [];
     for (let i = 0; i < slots; i++) {
-      pips.push(i < hand.length ? { color: accent, border: '1px solid ' + accent } : { color: 'transparent', border: '1.5px dashed #4A5262' });
+      pips.push({ filled: i < hand.length, empty: i >= hand.length });
     }
-    const score = hand.reduce((t, n) => t + (SAMPLE_POINTS[n] ?? 10), 0);
     const full = hand.length >= 7;
+    // Pending choice cards score nothing until the player chooses (sample figures).
+    const score = hand.reduce((t, n) => t + (pendingCards.includes(n) ? 0 : (SAMPLE_POINTS[n] ?? 10)), 0);
+    let countText = hand.length + ' of 7 cards';
+    let countColor = '#A9B0BD';
+    if (hand.length === 0) countText = 'Tap cards or scan';
+    else if (pending) { countText = pending + (pending === 1 ? ' choice needed ›' : ' choices needed ›'); countColor = '#F8B596'; }
+    else if (full) { countText = hand.length + ' cards ✓'; countColor = accent; }
+    const canShow = hand.length > 0;
     return {
       accent,
-      clear: () => this.setState({ hand: [] }),
-      sections: SUITS.map((s) => {
-        return {
-          label: s.label,
-          color: s.color,
-          cards: s.cards.map((n) => {
-            const on = hand.includes(n);
-            return { name: n, on, pressed: on ? 'true' : 'false', border: on ? accent : '#2C3343', bg: on ? '#2E2A1E' : '#1A1F2A', toggle: () => this.toggle(n) };
-          })
-        };
-      }),
+      clear: () => this.setState({ hand: [], choices: {}, sheet: null }),
+      closeSheet: () => this.setState({ sheet: null }),
+      sheetBack: () => this.setState({ sheet: { card: this.state.sheet.card, step: 1 } }),
+      sections: SUITS.map((s) => ({
+        label: s.label,
+        color: s.color,
+        cards: s.cards.map((n) => {
+          const on = hand.includes(n);
+          const needsChoice = on && !!CHOICES[n];
+          const valid = needsChoice && this.isValid(n, choices[n], hand);
+          return {
+            name: n, on, pressed: on ? 'true' : 'false',
+            border: on ? accent : '#2C3343', bg: on ? '#2E2A1E' : '#1A1F2A',
+            radius: needsChoice ? '8px 8px 0 0' : '8px',
+            toggle: () => this.toggle(n),
+            showChoice: needsChoice,
+            anchor: needsChoice && !valid && pendingCards[0] === n ? 'choice-pending' : 'choice-' + n.replace(/[^A-Za-z]/g, ''),
+            choiceText: valid ? this.describe(n, choices[n]) : 'Choose…',
+            choiceLabel: valid ? n + ': ' + this.describe(n, choices[n]) + '. Change' : 'Choose a card for ' + n,
+            choiceBorder: valid ? accent : '#F08A5D',
+            choiceBg: valid ? '#2E2A1E' : '#2A1F1A',
+            choiceFg: valid ? '#F3E4BE' : '#F8B596',
+            openChoice: () => this.setState({ sheet: { card: n, step: 1 } })
+          };
+        })
+      })),
       pips,
-      hasCards: hand.length > 0,
-      empty: hand.length === 0,
+      gem: (() => {
+        const palettes = {
+          Diamond: { body: '#CFE3F2', table: '#F4FAFF', lines: '#6F93B0', glint: '#FFFFFF', glowRgb: '190, 225, 255' },
+          Aquamarine: { body: '#2BB3B8', table: '#8FE3E0', lines: '#0F5A5E', glint: '#E8FFFE', glowRgb: '60, 210, 215' },
+          Cyan: { body: '#12C8D6', table: '#9AF3F7', lines: '#075E66', glint: '#F0FFFF', glowRgb: '30, 220, 235' },
+          Gold: { body: '#E3B75B', table: '#F7DFA6', lines: '#9C7A32', glint: '#FFF6DD', glowRgb: '240, 200, 110' }
+        };
+        const g = palettes[this.props.gem ?? 'Diamond'] || palettes.Diamond;
+        return {
+          ...g,
+          bezel: (this.props.goldSetting ?? true) ? accent : 'none',
+          glow: (this.props.glow ?? true) ? 'drop-shadow(0 0 3px rgba(' + g.glowRgb + ', 0.75))' : 'none'
+        };
+      })(),
+      pipGap: slots > 7 || (this.props.darkTray ?? true) ? '2px' : '3px',
+      trayPad: (this.props.darkTray ?? true) ? '4px 6px' : '0',
+      trayBg: (this.props.darkTray ?? true) ? '#0B0E14' : 'transparent',
+      trayShadow: (this.props.darkTray ?? true) ? 'inset 0 0 0 1px #2C3343' : 'none',
       score,
-      countText: hand.length === 0 ? 'Tap cards or scan' : full ? hand.length + ' cards ✓' : hand.length + ' of 7 cards',
-      countColor: full ? accent : '#A9B0BD',
-      pipsLabel: hand.length + ' of 7 cards. Show breakdown'
+      scoreColor: accent,
+      scoreLabel: 'Score',
+      scoreLabelColor: '#A9B0BD',
+      countText,
+      countColor,
+      countWeight: pending ? '600' : '400',
+      pipsHref: pending ? '#choice-pending' : 'Breakdown.dc.html',
+      pipsLabel: pending ? countText.replace(' ›', '') + '. Go to the card' : hand.length + ' of 7 cards. Show breakdown',
+      canShow,
+      cannotShow: !canShow,
+      ...this.sheetVals(hand, accent)
     };
   }
 }

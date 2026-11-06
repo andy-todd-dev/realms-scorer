@@ -382,6 +382,122 @@ describe("calculateScore", () => {
     });
   });
 
+  describe("choices of a card to clear", () => {
+    // Clears the penalty on one Flood or Flame in the hand, chosen by the player.
+    const chooser: Card = {
+      ...card("chooser", "flood", 14, [
+        { kind: "clearPenalty", targets: [{ chosen: true }] },
+      ]),
+      choice: {
+        kind: "cardInHand",
+        from: [{ suit: "flood" }, { suit: "flame" }],
+      },
+    };
+    const penalisedFlood: Card = {
+      ...card("flood-1", "flood", 5),
+      penalty: { text: "", effects: [{ kind: "points", points: -10 }] },
+    };
+    const penalisedFlame: Card = {
+      ...card("flame-1", "flame", 6),
+      penalty: { text: "", effects: [{ kind: "points", points: -4 }] },
+    };
+    const penalisedArmy: Card = {
+      ...card("army-3", "army", 7),
+      penalty: { text: "", effects: [{ kind: "points", points: -3 }] },
+    };
+
+    it("clears the penalty of the chosen card only", () => {
+      // 14 + Flood 5 (cleared) + Flame (6 - 4)
+      expect(
+        calculateScore([chooser, penalisedFlood, penalisedFlame], {
+          chooser: "flood-1",
+        }),
+      ).toBe(21);
+    });
+
+    it("clears nothing while the choice is pending", () => {
+      // 14 + Flood (5 - 10) + Flame (6 - 4)
+      expect(calculateScore([chooser, penalisedFlood, penalisedFlame])).toBe(
+        11,
+      );
+    });
+
+    it("ignores a choice of a card that doesn't match", () => {
+      // 14 + Army (7 - 3) + Flood (5 - 10)
+      expect(
+        calculateScore([chooser, penalisedArmy, penalisedFlood], {
+          chooser: "army-3",
+        }),
+      ).toBe(13);
+    });
+
+    it("ignores a choice of a card that isn't in the hand", () => {
+      // 14 + Flood (5 - 10)
+      expect(
+        calculateScore([chooser, penalisedFlood], { chooser: "flame-1" }),
+      ).toBe(9);
+    });
+
+    it("reports the chosen card and the other cards that match", () => {
+      const { cards } = scoreHand(
+        [chooser, penalisedFlood, penalisedArmy, penalisedFlame],
+        { chooser: "flame-1" },
+      );
+
+      expect(cards[0].choice).toEqual({
+        chosenId: "flame-1",
+        optionIds: ["flood-1", "flame-1"],
+      });
+    });
+
+    it("reports an invalid choice as pending", () => {
+      const { cards } = scoreHand([chooser, penalisedArmy], {
+        chooser: "army-3",
+      });
+
+      expect(cards[0].choice).toEqual({ chosenId: null, optionIds: [] });
+    });
+
+    it("still clears when the choosing card is later blanked", () => {
+      const blanksChooser = card("blanker", "wizard", 1, [
+        { kind: "blank", targets: [{ cardId: "chooser" }] },
+      ]);
+
+      // Chooser blanked + Flood 5 (cleared) + 1
+      const handScore = scoreHand([chooser, penalisedFlood, blanksChooser], {
+        chooser: "flood-1",
+      });
+
+      expect(handScore.total).toBe(6);
+      expect(handScore.cards[0]).toEqual({
+        cardId: "chooser",
+        blanked: true,
+        base: 0,
+        bonus: 0,
+        penalty: 0,
+        total: 0,
+        choice: { chosenId: "flood-1", optionIds: ["flood-1"] },
+      });
+    });
+
+    it("stops the chosen card blanking others when it clears a blank", () => {
+      const blankingFlame: Card = {
+        ...card("flame-2", "flame", 6),
+        penalty: {
+          text: "",
+          effects: [{ kind: "blank", targets: [{ suit: "land" }] }],
+        },
+      };
+
+      // 14 + Flame 6, with the Land blanked
+      expect(calculateScore([chooser, blankingFlame, aLand])).toBe(20);
+      // 14 + Flame 6 (cleared) + Land 4
+      expect(
+        calculateScore([chooser, blankingFlame, aLand], { chooser: "flame-2" }),
+      ).toBe(24);
+    });
+  });
+
   describe("self-blanked cards in scoring", () => {
     const blankedWithoutArmy: CardEffect = {
       kind: "blankSelf",

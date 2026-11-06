@@ -14,8 +14,7 @@ const initialState: ScoreState = {
 
 export const scoreHand = createAppAsyncThunk(
   "score/scoreHand",
-  (_: void, { extra, getState }) =>
-    extra.scoreHand.execute(getState().hand.cardIds),
+  (_: void, { extra, getState }) => extra.scoreHand.execute(getState().hand),
 );
 
 const scoreSlice = createSlice({

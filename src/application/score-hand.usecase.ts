@@ -1,9 +1,9 @@
-import { CardId } from "../domain/card";
+import { Hand } from "../domain/hand";
 import { HandScore, scoreHand } from "../domain/score";
 import { CardCatalog, ScoreHandPorts } from "./score-hand.ports";
 
 export interface ScoreHand {
-  execute(cardIds: readonly CardId[]): Promise<HandScore>;
+  execute(hand: Hand): Promise<HandScore>;
 }
 
 export class ScoreHandUseCase implements ScoreHand {
@@ -13,7 +13,10 @@ export class ScoreHandUseCase implements ScoreHand {
     this.cardCatalog = cardCatalog;
   }
 
-  async execute(cardIds: readonly CardId[]): Promise<HandScore> {
-    return scoreHand(await this.cardCatalog.getByIds(cardIds));
+  async execute(hand: Hand): Promise<HandScore> {
+    return scoreHand(
+      await this.cardCatalog.getByIds(hand.cardIds),
+      hand.choices,
+    );
   }
 }

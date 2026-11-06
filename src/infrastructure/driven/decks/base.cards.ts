@@ -10,6 +10,8 @@ import {
   blank,
   blankSelf,
   CardDefinition,
+  chooseCardInHand,
+  chosenCard,
   clearPenalty,
   clearPenaltySuitWord,
   except,
@@ -625,15 +627,19 @@ export const BASE_DECK_CARDS: Record<BaseCardId, CardDefinition> = {
       ],
     },
   },
-  // Placeholders: these exist only so that other cards' rules can name them: Island for
-  // Wildfire, Book of Changes for Candle. Their suit and base strength are arbitrary,
-  // not the printed values, except that Island's suit is real. They have no rules yet. Replace them
-  // with the real card details when those cards are added.
   island: {
     name: "Island",
     suit: "flood",
-    baseStrength: 1,
+    baseStrength: 14,
+    bonus: {
+      text: "Clears the penalty on any one Flood or Flame.",
+      effects: [clearPenalty(chosenCard)],
+    },
+    choice: chooseCardInHand(suit("flood"), suit("flame")),
   },
+  // Placeholder: this exists only so that Candle's rule can name it. Its suit and base strength
+  // are arbitrary, not the printed values, and it has no rules yet. Replace it with the real
+  // card details when it is added.
   "book-of-changes": {
     name: "Book of Changes",
     suit: "wild",

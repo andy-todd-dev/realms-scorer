@@ -26,10 +26,12 @@ const cardsSlice = createSlice({
       .addCase(loadCards.pending, (state) => {
         state.status = "loading";
       })
-      .addCase(loadCards.fulfilled, (state, action) => {
-        state.items = action.payload;
-        state.status = "loaded";
-      })
+      // Returns a new state, as an Immer draft can't hold the card views' readonly arrays.
+      .addCase(loadCards.fulfilled, (state, action) => ({
+        ...state,
+        items: action.payload,
+        status: "loaded" as const,
+      }))
       .addCase(loadCards.rejected, (state) => {
         state.status = "failed";
       });

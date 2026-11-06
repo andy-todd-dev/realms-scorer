@@ -1,8 +1,10 @@
 import type {
   Card,
+  CardChoice,
   CardEffect,
   CardIdMatcher,
   CardMatcher,
+  ChosenCardMatcher,
   EffectCondition,
   Suit,
   SuitMatcher,
@@ -34,6 +36,15 @@ export const allSuits: readonly CardMatcher[] = [
   suit("flame"),
   suit("wild"),
 ];
+
+// The card the player chose for the card with this effect. The card needs a choice, such as chooseCardInHand.
+export const chosenCard: ChosenCardMatcher = { chosen: true };
+
+// A choice of another card in the hand, matching any of the matchers.
+export const chooseCardInHand = (...from: CardMatcher[]): CardChoice => ({
+  kind: "cardInHand",
+  from,
+});
 
 export const present = (matcher: CardMatcher): EffectCondition => ({
   present: matcher,

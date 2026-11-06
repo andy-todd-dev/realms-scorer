@@ -20,7 +20,10 @@ export type SuitMatcher = {
 
 export type CardIdMatcher = { readonly cardId: CardId };
 
-export type CardMatcher = SuitMatcher | CardIdMatcher;
+// The card that the effect's owner chose, for cards with a choice. It matches nothing until the choice is resolved (choices.ts).
+export type ChosenCardMatcher = { readonly chosen: true };
+
+export type CardMatcher = SuitMatcher | CardIdMatcher | ChosenCardMatcher;
 
 export type EffectCondition =
   | { readonly present: CardMatcher }
@@ -71,6 +74,14 @@ export type CardAbility = {
   readonly effects: readonly CardEffect[];
 };
 
+// A choice the player makes for a card, such as which card's penalty it clears. The app never makes it for them.
+export type CardChoice = {
+  // Another card in the hand. Later kinds may choose any card in the game, or a suit.
+  readonly kind: "cardInHand";
+  // The cards that can be chosen.
+  readonly from: readonly CardMatcher[];
+};
+
 export type Card = {
   readonly id: CardId;
   readonly name: string;
@@ -78,4 +89,5 @@ export type Card = {
   readonly baseStrength: number;
   readonly bonus?: CardAbility;
   readonly penalty?: CardAbility;
+  readonly choice?: CardChoice;
 };

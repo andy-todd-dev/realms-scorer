@@ -17,11 +17,15 @@ describe("scoring real hands", () => {
           ),
         );
 
-  const expectScore = async (cardIds: readonly string[], expected: number) => {
+  const expectScore = async (
+    cardIds: readonly string[],
+    expected: number,
+    choices: Readonly<Record<string, string>> = {},
+  ) => {
     for (const ordering of orderings(cardIds)) {
-      await expect(scoreHand.execute(ordering)).resolves.toMatchObject({
-        total: expected,
-      });
+      await expect(
+        scoreHand.execute({ cardIds: ordering, choices }),
+      ).resolves.toMatchObject({ total: expected });
     }
   };
 
@@ -63,6 +67,29 @@ describe("scoring real hands", () => {
         ["elven-archers", "war-dirigible", "smoke", "candle"],
         39,
       );
+    });
+  });
+
+  describe("Island", () => {
+    it("clears the penalty on the Flood it chose", async () => {
+      // Island 14 + Swamp 18 (its -3 for the Candle cleared) + Candle 2.
+      await expectScore(["island", "swamp", "candle"], 34, { island: "swamp" });
+    });
+
+    it("clears nothing until a card is chosen", async () => {
+      // Island 14 + Swamp 18 - 3 for the Candle, + Candle 2.
+      await expectScore(["island", "swamp", "candle"], 31);
+    });
+
+    it("stops the Great Flood blanking when it clears its penalty", async () => {
+      // Island 14 + Great Flood 32 + Candle 2, which is no longer blanked.
+      await expectScore(["island", "great-flood", "candle"], 48, {
+        island: "great-flood",
+      });
+      // Island 14 + Great Flood 32, with the Candle blanked.
+      await expectScore(["island", "great-flood", "candle"], 46, {
+        island: "candle",
+      });
     });
   });
 

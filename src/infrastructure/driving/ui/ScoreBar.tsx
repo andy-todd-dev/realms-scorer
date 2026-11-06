@@ -1,7 +1,7 @@
 import ChevronRight from "lucide-react-native/icons/chevron-right";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useAppDispatch, useAppSelector } from "../state/hooks";
-import { screenOpened } from "../state/navigation-slice";
+import { cardRevealRequested, screenOpened } from "../state/navigation-slice";
 import { selectHandProgress, selectScore } from "../state/selectors";
 import { Box } from "./gluestack/box";
 import { Button, ButtonIcon, ButtonText } from "./gluestack/button";
@@ -18,10 +18,24 @@ const BOTTOM_PADDING = 10;
 export function ScoreBar() {
   const dispatch = useAppDispatch();
   const score = useAppSelector(selectScore);
-  const { isEmpty, isComplete, pips, countLabel, pipsAccessibilityLabel } =
-    useAppSelector(selectHandProgress);
+  const {
+    isEmpty,
+    isComplete,
+    pips,
+    countLabel,
+    pipsAccessibilityLabel,
+    choicesText,
+    firstPendingChoiceCardId,
+  } = useAppSelector(selectHandProgress);
   const { bottom } = useSafeAreaInsets();
   const showBreakdown = () => dispatch(screenOpened("breakdown"));
+  // While a choice is pending, the pips lead to the card that needs it rather than to the breakdown.
+  const onPipsPress = () =>
+    dispatch(
+      firstPendingChoiceCardId === null
+        ? screenOpened("breakdown")
+        : cardRevealRequested(firstPendingChoiceCardId),
+    );
 
   return (
     <>
@@ -49,7 +63,7 @@ export function ScoreBar() {
           accessibilityRole="button"
           accessibilityLabel={pipsAccessibilityLabel}
           disabled={isEmpty}
-          onPress={showBreakdown}
+          onPress={onPipsPress}
           className="min-h-11 flex-1 justify-center gap-1.5 data-[disabled=true]:opacity-100"
         >
           <HStack className="gap-1">
@@ -69,7 +83,13 @@ export function ScoreBar() {
           <Text
             testID="hand-count"
             size="xs"
-            className={isComplete ? "text-primary" : "text-muted-foreground"}
+            className={
+              choicesText
+                ? "font-body-semibold text-warning-foreground"
+                : isComplete
+                  ? "text-primary"
+                  : "text-muted-foreground"
+            }
           >
             {countLabel}
           </Text>
