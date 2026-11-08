@@ -1,11 +1,13 @@
-import { Card, CardEffect, CardId } from "./card";
+import { Card, CardEffect, CardId, Suit } from "./card";
 import { withoutBlankedCards } from "./blanking";
 import { matches, othersIn } from "./card-matching";
 import {
-  choiceOptions,
+  bindChoices,
+  ChoiceReport,
+  ChoiceRules,
   Choices,
-  chosenCardId,
-  withChoicesResolved,
+  firePreScoring,
+  NO_CHOICE_RULES,
 } from "./choices";
 import { withPenaltiesCleared } from "./clearing";
 import { conditionHolds } from "./conditions";
@@ -17,15 +19,33 @@ import { conditionHolds } from "./conditions";
   Island: "Clears the penalty on any one Flood or Flame." The player chooses the card, and the app never chooses for
   them. Until they do, the card has no effect.
 
+  Necromancer: "At the end of the game, you may take one army, leader, wizard, or beast from the discard area and add it
+  to your hand as an eighth card." Ruled by the user, not quoted: this takes place before scoring, before clearing and
+  other choices, so a blanked Necromancer still has its eighth card. The app can't see the discard area, so any card in
+  the variant's deck that isn't in the hand counts as being there.
+
+  Shapeshifter: "May duplicate the name and suit of any one Artifact, Leader, Wizard, Weapon, or Beast in the game. Does
+  not take the bonus, penalty, or base strength of the card duplicated." Ruled by the user: this is a pre-scoring
+  ability. It may duplicate a card that is also in the hand, giving two cards of that name.
+
+  Ruled by the user: each variant lists the cards whose pre-scoring effects fire before everything else, in its own
+  order. For the base game: Necromancer, Doppelgänger, Mirage, Shapeshifter, then Book of Changes. A card's other
+  effects, and the choices of other cards such as Island's, take effect at their normal time: Island's when penalties
+  are cleared.
+
   Our interpretation of how these fit together, so scoring runs in this order:
-  1. Resolve players' choices against the full hand, so an effect on "the chosen card" targets that card (choices.ts).
-     A pending choice, or one that no longer fits the hand, targets nothing.
-  2. Clear penalties, and suit words from penalties (clearing.ts). A card that is later blanked still clears, so a
+  1. Fire pre-scoring effects (choices.ts): the variant's listed cards, in order, each with its choice checked against
+     the hand the cards before it left. Necromancer adds its card to the hand here.
+  2. Bind the other choices (choices.ts): check each against the hand step 1 left, and fill in each card's effects on
+     "the chosen card" with the card chosen. Nothing takes effect here. A pending choice, or one that no longer fits,
+     targets nothing. Commands keep the stored choices valid, so this check is a safety net.
+  3. Clear penalties, and suit words from penalties (clearing.ts). A card that is later blanked still clears, so a
      blanked Island still clears the card it chose.
-  3. Apply blanks, both those that target other cards and self-blanks, in rounds. Each round settles the cards whose
+  4. Apply blanks, both those that target other cards and self-blanks, in rounds. Each round settles the cards whose
      fate no longer depends on unsettled cards, so blanked cards neither blank others nor trigger their self-blanks.
      Cards never settled are caught in a loop, or blanked only by cards in one, and are blanked (blanking.ts).
-  4. Add up points using only the cards left after step 3.
+  5. Add up points using only the cards left after step 4.
+  Steps 3 to 5 know nothing of choices (scoreBoundHand).
 */
 
 // Returns the length of the longest run of consecutive base strengths. Duplicate strengths neither break nor extend a run.
@@ -100,15 +120,16 @@ export type CardScore = {
   // Zero or negative.
   readonly penalty: number;
   readonly total: number;
+  // Only for a card that an effect added to the hand: the card whose effect added it.
+  readonly addedBy?: CardId;
+  // Only for a card that took another card's suit: the suit it was scored as.
+  readonly suit?: Suit;
   // Only for cards that need a choice: the card chosen, or null while pending, and the cards that may be chosen.
-  readonly choice?: {
-    readonly chosenId: CardId | null;
-    readonly optionIds: readonly CardId[];
-  };
+  readonly choice?: ChoiceReport;
 };
 
 export type HandScore = {
-  // In the order the cards were given.
+  // In the order the cards were given, then any cards that effects added to the hand.
   readonly cards: readonly CardScore[];
   readonly base: number;
   readonly bonus: number;
@@ -130,36 +151,20 @@ function sumOfEffects(
 
 const BLANKED = { blanked: true, base: 0, bonus: 0, penalty: 0, total: 0 };
 
-/*
-  Scores a hand of cards, card by card. Points from a card's bonus count as bonus and points from its penalty count as
-  penalty. A blanked card is listed, scoring nothing. Choices map each choosing card to the card the player chose.
-*/
-export function scoreHand(
-  cards: readonly Card[],
-  choices: Choices = {},
-): HandScore {
-  // Choices decide what some effects target, so they come first
-  const resolved = withChoicesResolved(cards, choices);
-
+// Scores a hand whose choices are already bound (steps 3 to 5), card by card in the order given.
+function scoreBoundHand(cards: readonly Card[]): readonly CardScore[] {
   // Clearing takes place before any penalties are applied
-  const cleared = withPenaltiesCleared(resolved);
+  const cleared = withPenaltiesCleared(cards);
 
   // Filter out blanked cards
   const remaining = withoutBlankedCards(cleared);
 
   // Score each card based on what is left
-  const cardScores = cards.map((original): CardScore => {
-    const { id } = original;
-    const choice = original.choice && {
-      choice: {
-        chosenId: chosenCardId(original, cards, choices),
-        optionIds: choiceOptions(original, cards).map((option) => option.id),
-      },
-    };
+  return cards.map(({ id }): CardScore => {
     const card = remaining.find((other) => other.id === id);
 
     if (!card) {
-      return { cardId: id, ...BLANKED, ...choice };
+      return { cardId: id, ...BLANKED };
     }
 
     const others = othersIn(remaining, card);
@@ -173,7 +178,35 @@ export function scoreHand(
       bonus,
       penalty,
       total: card.baseStrength + bonus + penalty,
-      ...choice,
+    };
+  });
+}
+
+/*
+  Scores a hand of cards, card by card. Points from a card's bonus count as bonus and points from its penalty count as
+  penalty. A blanked card is listed, scoring nothing. Choices map each choosing card to the card the player chose. The
+  rules come from the variant: the cards listed for pre-scoring, and the discard area, which can be the variant's whole
+  deck.
+*/
+export function scoreHand(
+  cards: readonly Card[],
+  choices: Choices = {},
+  rules: ChoiceRules = NO_CHOICE_RULES,
+): HandScore {
+  const preScored = firePreScoring(cards, choices, rules);
+  const bound = bindChoices(preScored, choices, rules);
+
+  const cardScores = scoreBoundHand(bound.cards).map((cardScore, index) => {
+    const addedBy = bound.addedBy[cardScore.cardId];
+    const report = bound.choices[cardScore.cardId];
+    const { suit } = bound.cards[index];
+    const original = cards.find(({ id }) => id === cardScore.cardId);
+
+    return {
+      ...cardScore,
+      ...(addedBy !== undefined && { addedBy }),
+      ...(original && original.suit !== suit && { suit }),
+      ...(report && { choice: report }),
     };
   });
 
@@ -193,6 +226,7 @@ export function scoreHand(
 export function calculateScore(
   cards: readonly Card[],
   choices: Choices = {},
+  rules: ChoiceRules = NO_CHOICE_RULES,
 ): number {
-  return scoreHand(cards, choices).total;
+  return scoreHand(cards, choices, rules).total;
 }

@@ -1,12 +1,14 @@
 import { AddCardToHandUseCase } from "../../../application/add-card-to-hand.usecase";
 import { ChooseCardUseCase } from "../../../application/choose-card.usecase";
 import { ClearHandUseCase } from "../../../application/clear-hand.usecase";
-import { LoadCardsUseCase } from "../../../application/load-cards.usecase";
+import { LoadVariantUseCase } from "../../../application/load-variant.usecase";
 import { RemoveCardFromHandUseCase } from "../../../application/remove-card-from-hand.usecase";
+import { ScoreHandUseCase } from "../../../application/score-hand.usecase";
 import type { Card, CardId } from "../../../domain/card";
+import type { DeckId } from "../../../domain/deck";
 import type { Hand } from "../../../domain/hand";
 import type { HandScore } from "../../../domain/score";
-import { loadCards } from "./cards-slice";
+import type { Variant, VariantId } from "../../../domain/variant";
 import {
   addCardToHand,
   chooseCard,
@@ -34,6 +36,7 @@ import {
   selectScreen,
 } from "./selectors";
 import { createAppStore } from "./store";
+import { BASE_VARIANT_ID, loadVariant } from "./variant-slice";
 
 const king: Card = {
   id: "king",
@@ -63,46 +66,83 @@ const totalOnly = (total: number): HandScore => ({
   total,
 });
 
+// Fakes for the catalogs, serving the given cards as the deck of a variant with the store's default ID.
+function catalogsFor(
+  loadCardsExecute: () => Promise<Card[]>,
+  preScoring: readonly CardId[],
+  handSize: number,
+) {
+  const variant: Variant = {
+    id: BASE_VARIANT_ID,
+    name: "Test variant",
+    deckId: "deck",
+    handSize,
+    preScoring,
+  };
+
+  return {
+    cardCatalog: {
+      getAll: loadCardsExecute,
+      getByIds: async (_: DeckId, cardIds: readonly CardId[]) =>
+        (await loadCardsExecute()).filter((card) => cardIds.includes(card.id)),
+    },
+    variantCatalog: {
+      getById: async (variantId: VariantId) => {
+        if (variantId !== variant.id) {
+          throw new Error(`Unknown variant: ${variantId}`);
+        }
+        return variant;
+      },
+    },
+  };
+}
+
 function createStore(
   loadCardsExecute: () => Promise<Card[]>,
   {
     scoreHandExecute = async () => 0,
+    scoreByTheRules = false,
+    preScoring = [],
+    handSize = 7,
   }: {
     scoreHandExecute?: (hand: Hand) => Promise<number | HandScore>;
+    // Scores with the real use case, so the options and any added cards come from the rules.
+    scoreByTheRules?: boolean;
+    preScoring?: readonly CardId[];
+    handSize?: number;
   } = {},
 ) {
+  const catalogs = catalogsFor(loadCardsExecute, preScoring, handSize);
+
   return createAppStore({
-    addCardToHand: new AddCardToHandUseCase(),
+    addCardToHand: new AddCardToHandUseCase(catalogs),
     // Checks choices against the same cards that loading serves.
-    chooseCard: new ChooseCardUseCase({
-      cardCatalog: {
-        getByIds: async (cardIds) =>
-          (await loadCardsExecute()).filter((card) =>
-            cardIds.includes(card.id),
-          ),
-      },
-    }),
+    chooseCard: new ChooseCardUseCase(catalogs),
     clearHand: new ClearHandUseCase(),
     // The real use case, so card views and choice descriptions are built as in the app.
-    loadCards: new LoadCardsUseCase({
-      cardCatalog: { getAll: loadCardsExecute },
-    }),
-    removeCardFromHand: new RemoveCardFromHandUseCase(),
-    scoreHand: {
-      execute: async (hand) => {
-        const score = await scoreHandExecute(hand);
-        return typeof score === "number" ? totalOnly(score) : score;
-      },
-    },
+    loadVariant: new LoadVariantUseCase(catalogs),
+    removeCardFromHand: new RemoveCardFromHandUseCase(catalogs),
+    scoreHand: scoreByTheRules
+      ? new ScoreHandUseCase(catalogs)
+      : {
+          execute: async (_, hand) => {
+            const score = await scoreHandExecute(hand);
+            return typeof score === "number" ? totalOnly(score) : score;
+          },
+        },
   });
 }
 
 const handCardIds = (store: ReturnType<typeof createStore>) =>
   selectHandCards(store.getState()).map(({ id }) => id);
 
+// The choice sheet's options, across its groups.
+const sheetOptions = (store: ReturnType<typeof createStore>) =>
+  selectChoiceSheet(store.getState())?.groups.flatMap(({ options }) => options);
+
 async function createLoadedStore() {
   const store = createStore(async () => [king, queen, knights]);
-  await store.dispatch(loadCards());
+  await store.dispatch(loadVariant());
   return store;
 }
 
@@ -115,14 +155,32 @@ describe("loading cards", () => {
       {
         suit: "army",
         cards: [
-          { id: "knights", name: "Knights", selected: false, choice: null },
+          {
+            id: "knights",
+            name: "Knights",
+            selected: false,
+            disabled: false,
+            choice: null,
+          },
         ],
       },
       {
         suit: "leader",
         cards: [
-          { id: "king", name: "King", selected: false, choice: null },
-          { id: "queen", name: "Queen", selected: false, choice: null },
+          {
+            id: "king",
+            name: "King",
+            selected: false,
+            disabled: false,
+            choice: null,
+          },
+          {
+            id: "queen",
+            name: "Queen",
+            selected: false,
+            disabled: false,
+            choice: null,
+          },
         ],
       },
     ]);
@@ -131,9 +189,53 @@ describe("loading cards", () => {
   it("sets the failed status when loading fails", async () => {
     const store = createStore(() => Promise.reject(new Error("no cards")));
 
-    await store.dispatch(loadCards());
+    await store.dispatch(loadVariant());
 
     expect(selectCardsStatus(store.getState())).toBe("failed");
+  });
+});
+
+describe("loading the variant", () => {
+  it("keeps the variant's name and hand size", async () => {
+    const store = await createLoadedStore();
+
+    expect(store.getState().variant).toEqual({
+      id: BASE_VARIANT_ID,
+      name: "Test variant",
+      handSize: 7,
+    });
+  });
+
+  it("counts towards no target before the variant has loaded", () => {
+    const store = createStore(() => new Promise(() => {}));
+
+    expect(selectHandProgress(store.getState())).toMatchObject({
+      isComplete: false,
+      pips: [],
+      reviewLabel: "0 cards",
+    });
+  });
+
+  it("takes the hand size from the variant, for the pips and for when the hand is full", async () => {
+    const store = createStore(async () => [king, queen, knights], {
+      handSize: 2,
+    });
+    await store.dispatch(loadVariant());
+    await store.dispatch(addCardToHand("king"));
+    await store.dispatch(addCardToHand("queen"));
+    await store.dispatch(addCardToHand("knights"));
+
+    expect(handCardIds(store)).toEqual(["king", "queen"]);
+    expect(selectHandProgress(store.getState())).toMatchObject({
+      isComplete: true,
+      pips: [true, true],
+      countLabel: "2 cards ✓",
+    });
+    expect(
+      selectCardSections(store.getState())
+        .flatMap(({ cards }) => cards)
+        .find(({ id }) => id === "knights")?.disabled,
+    ).toBe(true);
   });
 });
 
@@ -145,8 +247,20 @@ describe("adding a card to the hand", () => {
 
     expect(handCardIds(store)).toEqual(["king"]);
     expect(selectCardSections(store.getState())[1].cards).toEqual([
-      { id: "king", name: "King", selected: true, choice: null },
-      { id: "queen", name: "Queen", selected: false, choice: null },
+      {
+        id: "king",
+        name: "King",
+        selected: true,
+        disabled: false,
+        choice: null,
+      },
+      {
+        id: "queen",
+        name: "Queen",
+        selected: false,
+        disabled: false,
+        choice: null,
+      },
     ]);
   });
 
@@ -172,8 +286,20 @@ describe("removing a card from the hand", () => {
 
     expect(handCardIds(store)).toEqual(["queen", "knights"]);
     expect(selectCardSections(store.getState())[1].cards).toEqual([
-      { id: "king", name: "King", selected: false, choice: null },
-      { id: "queen", name: "Queen", selected: true, choice: null },
+      {
+        id: "king",
+        name: "King",
+        selected: false,
+        disabled: false,
+        choice: null,
+      },
+      {
+        id: "queen",
+        name: "Queen",
+        selected: true,
+        disabled: false,
+        choice: null,
+      },
     ]);
   });
 
@@ -311,7 +437,7 @@ describe("breaking down the score", () => {
     const store = createStore(async () => [king, queen, knights], {
       scoreHandExecute: async () => handScore,
     });
-    await store.dispatch(loadCards());
+    await store.dispatch(loadVariant());
     await store.dispatch(addCardToHand("queen"));
     await store.dispatch(addCardToHand("king"));
     await store.dispatch(addCardToHand("knights"));
@@ -341,6 +467,7 @@ describe("breaking down the score", () => {
           suit: "leader",
           chosenName: null,
           choicePending: false,
+          addedByName: null,
           blanked: false,
           points: 13,
           figures: { total: "13", base: "6", bonus: "+10", penalty: "\u22123" },
@@ -351,6 +478,7 @@ describe("breaking down the score", () => {
           suit: "leader",
           chosenName: null,
           choicePending: false,
+          addedByName: null,
           blanked: false,
           points: 8,
           figures: { total: "8", base: "8", bonus: null, penalty: null },
@@ -361,6 +489,7 @@ describe("breaking down the score", () => {
           suit: "army",
           chosenName: null,
           choicePending: false,
+          addedByName: null,
           blanked: true,
           points: 0,
           figures: { total: "0", base: "0", bonus: null, penalty: null },
@@ -450,7 +579,7 @@ describe("tracking progress towards a full hand", () => {
 
   async function createStoreWithHandOf(size: number) {
     const store = createStore(async () => deck);
-    await store.dispatch(loadCards());
+    await store.dispatch(loadVariant());
     for (const card of deck.slice(0, size)) {
       await store.dispatch(addCardToHand(card.id));
     }
@@ -502,19 +631,40 @@ describe("tracking progress towards a full hand", () => {
     });
   });
 
-  it("allows an 8th card with an extra pip, and never says 8 of 7", async () => {
+  it("rejects an 8th card, keeping the hand at 7", async () => {
     const store = await createStoreWithHandOf(8);
 
-    expect(selectHandProgress(store.getState())).toEqual({
-      isEmpty: false,
+    expect(selectHand(store.getState()).cardIds).toHaveLength(7);
+    expect(selectHandProgress(store.getState())).toMatchObject({
       isComplete: true,
-      firstPendingChoiceCardId: null,
-      choicesText: null,
-      pips: [true, true, true, true, true, true, true, true],
-      countLabel: "8 cards ✓",
-      reviewLabel: "8 cards · complete",
-      pipsAccessibilityLabel: "8 cards. Show breakdown",
+      pips: [true, true, true, true, true, true, true],
+      countLabel: "7 cards ✓",
     });
+  });
+
+  it("disables the unselected tiles of a full hand, but not the selected ones", async () => {
+    const store = await createStoreWithHandOf(7);
+    const tiles = selectCardSections(store.getState()).flatMap(
+      ({ cards }) => cards,
+    );
+
+    expect(
+      tiles.map(({ id, selected, disabled }) => [id, selected, disabled]),
+    ).toEqual([
+      ...deck.slice(0, 7).map(({ id }) => [id, true, false]),
+      ["card-7", false, true],
+    ]);
+  });
+
+  it("enables the tiles again when a card is removed from a full hand", async () => {
+    const store = await createStoreWithHandOf(7);
+    await store.dispatch(removeCardFromHand("card-0"));
+
+    expect(
+      selectCardSections(store.getState())
+        .flatMap(({ cards }) => cards)
+        .some(({ disabled }) => disabled),
+    ).toBe(false);
   });
 });
 
@@ -533,7 +683,7 @@ describe("ordering the card sections", () => {
       baseStrength: 7,
     };
     const store = createStore(async () => [collector, mirage, king, knights]);
-    await store.dispatch(loadCards());
+    await store.dispatch(loadVariant());
 
     expect(
       selectCardSections(store.getState()).map(({ suit }) => suit),
@@ -542,7 +692,7 @@ describe("ordering the card sections", () => {
 
   it("lists cards alphabetically within a suit, not in the catalogue's order", async () => {
     const store = createStore(async () => [queen, king]);
-    await store.dispatch(loadCards());
+    await store.dispatch(loadVariant());
 
     expect(
       selectCardSections(store.getState())[0].cards.map(({ name }) => name),
@@ -602,7 +752,7 @@ describe("choosing a card", () => {
     const store = createStore(async () => [island, swamp, candle, knights], {
       scoreHandExecute,
     });
-    await store.dispatch(loadCards());
+    await store.dispatch(loadVariant());
     for (const cardId of cardIds) {
       await store.dispatch(addCardToHand(cardId));
     }
@@ -706,7 +856,7 @@ describe("choosing a card", () => {
   it("counts every pending choice", async () => {
     const otherChooser: Card = { ...island, id: "mirage", name: "Mirage" };
     const store = createStore(async () => [island, otherChooser, swamp]);
-    await store.dispatch(loadCards());
+    await store.dispatch(loadVariant());
     await store.dispatch(addCardToHand("mirage"));
     await store.dispatch(addCardToHand("island"));
 
@@ -720,7 +870,7 @@ describe("choosing a card", () => {
   it("shows the made choice and the pending ones on the breakdown", async () => {
     const otherChooser: Card = { ...island, id: "mirage", name: "Mirage" };
     const store = createStore(async () => [island, otherChooser, swamp]);
-    await store.dispatch(loadCards());
+    await store.dispatch(loadVariant());
     for (const cardId of ["island", "mirage", "swamp"]) {
       await store.dispatch(addCardToHand(cardId));
     }
@@ -758,13 +908,20 @@ describe("choosing a card", () => {
       expect(selectChoiceSheet(store.getState())).toEqual({
         chooserId: "island",
         title: "Island",
+        from: "hand",
         targets: [
           { suit: "flood", exceptNames: [] },
           { suit: "flame", exceptNames: [] },
         ],
-        options: [
-          { id: "swamp", name: "Swamp", suit: "flood", current: false },
-          { id: "candle", name: "Candle", suit: "flame", current: false },
+        // One group with no suit, in the order the score gives
+        groups: [
+          {
+            suit: null,
+            options: [
+              { id: "swamp", name: "Swamp", suit: "flood", current: false },
+              { id: "candle", name: "Candle", suit: "flame", current: false },
+            ],
+          },
         ],
       });
     });
@@ -780,7 +937,7 @@ describe("choosing a card", () => {
         },
       };
       const store = createStore(async () => [picky, swamp, candle]);
-      await store.dispatch(loadCards());
+      await store.dispatch(loadVariant());
       await store.dispatch(addCardToHand("picky"));
 
       store.dispatch(choiceSheetOpened("picky"));
@@ -796,7 +953,7 @@ describe("choosing a card", () => {
 
       store.dispatch(choiceSheetOpened("island"));
 
-      expect(selectChoiceSheet(store.getState())?.options).toEqual([]);
+      expect(sheetOptions(store)).toEqual([]);
     });
 
     it("leaves out options no longer in the hand", async () => {
@@ -809,9 +966,7 @@ describe("choosing a card", () => {
 
       store.dispatch(choiceSheetOpened("island"));
 
-      expect(
-        selectChoiceSheet(store.getState())?.options.map(({ id }) => id),
-      ).toEqual(["swamp"]);
+      expect(sheetOptions(store)?.map(({ id }) => id)).toEqual(["swamp"]);
     });
 
     it("closes once a choice is made, and marks it current when reopened", async () => {
@@ -831,10 +986,7 @@ describe("choosing a card", () => {
       store.dispatch(choiceSheetOpened("island"));
 
       expect(
-        selectChoiceSheet(store.getState())?.options.map(({ id, current }) => [
-          id,
-          current,
-        ]),
+        sheetOptions(store)?.map(({ id, current }) => [id, current]),
       ).toEqual([
         ["swamp", false],
         ["candle", true],
@@ -891,5 +1043,178 @@ describe("revealing a card on the grid", () => {
     store.dispatch(cardRevealed());
 
     expect(selectCardToReveal(store.getState())).toBeNull();
+  });
+});
+
+describe("choosing a card from the discard area", () => {
+  // May take one Army or Beast from the discard area.
+  const necromancer: Card = {
+    id: "necromancer",
+    name: "Necromancer",
+    suit: "wizard",
+    baseStrength: 3,
+    preScoring: [{ kind: "addToHand", card: { chosen: true } }],
+    choice: {
+      kind: "cardInDiscardArea",
+      from: [{ suit: "army" }, { suit: "beast" }],
+    },
+  };
+  const dragon: Card = {
+    id: "dragon",
+    name: "Dragon",
+    suit: "beast",
+    baseStrength: 30,
+  };
+  const basilisk: Card = {
+    id: "basilisk",
+    name: "Basilisk",
+    suit: "beast",
+    baseStrength: 35,
+  };
+  const gameCards = [necromancer, king, knights, dragon, basilisk];
+
+  async function createStoreWithHand(cardIds: readonly CardId[]) {
+    const store = createStore(async () => gameCards, {
+      scoreByTheRules: true,
+      preScoring: ["necromancer"],
+    });
+    await store.dispatch(loadVariant());
+    for (const cardId of cardIds) {
+      await store.dispatch(addCardToHand(cardId));
+    }
+    await store.dispatch(scoreHand());
+    return store;
+  }
+
+  const tileFor = (store: ReturnType<typeof createStore>, cardId: CardId) =>
+    selectCardSections(store.getState())
+      .flatMap((section) => section.cards)
+      .find((card) => card.id === cardId);
+
+  it("offers matching cards not in the hand, grouped by suit and sorted by name", async () => {
+    const store = await createStoreWithHand(["necromancer", "king", "knights"]);
+
+    store.dispatch(choiceSheetOpened("necromancer"));
+
+    expect(selectChoiceSheet(store.getState())).toMatchObject({
+      from: "discardArea",
+      groups: [
+        { suit: "beast", options: [{ id: "basilisk" }, { id: "dragon" }] },
+      ],
+    });
+  });
+
+  it("adds the chosen card to the score, and lists it on the breakdown as not removable", async () => {
+    const store = await createStoreWithHand(["necromancer", "king"]);
+
+    await store.dispatch(
+      chooseCard({ chooserId: "necromancer", targetId: "dragon" }),
+    );
+    await store.dispatch(scoreHand());
+
+    // 3 + King 8 + Dragon 30
+    expect(selectScore(store.getState())).toBe(41);
+    expect(tileFor(store, "necromancer")?.choice).toMatchObject({
+      pending: false,
+      text: "Dragon",
+    });
+    expect(
+      selectBreakdown(store.getState()).rows.map(
+        ({ id, chosenName, addedByName }) => [id, chosenName, addedByName],
+      ),
+    ).toEqual([
+      ["dragon", null, "Necromancer"],
+      ["king", null, null],
+      ["necromancer", "Dragon", null],
+    ]);
+  });
+
+  it("doesn't count the chosen card towards the hand limit", async () => {
+    const store = await createStoreWithHand(["necromancer"]);
+    await store.dispatch(
+      chooseCard({ chooserId: "necromancer", targetId: "dragon" }),
+    );
+
+    expect(selectHandProgress(store.getState()).pips.filter(Boolean)).toEqual([
+      true,
+    ]);
+  });
+
+  it("shows the choice as pending once its card is added to the hand", async () => {
+    const store = await createStoreWithHand(["necromancer"]);
+    await store.dispatch(
+      chooseCard({ chooserId: "necromancer", targetId: "dragon" }),
+    );
+
+    await store.dispatch(addCardToHand("dragon"));
+    await store.dispatch(scoreHand());
+
+    expect(tileFor(store, "necromancer")?.choice?.pending).toBe(true);
+    // 3 + Dragon 30, counted once
+    expect(selectScore(store.getState())).toBe(33);
+  });
+});
+
+describe("choosing a card from the game", () => {
+  // Before scoring, takes the name and suit of any one Leader or Beast in the game.
+  const shapeshifter: Card = {
+    id: "shapeshifter",
+    name: "Shapeshifter",
+    suit: "wild",
+    baseStrength: 0,
+    preScoring: [
+      { kind: "take", from: { chosen: true }, attributes: ["name", "suit"] },
+    ],
+    choice: {
+      kind: "cardInGame",
+      from: [{ suit: "leader" }, { suit: "beast" }],
+    },
+  };
+  const dragon: Card = {
+    id: "dragon",
+    name: "Dragon",
+    suit: "beast",
+    baseStrength: 30,
+  };
+  const gameCards = [shapeshifter, king, queen, knights, dragon];
+
+  async function createStoreWithHand(cardIds: readonly CardId[]) {
+    const store = createStore(async () => gameCards, {
+      scoreByTheRules: true,
+      preScoring: ["shapeshifter"],
+    });
+    await store.dispatch(loadVariant());
+    for (const cardId of cardIds) {
+      await store.dispatch(addCardToHand(cardId));
+    }
+    await store.dispatch(scoreHand());
+    return store;
+  }
+
+  it("offers matching cards in the hand and out of it, grouped by suit", async () => {
+    const store = await createStoreWithHand(["shapeshifter", "king"]);
+
+    store.dispatch(choiceSheetOpened("shapeshifter"));
+
+    expect(selectChoiceSheet(store.getState())).toMatchObject({
+      from: "game",
+      groups: [
+        { suit: "beast", options: [{ id: "dragon" }] },
+        { suit: "leader", options: [{ id: "king" }, { id: "queen" }] },
+      ],
+    });
+  });
+
+  it("shows the suit it took on the breakdown", async () => {
+    const store = await createStoreWithHand(["shapeshifter"]);
+
+    await store.dispatch(
+      chooseCard({ chooserId: "shapeshifter", targetId: "dragon" }),
+    );
+    await store.dispatch(scoreHand());
+
+    expect(selectBreakdown(store.getState()).rows).toMatchObject([
+      { id: "shapeshifter", suit: "beast", chosenName: "Dragon" },
+    ]);
   });
 });

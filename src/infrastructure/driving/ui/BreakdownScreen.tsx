@@ -213,6 +213,7 @@ export function BreakdownScreen() {
                 )}{" "}
                 <Text size="xs" className="text-muted-foreground">
                   {SUITS[row.suit].label}
+                  {row.addedByName && ` · added by ${row.addedByName}`}
                 </Text>
               </Text>
               <Text
@@ -223,15 +224,20 @@ export function BreakdownScreen() {
               >
                 {row.figures?.total ?? NO_VALUE}
               </Text>
-              <Button
-                testID={`remove-card-${row.id}`}
-                accessibilityLabel={`Remove ${row.name} from hand`}
-                variant="ghost"
-                size="icon"
-                onPress={() => dispatch(removeCardFromHand(row.id))}
-              >
-                <ButtonIcon as={X} className="h-4.5 w-4.5 text-icon" />
-              </Button>
+              {row.addedByName === null ? (
+                <Button
+                  testID={`remove-card-${row.id}`}
+                  accessibilityLabel={`Remove ${row.name} from hand`}
+                  variant="ghost"
+                  size="icon"
+                  onPress={() => dispatch(removeCardFromHand(row.id))}
+                >
+                  <ButtonIcon as={X} className="h-4.5 w-4.5 text-icon" />
+                </Button>
+              ) : (
+                // Keeps the total lined up with the rows that have a remove button. The card is changed through its chooser's choice.
+                <Box className="h-11 w-11" />
+              )}
             </HStack>
             {row.choicePending && (
               <Pressable

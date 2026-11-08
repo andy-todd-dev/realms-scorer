@@ -40,25 +40,30 @@ describe("InMemoryCardCatalog", () => {
     { ...queen, deckId: "base" },
   ]);
 
-  it("returns only the default deck's cards, without their deck ID", async () => {
-    await expect(catalog.getAll()).resolves.toEqual([king, queen]);
+  it("returns only the given deck's cards, without their deck ID", async () => {
+    await expect(catalog.getAll("base")).resolves.toEqual([king, queen]);
+    await expect(catalog.getAll("expansion")).resolves.toEqual([unicorn]);
+  });
+
+  it("returns no cards for an unknown deck", async () => {
+    await expect(catalog.getAll("unknown")).resolves.toEqual([]);
   });
 
   it("returns cards by ID in the order requested", async () => {
-    await expect(catalog.getByIds(["queen", "king"])).resolves.toEqual([
+    await expect(catalog.getByIds("base", ["queen", "king"])).resolves.toEqual([
       queen,
       king,
     ]);
   });
 
   it("rejects when any requested card ID is unknown", async () => {
-    await expect(catalog.getByIds(["king", "unknown"])).rejects.toThrow(
+    await expect(catalog.getByIds("base", ["king", "unknown"])).rejects.toThrow(
       "Unknown card: unknown",
     );
   });
 
   it("rejects a card from another deck", async () => {
-    await expect(catalog.getByIds(["unicorn"])).rejects.toThrow(
+    await expect(catalog.getByIds("base", ["unicorn"])).rejects.toThrow(
       "Unknown card: unicorn",
     );
   });

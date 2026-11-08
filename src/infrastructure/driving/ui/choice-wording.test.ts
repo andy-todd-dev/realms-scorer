@@ -50,21 +50,59 @@ describe("describeTargets", () => {
 describe("choiceInstruction", () => {
   it("asks for one of the targets from the hand", () => {
     expect(
-      choiceInstruction([
-        { suit: "flood", exceptNames: [] },
-        { suit: "flame", exceptNames: [] },
-      ]),
+      choiceInstruction(
+        [
+          { suit: "flood", exceptNames: [] },
+          { suit: "flame", exceptNames: [] },
+        ],
+        "hand",
+      ),
     ).toBe("Choose one Flood or Flame in your hand.");
+  });
+
+  it("asks for one of the targets from the discard area", () => {
+    expect(
+      choiceInstruction(
+        [
+          { suit: "army", exceptNames: [] },
+          { suit: "beast", exceptNames: [] },
+        ],
+        "discardArea",
+      ),
+    ).toBe("Choose one Army or Beast from the discard area.");
+  });
+
+  it("asks for one of the targets in the game", () => {
+    expect(
+      choiceInstruction(
+        [
+          { suit: "leader", exceptNames: [] },
+          { suit: "beast", exceptNames: [] },
+        ],
+        "game",
+      ),
+    ).toBe("Choose one Leader or Beast in the game.");
   });
 });
 
 describe("noChoiceText", () => {
   it("says which cards to add", () => {
     expect(
-      noChoiceText([
-        { suit: "flood", exceptNames: [] },
-        { suit: "flame", exceptNames: [] },
-      ]),
+      noChoiceText(
+        [
+          { suit: "flood", exceptNames: [] },
+          { suit: "flame", exceptNames: [] },
+        ],
+        "hand",
+      ),
     ).toBe("No Flood or Flame in your hand yet. Add one, then come back.");
+  });
+
+  it("says when the discard area has none left", () => {
+    expect(
+      noChoiceText([{ suit: "army", exceptNames: [] }], "discardArea"),
+    ).toBe(
+      "Every Army is in your hand, so there's none to take from the discard area.",
+    );
   });
 });

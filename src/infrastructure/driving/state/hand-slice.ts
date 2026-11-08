@@ -11,13 +11,17 @@ const initialState: Hand = {
 export const addCardToHand = createAppAsyncThunk(
   "hand/addCard",
   (cardId: CardId, { extra, getState }) =>
-    extra.addCardToHand.execute(getState().hand, cardId),
+    extra.addCardToHand.execute(getState().variant.id, getState().hand, cardId),
 );
 
 export const removeCardFromHand = createAppAsyncThunk(
   "hand/removeCard",
   (cardId: CardId, { extra, getState }) =>
-    extra.removeCardFromHand.execute(getState().hand, cardId),
+    extra.removeCardFromHand.execute(
+      getState().variant.id,
+      getState().hand,
+      cardId,
+    ),
 );
 
 export const clearHand = createAppAsyncThunk(
@@ -30,7 +34,13 @@ export const chooseCard = createAppAsyncThunk(
   (
     { chooserId, targetId }: { chooserId: CardId; targetId: CardId },
     { extra, getState },
-  ) => extra.chooseCard.execute(getState().hand, chooserId, targetId),
+  ) =>
+    extra.chooseCard.execute(
+      getState().variant.id,
+      getState().hand,
+      chooserId,
+      targetId,
+    ),
 );
 
 // Each use case returns the whole new hand, which replaces the old one.

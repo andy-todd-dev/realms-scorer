@@ -1,5 +1,7 @@
-import type { ChoiceTarget } from "../state/selectors";
+import type { ChoiceSheet, ChoiceTarget } from "../state/selectors";
 import { SUITS } from "./theme";
+
+type ChoiceFrom = ChoiceSheet["from"];
 
 // "A", "A or B", "A, B or C". The design lists suits without a comma before "or".
 function joinWith(parts: readonly string[], conjunction: string): string {
@@ -25,10 +27,28 @@ export function describeTargets(targets: readonly ChoiceTarget[]): string {
   return joinWith(targets.map(describeTarget), "or");
 }
 
-export function choiceInstruction(targets: readonly ChoiceTarget[]): string {
-  return `Choose one ${describeTargets(targets)} in your hand.`;
+export function choiceInstruction(
+  targets: readonly ChoiceTarget[],
+  from: ChoiceFrom,
+): string {
+  const where = {
+    hand: "in your hand",
+    discardArea: "from the discard area",
+    game: "in the game",
+  }[from];
+
+  return `Choose one ${describeTargets(targets)} ${where}.`;
 }
 
-export function noChoiceText(targets: readonly ChoiceTarget[]): string {
-  return `No ${describeTargets(targets)} in your hand yet. Add one, then come back.`;
+export function noChoiceText(
+  targets: readonly ChoiceTarget[],
+  from: ChoiceFrom,
+): string {
+  const described = describeTargets(targets);
+
+  return {
+    hand: `No ${described} in your hand yet. Add one, then come back.`,
+    discardArea: `Every ${described} is in your hand, so there's none to take from the discard area.`,
+    game: `There's no ${described} in the game to choose.`,
+  }[from];
 }

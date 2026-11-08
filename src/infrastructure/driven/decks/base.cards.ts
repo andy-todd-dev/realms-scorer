@@ -2,6 +2,7 @@ import type { CardIdMatcher } from "../../../domain/card";
 import type { Deck } from "../../../domain/deck";
 import {
   absent,
+  addToHand,
   allOf,
   allSuits,
   allSuitsDifferent,
@@ -10,21 +11,26 @@ import {
   blank,
   blankSelf,
   CardDefinition,
-  chooseCardInHand,
+  chooseCard,
   chosenCard,
   clearPenalty,
   clearPenaltySuitWord,
   except,
+  fromDiscardArea,
+  fromGame,
+  fromHand,
   points,
   present,
   suit,
   sum,
+  take,
 } from "./card-definitions";
 
-type BaseCardId =
+export type BaseCardId =
   | "beast-master"
   | "enchantress"
   | "warlock-lord"
+  | "necromancer"
   | "king"
   | "queen"
   | "princess"
@@ -68,7 +74,10 @@ type BaseCardId =
   | "shield-of-keth"
   | "gem-of-order"
   | "island"
-  | "book-of-changes";
+  | "book-of-changes"
+  | "doppelganger"
+  | "mirage"
+  | "shapeshifter";
 
 const card = (cardId: BaseCardId): CardIdMatcher => ({ cardId });
 
@@ -113,6 +122,24 @@ export const BASE_DECK_CARDS: Record<BaseCardId, CardDefinition> = {
         points(-10, { per: suit("wizard") }),
       ],
     },
+  },
+  necromancer: {
+    name: "Necromancer",
+    suit: "wizard",
+    baseStrength: 3,
+    bonus: {
+      text: "At the end of the game, you may take one army, leader, wizard, or beast from the discard area and add it to your hand as an eighth card.",
+      // The card prints this as its bonus, but it happens before scoring, so the rule is in preScoring.
+      effects: [],
+    },
+    preScoring: [addToHand(chosenCard)],
+    choice: chooseCard(
+      fromDiscardArea,
+      suit("army"),
+      suit("leader"),
+      suit("wizard"),
+      suit("beast"),
+    ),
   },
   king: {
     name: "King",
@@ -635,14 +662,46 @@ export const BASE_DECK_CARDS: Record<BaseCardId, CardDefinition> = {
       text: "Clears the penalty on any one Flood or Flame.",
       effects: [clearPenalty(chosenCard)],
     },
-    choice: chooseCardInHand(suit("flood"), suit("flame")),
+    choice: chooseCard(fromHand, suit("flood"), suit("flame")),
   },
-  // Placeholder: this exists only so that Candle's rule can name it. Its suit and base strength
-  // are arbitrary, not the printed values, and it has no rules yet. Replace it with the real
-  // card details when it is added.
+  // Placeholder: this exists only so that Candle's rule can name it, and the base variant can
+  // list it for pre-scoring. Its suit and base strength are arbitrary, not the printed values,
+  // and it has no rules yet. Replace it with the real card details when it is added.
   "book-of-changes": {
     name: "Book of Changes",
     suit: "wild",
     baseStrength: 3,
+  },
+  // Placeholders: Doppelgänger and Mirage exist only so that the base variant can list them
+  // for pre-scoring. Their suits and base strengths are arbitrary, not the printed values, and
+  // they have no rules yet. Replace each with the real card details when it is added.
+  doppelganger: {
+    name: "Doppelgänger",
+    suit: "wild",
+    baseStrength: 0,
+  },
+  mirage: {
+    name: "Mirage",
+    suit: "wild",
+    baseStrength: 0,
+  },
+  shapeshifter: {
+    name: "Shapeshifter",
+    suit: "wild",
+    baseStrength: 0,
+    bonus: {
+      text: "May duplicate the name and suit of any one Artifact, Leader, Wizard, Weapon, or Beast in the game. Does not take the bonus, penalty, or base strength of the card duplicated.",
+      // The card prints this as its bonus, but it happens before scoring, so the rule is in preScoring.
+      effects: [],
+    },
+    preScoring: [take(chosenCard, "name", "suit")],
+    choice: chooseCard(
+      fromGame,
+      suit("artifact"),
+      suit("leader"),
+      suit("wizard"),
+      suit("weapon"),
+      suit("beast"),
+    ),
   },
 };

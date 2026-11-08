@@ -4,16 +4,21 @@ import {
   screen,
   userEvent,
   waitFor,
+  within,
 } from "@testing-library/react-native";
 import { AddCardToHandUseCase } from "../../../application/add-card-to-hand.usecase";
 import { ChooseCardUseCase } from "../../../application/choose-card.usecase";
 import { ClearHandUseCase } from "../../../application/clear-hand.usecase";
-import { LoadCardsUseCase } from "../../../application/load-cards.usecase";
+import { LoadVariantUseCase } from "../../../application/load-variant.usecase";
 import { RemoveCardFromHandUseCase } from "../../../application/remove-card-from-hand.usecase";
+import { ScoreHandUseCase } from "../../../application/score-hand.usecase";
 import type { Card, CardId } from "../../../domain/card";
+import type { DeckId } from "../../../domain/deck";
 import type { Hand } from "../../../domain/hand";
 import type { CardScore, HandScore } from "../../../domain/score";
+import type { Variant, VariantId } from "../../../domain/variant";
 import { createAppStore } from "../state/store";
+import { BASE_VARIANT_ID } from "../state/variant-slice";
 import { App } from "./App";
 
 jest.mock(
@@ -130,12 +135,47 @@ const sumStrengths = async ({ cardIds, choices }: Hand) => {
   );
 };
 
+// Fakes for the catalogs, serving the given cards as the deck of a variant with the store's default ID.
+function catalogsFor(
+  loadCards: () => Promise<Card[]>,
+  preScoring: readonly CardId[],
+) {
+  const variant: Variant = {
+    id: BASE_VARIANT_ID,
+    name: "Test variant",
+    deckId: "deck",
+    handSize: 7,
+    preScoring,
+  };
+
+  return {
+    cardCatalog: {
+      getAll: loadCards,
+      getByIds: async (_: DeckId, cardIds: readonly CardId[]) =>
+        (await loadCards()).filter((card) => cardIds.includes(card.id)),
+    },
+    variantCatalog: {
+      getById: async (variantId: VariantId) => {
+        if (variantId !== variant.id) {
+          throw new Error(`Unknown variant: ${variantId}`);
+        }
+        return variant;
+      },
+    },
+  };
+}
+
 async function renderApp({
   scoreHand = sumStrengths,
+  scoreByTheRules = false,
+  preScoring = [],
   loadCards = async () => cards,
   chooseCard,
 }: {
   scoreHand?: (hand: Hand) => Promise<number | HandScore>;
+  // Scores with the real use case, so the options and any added cards come from the rules.
+  scoreByTheRules?: boolean;
+  preScoring?: readonly CardId[];
   loadCards?: () => Promise<Card[]>;
   chooseCard?: (
     hand: Hand,
@@ -143,27 +183,28 @@ async function renderApp({
     targetId: CardId,
   ) => Promise<Hand>;
 } = {}) {
+  const catalogs = catalogsFor(loadCards, preScoring);
   const store = createAppStore({
-    addCardToHand: new AddCardToHandUseCase(),
+    addCardToHand: new AddCardToHandUseCase(catalogs),
     // Checks choices against the same cards that loading serves, unless faked.
     chooseCard: chooseCard
-      ? { execute: chooseCard }
-      : new ChooseCardUseCase({
-          cardCatalog: {
-            getByIds: async (cardIds) =>
-              (await loadCards()).filter((card) => cardIds.includes(card.id)),
-          },
-        }),
+      ? {
+          execute: (_, hand, chooserId, targetId) =>
+            chooseCard(hand, chooserId, targetId),
+        }
+      : new ChooseCardUseCase(catalogs),
     clearHand: new ClearHandUseCase(),
     // The real use case, so card views and choice descriptions are built as in the app.
-    loadCards: new LoadCardsUseCase({ cardCatalog: { getAll: loadCards } }),
-    removeCardFromHand: new RemoveCardFromHandUseCase(),
-    scoreHand: {
-      execute: async (hand) => {
-        const score = await scoreHand(hand);
-        return typeof score === "number" ? totalOnly(score) : score;
-      },
-    },
+    loadVariant: new LoadVariantUseCase(catalogs),
+    removeCardFromHand: new RemoveCardFromHandUseCase(catalogs),
+    scoreHand: scoreByTheRules
+      ? new ScoreHandUseCase(catalogs)
+      : {
+          execute: async (_, hand) => {
+            const score = await scoreHand(hand);
+            return typeof score === "number" ? totalOnly(score) : score;
+          },
+        },
   });
   const user = userEvent.setup();
 
@@ -351,7 +392,7 @@ describe("the home screen", () => {
     );
   });
 
-  it("confirms a full hand at 7 cards, and still allows an 8th", async () => {
+  it("confirms a full hand at 7 cards, and disables the cards not in it", async () => {
     const { tapCard } = await renderApp({
       loadCards: async () => eightCards,
     });
@@ -361,11 +402,18 @@ describe("the home screen", () => {
     }
 
     expect(screen.getByTestId("hand-count")).toHaveTextContent("7 cards ✓");
-    expect(screen.getByTestId("card-tile-card-7")).toBeEnabled();
+    expect(screen.getByTestId("card-tile-card-7")).toBeDisabled();
+    expect(screen.getByTestId("card-tile-card-0")).toBeEnabled();
 
     await tapCard("card-7");
 
-    expect(screen.getByTestId("hand-count")).toHaveTextContent("8 cards ✓");
+    expect(screen.getByTestId("hand-count")).toHaveTextContent("7 cards ✓");
+    expect(screen.getByTestId("card-tile-card-7")).not.toBeChecked();
+
+    await tapCard("card-0");
+
+    expect(screen.getByTestId("hand-count")).toHaveTextContent("6 of 7 cards");
+    expect(screen.getByTestId("card-tile-card-7")).toBeEnabled();
   });
 
   it("explains when the cards failed to load", async () => {
@@ -427,8 +475,8 @@ describe("the breakdown screen", () => {
     expect(screen.getByTestId("card-tile-king")).toBeChecked();
   });
 
-  it("marks a full hand as complete, and an 8th card with no 8 of 7", async () => {
-    const { showBreakdown, backToCards, tapCard } = await renderApp({
+  it("marks a full hand as complete", async () => {
+    const { showBreakdown, tapCard } = await renderApp({
       loadCards: async () => eightCards,
     });
 
@@ -439,14 +487,6 @@ describe("the breakdown screen", () => {
 
     expect(screen.getByTestId("breakdown-count")).toHaveTextContent(
       "7 cards · complete",
-    );
-
-    await backToCards();
-    await tapCard("card-7");
-    await showBreakdown();
-
-    expect(screen.getByTestId("breakdown-count")).toHaveTextContent(
-      "8 cards · complete",
     );
   });
 
@@ -783,5 +823,79 @@ describe("choosing a card", () => {
 
     expect(screen.queryByTestId("breakdown-total")).toBeNull();
     expect(screen.getByTestId("choice-strip-island")).toBeOnTheScreen();
+  });
+});
+
+describe("choosing a card from the discard area", () => {
+  // May take one Army or Leader from the discard area.
+  const necromancer: Card = {
+    id: "necromancer",
+    name: "Necromancer",
+    suit: "wizard",
+    baseStrength: 3,
+    preScoring: [{ kind: "addToHand", card: { chosen: true } }],
+    choice: {
+      kind: "cardInDiscardArea",
+      from: [{ suit: "army" }, { suit: "leader" }],
+    },
+  };
+  const withNecromancer = [...cards, necromancer];
+
+  const renderWithNecromancer = () =>
+    renderApp({
+      loadCards: async () => withNecromancer,
+      scoreByTheRules: true,
+      preScoring: ["necromancer"],
+    });
+
+  it("lists matching cards not in the hand under their suits", async () => {
+    const { press, tapCard } = await renderWithNecromancer();
+
+    await tapCard("necromancer");
+    await tapCard("king");
+    await expectScore("11");
+    await press("choice-strip-necromancer");
+
+    expect(
+      await screen.findByTestId("choice-sheet-instruction"),
+    ).toHaveTextContent("Choose one Army or Leader from the discard area.");
+    const sheet = within(screen.getByTestId("choice-sheet"));
+    expect(
+      sheet
+        .getAllByRole("header")
+        .map((heading) => heading.props.children)
+        // After the sheet's own title
+        .slice(1),
+    ).toEqual(["Army", "Leader"]);
+    expect(screen.getByTestId("choice-option-knights")).toBeOnTheScreen();
+    expect(screen.getByTestId("choice-option-queen")).toBeOnTheScreen();
+    expect(screen.queryByTestId("choice-option-king")).toBeNull();
+  });
+
+  it("scores the chosen card and lists it on the breakdown, without a remove button", async () => {
+    const { press, showBreakdown, tapCard } = await renderWithNecromancer();
+
+    await tapCard("necromancer");
+    await expectScore("3");
+    await press("choice-strip-necromancer");
+    await press("choice-option-knights");
+
+    // 3 + Knights 20
+    await expectScore("23");
+    expect(screen.getByTestId("choice-strip-necromancer")).toHaveTextContent(
+      "Knights",
+    );
+    expect(screen.getByTestId("hand-count")).toHaveTextContent("1 of 7 cards");
+
+    await showBreakdown();
+
+    expect(screen.getByTestId("breakdown-card-knights")).toHaveTextContent(
+      /added by Necromancer/,
+    );
+    expect(screen.getByTestId("card-total-knights")).toHaveTextContent("20");
+    expect(screen.queryByTestId("remove-card-knights")).toBeNull();
+    expect(screen.getByTestId("chosen-card-necromancer")).toHaveTextContent(
+      "→ Knights",
+    );
   });
 });

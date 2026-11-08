@@ -2,12 +2,11 @@ import { createSelector } from "@reduxjs/toolkit";
 import type { CardId, Suit } from "../../../domain/card";
 import type { RootState } from "./store";
 
-// Display only: the target for a hand, not a limit. The Necromancer allows an 8th card.
-const HAND_SIZE = 7;
-
 const selectCards = (state: RootState) => state.cards.items;
 
 export const selectCardsStatus = (state: RootState) => state.cards.status;
+// The most cards the player can select, from the variant, or null until it has loaded. A card the Necromancer takes from the discard area doesn't count towards it.
+const selectHandSize = (state: RootState) => state.variant.handSize;
 export const selectHand = (state: RootState) => state.hand;
 export const selectHandCardIds = (state: RootState) => state.hand.cardIds;
 const selectChoices = (state: RootState) => state.hand.choices;
@@ -42,10 +41,11 @@ function tileChoice(
 }
 
 export const selectCardSections = createSelector(
-  [selectCards, selectHandCardIds, selectChoices],
-  (cards, handCardIds, choices) => {
+  [selectCards, selectHandCardIds, selectChoices, selectHandSize],
+  (cards, handCardIds, choices, handSize) => {
     const nameOf = (cardId: CardId | undefined) =>
       cards.find((card) => card.id === cardId)?.name ?? null;
+    const isHandFull = handSize !== null && handCardIds.length >= handSize;
 
     return [...new Set(cards.map((card) => card.suit))]
       .sort((a, b) => a.localeCompare(b))
@@ -61,6 +61,8 @@ export const selectCardSections = createSelector(
               id,
               name,
               selected,
+              // A full hand takes no more cards, but its cards can still be removed.
+              disabled: isHandFull && !selected,
               choice:
                 selected && choice !== null
                   ? tileChoice(name, nameOf(choices[id]))
@@ -85,13 +87,15 @@ const selectPendingChoiceCardIds = createSelector(
 );
 
 export const selectHandProgress = createSelector(
-  [selectHandCardIds, selectPendingChoiceCardIds],
-  ({ length: count }, pendingChoiceCardIds) => {
+  [selectHandCardIds, selectPendingChoiceCardIds, selectHandSize],
+  ({ length: count }, pendingChoiceCardIds, handSize) => {
     const pendingChoiceCount = pendingChoiceCardIds.length;
-    const isComplete = count >= HAND_SIZE;
-    const countText = isComplete
-      ? `${count} cards`
-      : `${count} of ${HAND_SIZE} cards`;
+    // Until the variant loads there is no target to count towards.
+    const isComplete = handSize !== null && count >= handSize;
+    const countText =
+      isComplete || handSize === null
+        ? `${count} cards`
+        : `${count} of ${handSize} cards`;
 
     const choicesText =
       pendingChoiceCount > 0 ? choicesNeededText(pendingChoiceCount) : null;
@@ -103,11 +107,8 @@ export const selectHandProgress = createSelector(
       firstPendingChoiceCardId: pendingChoiceCardIds[0] ?? null,
       // Set while any choice is pending, which takes over the count line.
       choicesText,
-      // One entry per slot, true when filled. A hand over the target gets extra slots.
-      pips: Array.from(
-        { length: Math.max(HAND_SIZE, count) },
-        (_, index) => index < count,
-      ),
+      // One entry per slot, true when filled.
+      pips: Array.from({ length: handSize ?? 0 }, (_, index) => index < count),
       countLabel:
         count === 0
           ? "Tap cards or scan"
@@ -141,34 +142,61 @@ export const selectChoiceSheet = createSelector(
     const optionIds =
       handScore?.cards.find((scored) => scored.cardId === chooser.id)?.choice
         ?.optionIds ?? [];
+    const { from } = chooser.choice;
+    // Cards in the hand as the latest score has it: those in it, then any that pre-scoring added.
+    const inScoredHand = (cardId: CardId) =>
+      hand.cardIds.includes(cardId) ||
+      (handScore?.cards.some(
+        (scored) => scored.cardId === cardId && scored.addedBy !== undefined,
+      ) ??
+        false);
+    // Options from the latest score, still in the right place for the choice, in case the hand changed since. Any card in the game stays an option.
+    const stillAnOption = (cardId: CardId) =>
+      from === "game" || inScoredHand(cardId) === (from === "hand");
+    const options = optionIds.filter(stillAnOption).flatMap((optionId) =>
+      cards
+        .filter((card) => card.id === optionId)
+        .map(({ id, name, suit }) => ({
+          id,
+          name,
+          suit,
+          current: hand.choices[chooser.id] === id,
+        })),
+    );
+
+    // Options from the hand are one group, with no suit, in hand order. Options from the discard area can be many, so they are grouped by suit and sorted as the grid is.
+    const groups: { suit: Suit | null; options: typeof options }[] =
+      from === "hand"
+        ? options.length > 0
+          ? [{ suit: null, options }]
+          : []
+        : [...new Set(options.map((option) => option.suit))]
+            .sort((a, b) => a.localeCompare(b))
+            .map((suit) => ({
+              suit,
+              options: options
+                .filter((option) => option.suit === suit)
+                .sort((a, b) => a.name.localeCompare(b.name)),
+            }));
 
     return {
       chooserId: chooser.id,
       title: chooser.name,
+      from,
       // What may be chosen, with card names for the UI to describe.
       targets: chooser.choice.targets.map((target): ChoiceTarget =>
         "suit" in target
           ? { suit: target.suit, exceptNames: target.except.map(nameOf) }
           : { cardName: nameOf(target.cardId) },
       ),
-      options: optionIds
-        .filter((optionId) => hand.cardIds.includes(optionId))
-        .flatMap((optionId) =>
-          cards
-            .filter((card) => card.id === optionId)
-            .map(({ id, name, suit }) => ({
-              id,
-              name,
-              suit,
-              current: hand.choices[chooser.id] === id,
-            })),
-        ),
+      groups,
     };
   },
 );
 
 export type ChoiceSheet = NonNullable<ReturnType<typeof selectChoiceSheet>>;
-export type ChoiceOption = ChoiceSheet["options"][number];
+export type ChoiceOptionGroup = ChoiceSheet["groups"][number];
+export type ChoiceOption = ChoiceOptionGroup["options"][number];
 // What a choice may take, for the UI to put into words: a suit, other than some cards, or a card.
 export type ChoiceTarget =
   | { readonly suit: Suit; readonly exceptNames: readonly string[] }
@@ -192,24 +220,41 @@ const signedIfAny = (points: number) => (points === 0 ? null : signed(points));
 export const selectBreakdown = createSelector(
   [selectCards, selectHandCards, selectChoices, selectHandScore],
   (allCards, cards, choices, handScore) => {
-    const rows = cards
-      .map(({ id, name, suit, choice }) => {
+    const nameOf = (cardId: CardId | null) =>
+      allCards.find((card) => card.id === cardId)?.name ?? null;
+
+    // Cards a choice took from the discard area, which the latest score lists after the hand.
+    const addedCards = (handScore?.cards ?? []).flatMap(
+      ({ cardId, addedBy }) =>
+        addedBy === undefined
+          ? []
+          : allCards
+              .filter((card) => card.id === cardId)
+              .map((card) => ({ ...card, addedBy })),
+    );
+
+    const rows = [
+      ...cards.map((card) => ({ ...card, addedBy: null })),
+      ...addedCards,
+    ]
+      .map(({ id, name, suit, choice, addedBy }) => {
         const cardScore = handScore?.cards.find(
           (scored) => scored.cardId === id,
         );
 
-        const choosesCard = choice !== null;
-        const chosenName = choosesCard
-          ? (allCards.find((card) => card.id === choices[id])?.name ?? null)
-          : null;
+        const choosesCard = choice !== null && addedBy === null;
+        const chosenName = choosesCard ? nameOf(choices[id] ?? null) : null;
 
         return {
           id,
           name,
-          suit,
+          // The suit it was scored as, which differs from its own when it took another card's.
+          suit: cardScore?.suit ?? suit,
           // The chosen card's name, for a card with a choice that has been made.
           chosenName,
           choicePending: choosesCard && chosenName === null,
+          // For a card taken from the discard area, the name of the card that took it. It isn't in the hand, so it can't be removed from it.
+          addedByName: addedBy === null ? null : nameOf(addedBy),
           blanked: cardScore?.blanked ?? false,
           points: cardScore?.total ?? null,
           figures: cardScore && {
