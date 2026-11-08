@@ -1,9 +1,18 @@
 import { Card, CardId } from "../domain/card";
+import { DeckId } from "../domain/deck";
+import { Variant, VariantId } from "../domain/variant";
 
 export interface CardCatalog {
-  getByIds(cardIds: readonly CardId[]): Promise<Card[]>;
+  // Every card in the deck, for choices from the discard area.
+  getAll(deckId: DeckId): Promise<Card[]>;
+  getByIds(deckId: DeckId, cardIds: readonly CardId[]): Promise<Card[]>;
+}
+
+export interface VariantCatalog {
+  getById(variantId: VariantId): Promise<Variant>;
 }
 
 export interface ChooseCardPorts {
   cardCatalog: CardCatalog;
+  variantCatalog: VariantCatalog;
 }

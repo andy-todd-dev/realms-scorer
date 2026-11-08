@@ -213,14 +213,15 @@ function Section({
 
 function CardTile({ card }: { card: CardTileData }) {
   const dispatch = useAppDispatch();
-  const { id, name, selected, choice } = card;
+  const { id, name, selected, disabled, choice } = card;
 
   return (
     <VStack>
       <Pressable
         testID={`card-tile-${id}`}
         accessibilityRole="checkbox"
-        accessibilityState={{ checked: selected }}
+        accessibilityState={{ checked: selected, disabled }}
+        disabled={disabled}
         onPress={() =>
           dispatch(selected ? removeCardFromHand(id) : addCardToHand(id))
         }
@@ -229,7 +230,9 @@ function CardTile({ card }: { card: CardTileData }) {
             ? "min-h-12 justify-center rounded-t-lg border-[1.5px] border-primary bg-accent px-2 py-1.5"
             : selected
               ? "min-h-12 justify-center rounded-lg border-[1.5px] border-primary bg-accent px-2 py-1.5"
-              : "min-h-12 justify-center rounded-lg border-[1.5px] border-border bg-muted px-2 py-1.5"
+              : disabled
+                ? "min-h-12 justify-center rounded-lg border-[1.5px] border-border bg-muted px-2 py-1.5 opacity-40"
+                : "min-h-12 justify-center rounded-lg border-[1.5px] border-border bg-muted px-2 py-1.5"
         }
       >
         <Text size="sm" className="pr-3.5 font-body-medium leading-tight">

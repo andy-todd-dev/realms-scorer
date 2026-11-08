@@ -498,6 +498,415 @@ describe("calculateScore", () => {
     });
   });
 
+  describe("pre-scoring addToHand effects", () => {
+    // Before scoring, takes one Army or Beast from the discard area into the hand, chosen by the player.
+    const adder: Card = {
+      ...card("adder", "wizard", 3),
+      preScoring: [{ kind: "addToHand", card: { chosen: true } }],
+      choice: {
+        kind: "cardInDiscardArea",
+        from: [{ suit: "army" }, { suit: "beast" }],
+      },
+    };
+    const aBeast = card("beast-1", "beast", 8);
+    const deckCards = [aBeast, anArmy, aLand];
+    const rules = { deckCards, preScoring: ["adder"] };
+    const penalisedArmy: Card = {
+      ...card("army-3", "army", 7),
+      penalty: { text: "", effects: [{ kind: "points", points: -3 }] },
+    };
+    // Clears the penalty on one Army in the hand, chosen by the player.
+    const clearer: Card = {
+      ...card("clearer", "flood", 1, [
+        { kind: "clearPenalty", targets: [{ chosen: true }] },
+      ]),
+      choice: { kind: "cardInHand", from: [{ suit: "army" }] },
+    };
+
+    it("adds the chosen card to the hand", () => {
+      // 3 + Beast 8
+      expect(calculateScore([adder], { adder: "beast-1" }, rules)).toBe(11);
+    });
+
+    it("adds nothing while the choice is pending", () => {
+      expect(calculateScore([adder], {}, rules)).toBe(3);
+    });
+
+    it("adds nothing when the variant doesn't list the card", () => {
+      expect(
+        calculateScore(
+          [adder],
+          { adder: "beast-1" },
+          { deckCards, preScoring: [] },
+        ),
+      ).toBe(3);
+    });
+
+    it("ignores listed cards that aren't in the hand", () => {
+      expect(
+        calculateScore(
+          [adder],
+          { adder: "beast-1" },
+          { deckCards, preScoring: ["absent", "adder", "also-absent"] },
+        ),
+      ).toBe(11);
+    });
+
+    it("ignores a choice of a card that doesn't match", () => {
+      expect(calculateScore([adder], { adder: "land-1" }, rules)).toBe(3);
+    });
+
+    it("ignores a choice of a card that is already in the hand", () => {
+      // 3 + Beast 8, counted once
+      expect(calculateScore([adder, aBeast], { adder: "beast-1" }, rules)).toBe(
+        11,
+      );
+    });
+
+    it("ignores a choice of a card that isn't in the discard area", () => {
+      expect(
+        calculateScore(
+          [adder],
+          { adder: "beast-1" },
+          { deckCards: [anArmy], preScoring: ["adder"] },
+        ),
+      ).toBe(3);
+    });
+
+    it("counts the added card for other cards", () => {
+      const perArmy = card("counter", "leader", 1, [pointsPerArmy]);
+
+      // 3 + (1 + 5 for the Army) + Army 10
+      expect(calculateScore([adder, perArmy], { adder: "army-1" }, rules)).toBe(
+        19,
+      );
+    });
+
+    it("lets a card in the hand blank the added card", () => {
+      const blanksArmies = card("blanker", "flood", 2, [
+        { kind: "blank", targets: [{ suit: "army" }] },
+      ]);
+
+      // 3 + 2, with the Army blanked
+      expect(
+        calculateScore([adder, blanksArmies], { adder: "army-1" }, rules),
+      ).toBe(5);
+    });
+
+    it("keeps the added card when the adding card is blanked", () => {
+      const blanksWizards = card("blanker", "land", 4, [
+        { kind: "blank", targets: [{ suit: "wizard" }] },
+      ]);
+
+      // Adder blanked + 4 + Beast 8
+      expect(
+        calculateScore([adder, blanksWizards], { adder: "beast-1" }, rules),
+      ).toBe(12);
+    });
+
+    it("keeps the added card when it blanks the adding card", () => {
+      const beastBlankingWizards = card("beast-2", "beast", 35, [
+        { kind: "blank", targets: [{ suit: "wizard" }] },
+      ]);
+
+      // Adder blanked + Beast 35
+      expect(
+        calculateScore(
+          [adder],
+          { adder: "beast-2" },
+          { deckCards: [beastBlankingWizards], preScoring: ["adder"] },
+        ),
+      ).toBe(35);
+    });
+
+    it("lets an unlisted choice choose the added card, as it resolves afterwards", () => {
+      const penalisedRules = {
+        deckCards: [penalisedArmy],
+        preScoring: ["adder"],
+      };
+
+      // 3 + 1 + Army (7 - 3)
+      expect(
+        calculateScore([adder, clearer], { adder: "army-3" }, penalisedRules),
+      ).toBe(8);
+      // 3 + 1 + Army 7 (cleared)
+      expect(
+        calculateScore(
+          [adder, clearer],
+          { adder: "army-3", clearer: "army-3" },
+          penalisedRules,
+        ),
+      ).toBe(11);
+    });
+
+    it("fires in the variant's order, each against the hand the cards before it left", () => {
+      // Another card that adds an Army or Beast, so the two compete for the same card.
+      const secondAdder: Card = { ...adder, id: "second", name: "second" };
+      const hand = [adder, secondAdder];
+      const choices = { adder: "beast-1", second: "beast-1" };
+
+      const adderFirst = scoreHand(hand, choices, {
+        deckCards,
+        preScoring: ["adder", "second"],
+      });
+      const secondFirst = scoreHand(hand, choices, {
+        deckCards,
+        preScoring: ["second", "adder"],
+      });
+
+      // The first in the order takes the Beast, so the other's choice no longer fits. 3 + 3 + Beast 8
+      expect(adderFirst.total).toBe(14);
+      expect(
+        adderFirst.cards.map(({ cardId, addedBy, choice }) => [
+          cardId,
+          addedBy,
+          choice?.chosenId,
+        ]),
+      ).toEqual([
+        ["adder", undefined, "beast-1"],
+        ["second", undefined, null],
+        ["beast-1", "adder", undefined],
+      ]);
+      expect(
+        secondFirst.cards.map(({ cardId, addedBy, choice }) => [
+          cardId,
+          addedBy,
+          choice?.chosenId,
+        ]),
+      ).toEqual([
+        ["adder", undefined, null],
+        ["second", undefined, "beast-1"],
+        ["beast-1", "second", undefined],
+      ]);
+    });
+
+    it("scores a listed card's bonus at the normal time, with the cards then in play", () => {
+      // Also +5 for each Army, which counts the Army it added.
+      const adderWithBonus: Card = {
+        ...adder,
+        bonus: { text: "", effects: [pointsPerArmy] },
+      };
+      const blanksArmies = card("blanker", "flood", 2, [
+        { kind: "blank", targets: [{ suit: "army" }] },
+      ]);
+
+      // (3 + 5) + Army 10
+      expect(calculateScore([adderWithBonus], { adder: "army-1" }, rules)).toBe(
+        18,
+      );
+      // The Army is added, then blanked, so the bonus counts none. 3 + 2
+      expect(
+        calculateScore(
+          [adderWithBonus, blanksArmies],
+          { adder: "army-1" },
+          rules,
+        ),
+      ).toBe(5);
+    });
+
+    it("doesn't check a listed card's choice early unless it has pre-scoring effects", () => {
+      const penalisedRules = {
+        deckCards: [penalisedArmy],
+        preScoring: ["clearer", "adder"],
+      };
+
+      // The clearer is listed first, but has no pre-scoring effects, so its choice is checked after the Army is added.
+      // 3 + 1 + Army 7 (cleared)
+      expect(
+        calculateScore(
+          [adder, clearer],
+          { adder: "army-3", clearer: "army-3" },
+          penalisedRules,
+        ),
+      ).toBe(11);
+    });
+
+    it("lists the added card after the hand, with the card that added it", () => {
+      const { cards } = scoreHand(
+        [adder, anotherArmy],
+        { adder: "army-1" },
+        {
+          deckCards: [aBeast, anArmy, aLand, adder, anotherArmy],
+          preScoring: ["adder"],
+        },
+      );
+
+      expect(cards).toEqual([
+        {
+          cardId: "adder",
+          blanked: false,
+          base: 3,
+          bonus: 0,
+          penalty: 0,
+          total: 3,
+          // Matching cards in the discard area, leaving out those in the hand
+          choice: { chosenId: "army-1", optionIds: ["beast-1", "army-1"] },
+        },
+        {
+          cardId: "army-2",
+          blanked: false,
+          base: 20,
+          bonus: 0,
+          penalty: 0,
+          total: 20,
+        },
+        {
+          cardId: "army-1",
+          blanked: false,
+          base: 10,
+          bonus: 0,
+          penalty: 0,
+          total: 10,
+          addedBy: "adder",
+        },
+      ]);
+    });
+
+    it("reports a choice of a card now in the hand as pending", () => {
+      const { cards } = scoreHand([adder, aBeast], { adder: "beast-1" }, rules);
+
+      expect(cards).toHaveLength(2);
+      expect(cards[0].choice).toEqual({
+        chosenId: null,
+        optionIds: ["army-1"],
+      });
+    });
+  });
+
+  describe("pre-scoring take effects", () => {
+    // Before scoring, takes the name and suit of any one Beast or Leader in the game.
+    const taker: Card = {
+      ...card("taker", "wild", 0),
+      preScoring: [
+        { kind: "take", from: { chosen: true }, attributes: ["name", "suit"] },
+      ],
+      choice: {
+        kind: "cardInGame",
+        from: [{ suit: "beast" }, { suit: "leader" }],
+      },
+    };
+    // A Beast with a bonus, which the taker mustn't take.
+    const bigBeast = card("beast-9", "beast", 30, [
+      { kind: "points", points: 10 },
+    ]);
+    const aBeast = card("beast-1", "beast", 8);
+    const rules = {
+      deckCards: [taker, bigBeast, aLeader],
+      preScoring: ["taker"],
+    };
+
+    it("takes the chosen card's suit, which counts for other cards", () => {
+      const perBeast = card("counter", "land", 1, [
+        { kind: "points", points: 5, per: { suit: "beast" } },
+      ]);
+
+      // 0 + (1 + 5 for the taker as a Beast)
+      expect(
+        calculateScore([taker, perBeast], { taker: "beast-9" }, rules),
+      ).toBe(6);
+      // Pending: the taker is still Wild. 0 + 1
+      expect(calculateScore([taker, perBeast], {}, rules)).toBe(1);
+    });
+
+    it("keeps its own base strength, bonus and penalty, and reports the suit it took", () => {
+      const { cards } = scoreHand([taker], { taker: "beast-9" }, rules);
+
+      expect(cards[0]).toEqual({
+        cardId: "taker",
+        blanked: false,
+        base: 0,
+        bonus: 0,
+        penalty: 0,
+        total: 0,
+        suit: "beast",
+        choice: { chosenId: "beast-9", optionIds: ["beast-9", "leader-1"] },
+      });
+    });
+
+    it("takes the chosen card's name, so rules naming that card match it", () => {
+      const withNamed = card("namer", "land", 1, [
+        {
+          kind: "points",
+          points: 20,
+          when: { present: { cardId: "beast-9" } },
+        },
+      ]);
+
+      // 0 + (1 + 20)
+      expect(
+        calculateScore([taker, withNamed], { taker: "beast-9" }, rules),
+      ).toBe(21);
+      expect(calculateScore([taker, withNamed], {}, rules)).toBe(1);
+    });
+
+    it("is left out of a blank that leaves out the card it named, but only when it took the name", () => {
+      const blanksOtherBeasts = card("blanker", "flood", 2, [
+        { kind: "blank", targets: [{ suit: "beast", except: ["beast-9"] }] },
+      ]);
+      const suitOnly: Card = {
+        ...taker,
+        preScoring: [
+          { kind: "take", from: { chosen: true }, attributes: ["suit"] },
+        ],
+      };
+      const hand = [blanksOtherBeasts, aBeast];
+
+      // Taker 0 as beast-9, kept + 2, with the other Beast blanked
+      expect(
+        scoreHand([taker, ...hand], { taker: "beast-9" }, rules).cards[0]
+          .blanked,
+      ).toBe(false);
+      // Only the suit, so it's just another Beast, and blanked
+      expect(
+        scoreHand([suitOnly, ...hand], { taker: "beast-9" }, rules).cards[0]
+          .blanked,
+      ).toBe(true);
+    });
+
+    it("isn't blanked by a rule for its old suit once it takes another", () => {
+      const blanksWild = card("blanker", "flood", 2, [
+        { kind: "blank", targets: [{ suit: "wild" }] },
+      ]);
+
+      expect(
+        scoreHand([taker, blanksWild], { taker: "leader-1" }, rules).cards[0]
+          .blanked,
+      ).toBe(false);
+      expect(scoreHand([taker, blanksWild], {}, rules).cards[0].blanked).toBe(
+        true,
+      );
+    });
+
+    it("may take a card that is also in the hand, giving two cards of that name", () => {
+      const perNamed = card("per-named", "land", 1, [
+        { kind: "points", points: 3, per: { cardId: "beast-9" } },
+      ]);
+
+      // Taker 0 + Beast (30 + 10) + (1 + 3 for each of the two)
+      expect(
+        calculateScore(
+          [taker, bigBeast, perNamed],
+          { taker: "beast-9" },
+          rules,
+        ),
+      ).toBe(47);
+    });
+
+    it("takes nothing when the variant doesn't list the card", () => {
+      const perBeast = card("counter", "land", 1, [
+        { kind: "points", points: 5, per: { suit: "beast" } },
+      ]);
+
+      expect(
+        calculateScore(
+          [taker, perBeast],
+          { taker: "beast-9" },
+          { ...rules, preScoring: [] },
+        ),
+      ).toBe(1);
+    });
+  });
+
   describe("self-blanked cards in scoring", () => {
     const blankedWithoutArmy: CardEffect = {
       kind: "blankSelf",

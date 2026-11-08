@@ -7,30 +7,37 @@ export type Hand = {
   readonly choices: Choices;
 };
 
+// The hand size is the variant's. Cards an effect adds to the hand during scoring, such as the Necromancer's, aren't in the hand, so they don't count.
+export function isHandFull(hand: Hand, handSize: number): boolean {
+  return hand.cardIds.length >= handSize;
+}
+
 export function isCardInHand(hand: Hand, cardId: CardId): boolean {
   return hand.cardIds.includes(cardId);
 }
 
-export function addCardToHand(hand: Hand, cardId: CardId): Hand {
-  return isCardInHand(hand, cardId)
-    ? hand
-    : { ...hand, cardIds: [...hand.cardIds, cardId] };
-}
-
-// Removes the card, along with its own choice and any choice of it, so that a card which chose it is pending again.
-export function removeCardFromHand(hand: Hand, cardId: CardId): Hand {
-  if (!isCardInHand(hand, cardId)) {
+// Adding a card that's already in the hand changes nothing. Adding one to a full hand is an error, as the player can't do it. Choices it leaves invalid are dropped by the caller, as for removing.
+export function addCardToHand(
+  hand: Hand,
+  cardId: CardId,
+  handSize: number,
+): Hand {
+  if (isCardInHand(hand, cardId)) {
     return hand;
   }
 
-  return {
-    cardIds: hand.cardIds.filter((id) => id !== cardId),
-    choices: Object.fromEntries(
-      Object.entries(hand.choices).filter(
-        ([chooserId, targetId]) => chooserId !== cardId && targetId !== cardId,
-      ),
-    ),
-  };
+  if (isHandFull(hand, handSize)) {
+    throw new Error(`The hand is full, so ${cardId} can't be added`);
+  }
+
+  return { ...hand, cardIds: [...hand.cardIds, cardId] };
+}
+
+// Removes the card. Choices it leaves invalid, its own and any of it, are dropped by the caller with withInvalidChoicesDropped, which needs the cards themselves.
+export function removeCardFromHand(hand: Hand, cardId: CardId): Hand {
+  return isCardInHand(hand, cardId)
+    ? { ...hand, cardIds: hand.cardIds.filter((id) => id !== cardId) }
+    : hand;
 }
 
 // Records a choice, replacing any earlier one for the same card. Checking that the choice is valid needs the cards themselves, so it's up to the caller.

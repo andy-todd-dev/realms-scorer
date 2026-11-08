@@ -7,6 +7,7 @@ import { useAppDispatch, useAppSelector } from "../state/hooks";
 import { choiceSheetClosed } from "../state/navigation-slice";
 import {
   ChoiceOption,
+  ChoiceOptionGroup,
   ChoiceSheet as ChoiceSheetData,
   selectChoiceSheet,
 } from "../state/selectors";
@@ -26,6 +27,7 @@ import { HStack } from "./gluestack/hstack";
 import { Icon } from "./gluestack/icon";
 import { Pressable } from "./gluestack/pressable";
 import { Text } from "./gluestack/text";
+import { VStack } from "./gluestack/vstack";
 import { SuitDot } from "./SuitDot";
 import { SUITS } from "./theme";
 
@@ -60,7 +62,7 @@ export function ChoiceSheet() {
 }
 
 function SheetBody({
-  sheet: { chooserId, title, targets, options },
+  sheet: { chooserId, title, from, targets, groups },
   onClose,
 }: {
   sheet: ChoiceSheetData;
@@ -94,28 +96,61 @@ function SheetBody({
         size="sm"
         className="mr-5 mb-3 ml-4 text-muted-foreground"
       >
-        {choiceInstruction(targets)}
+        {choiceInstruction(targets, from)}
       </Text>
-      {options.length === 0 ? (
+      {groups.length === 0 ? (
         <Box className="mx-4 rounded-xl border border-dashed border-input p-4">
           <Text size="sm" className="text-muted-foreground">
-            {noChoiceText(targets)}
+            {noChoiceText(targets, from)}
           </Text>
         </Box>
       ) : (
-        <ActionsheetScrollView contentContainerClassName="gap-1 px-4">
-          {options.map((option) => (
-            <OptionRow
-              key={option.id}
-              option={option}
-              onPress={() =>
-                dispatch(chooseCard({ chooserId, targetId: option.id }))
+        <ActionsheetScrollView contentContainerClassName="gap-3 px-4">
+          {groups.map((group) => (
+            <OptionGroup
+              key={group.suit ?? "hand"}
+              group={group}
+              onChoose={(targetId) =>
+                dispatch(chooseCard({ chooserId, targetId }))
               }
             />
           ))}
         </ActionsheetScrollView>
       )}
     </>
+  );
+}
+
+// A suit's options, under the suit's heading, or the options from the hand, which need no heading.
+function OptionGroup({
+  group: { suit, options },
+  onChoose,
+}: {
+  group: ChoiceOptionGroup;
+  onChoose: (targetId: string) => void;
+}) {
+  return (
+    <VStack className="gap-1">
+      {suit && (
+        <HStack className="items-center gap-2 pb-0.5">
+          <SuitDot suit={suit} />
+          <Text
+            accessibilityRole="header"
+            size="xs"
+            className="font-body-semibold tracking-widest text-subtle-foreground uppercase"
+          >
+            {SUITS[suit].label}
+          </Text>
+        </HStack>
+      )}
+      {options.map((option) => (
+        <OptionRow
+          key={option.id}
+          option={option}
+          onPress={() => onChoose(option.id)}
+        />
+      ))}
+    </VStack>
   );
 }
 

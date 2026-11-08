@@ -1,5 +1,7 @@
 import { Card, CardId } from "../domain/card";
 import { Hand } from "../domain/hand";
+import { Variant } from "../domain/variant";
+import { CardCatalog } from "./score-hand.ports";
 import { ScoreHandUseCase } from "./score-hand.usecase";
 
 const king: Card = {
@@ -36,13 +38,53 @@ const penalisedLeader: Card = {
 
 const handOf = (...cardIds: CardId[]): Hand => ({ cardIds, choices: {} });
 
+const variant: Variant = {
+  id: "variant",
+  name: "Variant",
+  deckId: "deck",
+  handSize: 7,
+  preScoring: ["necromancer"],
+};
+
+// Before scoring, takes a Leader from the discard area into the hand.
+const necromancer: Card = {
+  id: "necromancer",
+  name: "Necromancer",
+  suit: "wizard",
+  baseStrength: 3,
+  preScoring: [{ kind: "addToHand", card: { chosen: true } }],
+  choice: { kind: "cardInDiscardArea", from: [{ suit: "leader" }] },
+};
+
+// Serves the given cards as the variant's deck, and none for any other deck.
+const catalogOf = (cards: readonly Card[]): CardCatalog => ({
+  getAll: async (deckId) => (deckId === "deck" ? [...cards] : []),
+  getByIds: async (deckId, cardIds) =>
+    deckId === "deck"
+      ? cardIds.flatMap((id) => cards.filter((card) => card.id === id))
+      : [],
+});
+
+const createUseCase = (cardCatalog: CardCatalog) =>
+  new ScoreHandUseCase({
+    cardCatalog,
+    variantCatalog: {
+      getById: async (variantId) => {
+        if (variantId !== variant.id) {
+          throw new Error(`Unknown variant: ${variantId}`);
+        }
+        return variant;
+      },
+    },
+  });
+
 describe("ScoreHandUseCase", () => {
-  it("scores the cards the catalog serves for the given IDs", async () => {
-    const getByIds = jest.fn(async (_: readonly CardId[]) => [king, queen]);
-    const useCase = new ScoreHandUseCase({ cardCatalog: { getByIds } });
+  it("scores the cards the catalog serves from the variant's deck", async () => {
+    const catalog = catalogOf([king, queen]);
+    const getByIds = jest.spyOn(catalog, "getByIds");
 
     await expect(
-      useCase.execute(handOf("king", "queen")),
+      createUseCase(catalog).execute("variant", handOf("king", "queen")),
     ).resolves.toMatchObject({
       cards: [
         { cardId: "king", total: 8 },
@@ -50,42 +92,54 @@ describe("ScoreHandUseCase", () => {
       ],
       total: 14,
     });
-    expect(getByIds).toHaveBeenCalledWith(["king", "queen"]);
+    expect(getByIds).toHaveBeenCalledWith("deck", ["king", "queen"]);
   });
 
   it("applies the choices made in the hand", async () => {
-    const useCase = new ScoreHandUseCase({
-      cardCatalog: { getByIds: async () => [chooser, penalisedLeader] },
-    });
-
     // 1 + 10, with the penalty cleared
     await expect(
-      useCase.execute({
+      createUseCase(catalogOf([chooser, penalisedLeader])).execute("variant", {
         cardIds: ["chooser", "penalised"],
         choices: { chooser: "penalised" },
       }),
     ).resolves.toMatchObject({ total: 11 });
   });
 
-  it("scores no cards as 0", async () => {
-    const useCase = new ScoreHandUseCase({
-      cardCatalog: { getByIds: async () => [] },
-    });
-
-    await expect(useCase.execute(handOf())).resolves.toMatchObject({
-      cards: [],
-      total: 0,
+  it("fires the variant's pre-scoring effects, with the deck as the discard area", async () => {
+    // 3 + King 8
+    await expect(
+      createUseCase(catalogOf([necromancer, king, queen])).execute("variant", {
+        cardIds: ["necromancer"],
+        choices: { necromancer: "king" },
+      }),
+    ).resolves.toMatchObject({
+      cards: [
+        { cardId: "necromancer", total: 3 },
+        { cardId: "king", total: 8, addedBy: "necromancer" },
+      ],
+      total: 11,
     });
   });
 
+  it("scores no cards as 0", async () => {
+    await expect(
+      createUseCase(catalogOf([])).execute("variant", handOf()),
+    ).resolves.toMatchObject({ cards: [], total: 0 });
+  });
+
+  it("fails for an unknown variant", async () => {
+    await expect(
+      createUseCase(catalogOf([king])).execute("unknown", handOf("king")),
+    ).rejects.toThrow("Unknown variant: unknown");
+  });
+
   it("fails when the catalog can't serve the cards", async () => {
-    const useCase = new ScoreHandUseCase({
-      cardCatalog: {
-        getByIds: () => Promise.reject(new Error("unknown card")),
-      },
+    const useCase = createUseCase({
+      ...catalogOf([]),
+      getByIds: () => Promise.reject(new Error("unknown card")),
     });
 
-    await expect(useCase.execute(handOf("unknown"))).rejects.toThrow(
+    await expect(useCase.execute("variant", handOf("unknown"))).rejects.toThrow(
       "unknown card",
     );
   });

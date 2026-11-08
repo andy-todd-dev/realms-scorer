@@ -49,20 +49,22 @@ Entering a hand card by card was too slow, so the design is built around the fac
 
 ### Hand size
 
-- The target is 7, but the picker must not block an 8th card: the Necromancer lets a player end with 8. Adjust the counter wording when a hand is legitimately larger.
+- The hand holds at most 7 cards in the base game; the size comes from the variant. Once it is full, the tiles of cards not in it are disabled (dimmed), and the count line reads "7 cards ✓". Removing a card enables them again.
+- The Necromancer's eighth card doesn't count towards the 7: it is a choice, not a selected tile (see "Cards that need a choice").
 - A card can be in the hand only once.
 
 ### Cards that need a choice
 
 Some cards only score once the player picks another card. **The player always makes the choice; the app never picks one for them, not even as a default.**
 
-| Card            | Chooses                          | From                                                                    |
-| --------------- | -------------------------------- | ----------------------------------------------------------------------- |
-| Shapeshifter    | A card to copy (name and suit)   | Any Artifact, Leader, Wizard, Weapon or Beast in the game               |
-| Mirage          | A card to copy (name and suit)   | Any Army, Land, Weather, Flood or Flame in the game                     |
-| Doppelgänger    | A card to duplicate              | Another card in the hand                                                |
-| Island          | A card whose penalty is cleared  | A Flood or Flame card in the hand                                       |
-| Book of Changes | A card, then the suit it becomes | Another card in the hand, then any suit except Wild and its current one |
+| Card            | Chooses                          | From                                                                     |
+| --------------- | -------------------------------- | ------------------------------------------------------------------------ |
+| Shapeshifter    | A card to copy (name and suit)   | Any Artifact, Leader, Wizard, Weapon or Beast in the game                |
+| Mirage          | A card to copy (name and suit)   | Any Army, Land, Weather, Flood or Flame in the game                      |
+| Doppelgänger    | A card to duplicate              | Another card in the hand                                                 |
+| Island          | A card whose penalty is cleared  | A Flood or Flame card in the hand                                        |
+| Necromancer     | An eighth card for the hand      | An Army, Leader, Wizard or Beast from the discard area (not in the hand) |
+| Book of Changes | A card, then the suit it becomes | Another card in the hand, then any suit except Wild and its current one  |
 
 Check the exact eligibility rules against the rulebook when implementing. Expansions add more cards like these, so model this as a general "choose a card" effect in the card definitions, not as special cases.
 
@@ -91,7 +93,7 @@ Check the exact eligibility rules against the rulebook when implementing. Expans
 - Some choices affect others: Book of Changes alters a suit, which can change what Island may target. Apply choices in the order the rulebook sets out; if an earlier choice invalidates a later one, the later one resets to pending.
 - Scanned hands arrive on the grid with any choice cards pending, flagged the same way.
 - "Clear" removes all choices with the hand.
-- **Necromancer** needs nothing extra: choosing the card from the discard is done by selecting the 8th card on the grid. The pips show 8 slots when Necromancer is in the hand.
+- **Necromancer** chooses its eighth card like any other choice card, from the discard area: any Army, Leader, Wizard or Beast not in the hand, as the app can't see the real discard area. The sheet groups the options by suit, sorted like the grid. The chosen card joins the hand for scoring only: it isn't a selected tile, doesn't fill a pip, and is listed on the breakdown as "added by Necromancer" with no remove button. If the player later selects that card on the grid, the choice goes back to pending.
 
 ### Card picker order
 

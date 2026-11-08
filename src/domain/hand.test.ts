@@ -1,5 +1,6 @@
 import {
   addCardToHand,
+  isHandFull,
   chooseCard,
   emptyHand,
   Hand,
@@ -28,34 +29,14 @@ describe("removeCardFromHand", () => {
     expect(removeCardFromHand(hand, "queen")).toBe(hand);
   });
 
-  it("drops the removed card's own choice", () => {
+  it("keeps the choices, which the caller checks", () => {
     const hand: Hand = {
       cardIds: ["island", "swamp"],
       choices: { island: "swamp" },
     };
 
-    expect(removeCardFromHand(hand, "island")).toEqual(handOf("swamp"));
-  });
-
-  it("drops a choice of the removed card, so its chooser is pending again", () => {
-    const hand: Hand = {
-      cardIds: ["island", "swamp", "candle"],
-      choices: { island: "swamp" },
-    };
-
-    expect(removeCardFromHand(hand, "swamp")).toEqual(
-      handOf("island", "candle"),
-    );
-  });
-
-  it("keeps choices that don't involve the removed card", () => {
-    const hand: Hand = {
-      cardIds: ["island", "swamp", "candle"],
-      choices: { island: "swamp" },
-    };
-
-    expect(removeCardFromHand(hand, "candle")).toEqual({
-      cardIds: ["island", "swamp"],
+    expect(removeCardFromHand(hand, "swamp")).toEqual({
+      cardIds: ["island"],
       choices: { island: "swamp" },
     });
   });
@@ -63,7 +44,7 @@ describe("removeCardFromHand", () => {
 
 describe("addCardToHand", () => {
   it("adds a card to the end of the hand", () => {
-    expect(addCardToHand(handOf("king"), "queen")).toEqual(
+    expect(addCardToHand(handOf("king"), "queen", 7)).toEqual(
       handOf("king", "queen"),
     );
   });
@@ -71,7 +52,7 @@ describe("addCardToHand", () => {
   it("leaves the hand unchanged when the card is already in it", () => {
     const hand = handOf("king");
 
-    expect(addCardToHand(hand, "king")).toBe(hand);
+    expect(addCardToHand(hand, "king", 7)).toBe(hand);
   });
 
   it("keeps the choices already made", () => {
@@ -80,7 +61,9 @@ describe("addCardToHand", () => {
       choices: { island: "swamp" },
     };
 
-    expect(addCardToHand(hand, "candle").choices).toEqual({ island: "swamp" });
+    expect(addCardToHand(hand, "candle", 7).choices).toEqual({
+      island: "swamp",
+    });
   });
 });
 
@@ -108,5 +91,34 @@ describe("isCardInHand", () => {
   it("reports whether the card is in the hand", () => {
     expect(isCardInHand(handOf("king"), "king")).toBe(true);
     expect(isCardInHand(handOf("king"), "queen")).toBe(false);
+  });
+});
+
+describe("the hand size", () => {
+  const handOfThree = handOf("a", "b", "c");
+
+  it("is full at the given size", () => {
+    expect(isHandFull(handOf("a", "b"), 3)).toBe(false);
+    expect(isHandFull(handOfThree, 3)).toBe(true);
+    expect(isHandFull(handOfThree, 4)).toBe(false);
+  });
+
+  it("rejects adding a card to a full hand", () => {
+    expect(() => addCardToHand(handOfThree, "d", 3)).toThrow(
+      "The hand is full, so d can't be added",
+    );
+  });
+
+  it("still allows adding a card already in a full hand, which changes nothing", () => {
+    expect(addCardToHand(handOfThree, "a", 3)).toBe(handOfThree);
+  });
+
+  it("doesn't count a card chosen for an effect to add", () => {
+    const hand: Hand = {
+      cardIds: ["necromancer", "b"],
+      choices: { necromancer: "dragon" },
+    };
+
+    expect(addCardToHand(hand, "c", 3).cardIds).toHaveLength(3);
   });
 });

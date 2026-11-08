@@ -6,7 +6,9 @@ import type {
   CardMatcher,
   ChosenCardMatcher,
   EffectCondition,
+  PreScoringEffect,
   Suit,
+  TakenAttribute,
   SuitMatcher,
 } from "../../../domain/card";
 
@@ -37,14 +39,38 @@ export const allSuits: readonly CardMatcher[] = [
   suit("wild"),
 ];
 
-// The card the player chose for the card with this effect. The card needs a choice, such as chooseCardInHand.
+// The card the player chose for the card with this effect. The card needs a choice, made with chooseCard.
 export const chosenCard: ChosenCardMatcher = { chosen: true };
 
-// A choice of another card in the hand, matching any of the matchers.
-export const chooseCardInHand = (...from: CardMatcher[]): CardChoice => ({
-  kind: "cardInHand",
-  from,
+// Where a choice takes its card from, for chooseCard.
+type ChoiceSource = CardChoice["kind"];
+
+// Another card in the hand.
+export const fromHand: ChoiceSource = "cardInHand";
+
+// A card from the discard area, which joins the hand before scoring.
+export const fromDiscardArea: ChoiceSource = "cardInDiscardArea";
+
+// Any other card in the game, in the hand or not.
+export const fromGame: ChoiceSource = "cardInGame";
+
+// A choice of a card from the source, matching any of the matchers.
+export const chooseCard = (
+  source: ChoiceSource,
+  ...from: CardMatcher[]
+): CardChoice => ({ kind: source, from });
+
+// A pre-scoring effect that adds the chosen card to the hand. The card needs a choice, made with chooseCard, and the variant must list it for pre-scoring, or it never fires.
+export const addToHand = (card: ChosenCardMatcher): PreScoringEffect => ({
+  kind: "addToHand",
+  card,
 });
+
+// A pre-scoring effect that takes the listed attributes of the chosen card, keeping everything else the card's own. The card needs a choice, made with chooseCard, and the variant must list it for pre-scoring, or it never fires.
+export const take = (
+  from: ChosenCardMatcher,
+  ...attributes: TakenAttribute[]
+): PreScoringEffect => ({ kind: "take", from, attributes });
 
 export const present = (matcher: CardMatcher): EffectCondition => ({
   present: matcher,

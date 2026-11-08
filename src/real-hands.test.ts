@@ -1,10 +1,12 @@
 import { ScoreHandUseCase } from "./application/score-hand.usecase";
 import { InMemoryCardCatalog } from "./infrastructure/driven/in-memory-card-catalog";
+import { InMemoryVariantCatalog } from "./infrastructure/driven/in-memory-variant-catalog";
 
 // Hands scored with the real cards, so they check the card definitions as well as the rules.
 describe("scoring real hands", () => {
   const scoreHand = new ScoreHandUseCase({
     cardCatalog: new InMemoryCardCatalog(),
+    variantCatalog: new InMemoryVariantCatalog(),
   });
 
   // Every ordering of the hand, as the score must not depend on the order cards were added.
@@ -24,7 +26,7 @@ describe("scoring real hands", () => {
   ) => {
     for (const ordering of orderings(cardIds)) {
       await expect(
-        scoreHand.execute({ cardIds: ordering, choices }),
+        scoreHand.execute("base", { cardIds: ordering, choices }),
       ).resolves.toMatchObject({ total: expected });
     }
   };
@@ -90,6 +92,31 @@ describe("scoring real hands", () => {
       await expectScore(["island", "great-flood", "candle"], 46, {
         island: "candle",
       });
+    });
+  });
+
+  describe("Necromancer", () => {
+    it("adds the card it chose from the discard area", async () => {
+      // Necromancer 3 + Dragon 30, whose penalty a Wizard avoids.
+      await expectScore(["necromancer"], 33, { necromancer: "dragon" });
+    });
+
+    it("adds nothing until a card is chosen", async () => {
+      await expectScore(["necromancer"], 3);
+    });
+  });
+
+  describe("Shapeshifter", () => {
+    it("counts as the card whose name it took", async () => {
+      // Unicorn 9 + 30 with the Princess, as which the Shapeshifter counts. Shapeshifter keeps its own 0.
+      await expectScore(["shapeshifter", "unicorn"], 39, {
+        shapeshifter: "princess",
+      });
+    });
+
+    it("is itself until a card is chosen", async () => {
+      // Unicorn 9, with no Princess. Shapeshifter 0.
+      await expectScore(["shapeshifter", "unicorn"], 9);
     });
   });
 

@@ -55,13 +55,14 @@ Edit `src/infrastructure/driven/decks/base.cards.ts`:
 - Add the ID to the `BaseCardId` union, and an entry to `BASE_DECK_CARDS`. The record key is the ID, in kebab-case, so there's no `id` field.
 - Keep `text` verbatim, because it's what the player reads.
 - Put each effect under `bonus` or `penalty` according to where the card prints it, not by whether its number is positive. Scoring sums both today, but CLEARS removes penalties only, so a misplaced effect will break later.
+- The exception is a rule that happens before scoring, such as Necromancer's. Its effects go in `preScoring`, whichever section prints it, and the printed text stays in that section with `effects: []`. The card must also be added to the variant's `preScoring` list in `variants/base.variant.ts`, at its place in the order. A card left off that list never fires its pre-scoring effects, and nothing warns you, so check it.
 - Suits are lowercase. Note the spelling `artifact`.
 
 Normal cards need no UI or Redux changes: `LoadCardsUseCase` passes only `text` on to the UI, and sections are built from the card's suit.
 
 **A rule naming a card that isn't in the deck yet.** `card("x")` won't compile until `x` is defined. Unless the user has given you its printed details, add a placeholder without asking:
 
-- **A placeholder:** add an entry with a name, base strength and suit only, and no rules, so the rule can be built now. Pick arbitrary values that don't pretend to be the printed ones, and use suit `wild` so the tile lists last and doesn't move others. Add a comment saying it's a placeholder and what to replace, and list it in your report, because it's selectable in the app until replaced.
+- **A placeholder:** add an entry with a name, base strength and suit only, and no rules, so the rule can be built now. Pick arbitrary values that don't pretend to be the printed ones, and use suit `wild`, so the tile goes in the Wild section rather than among the suits real cards use. Add a comment saying it's a placeholder and what to replace, and list it in your report, because it's selectable in the app until replaced.
 - **The real card:** if the user has given you its printed details, add it as well.
 
 Don't write a raw `{ cardId: "x" }` to get past the compiler: it type-checks but never matches, so an `absent` condition is always true and a `present` one never is.

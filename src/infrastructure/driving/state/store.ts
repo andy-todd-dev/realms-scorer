@@ -4,12 +4,14 @@ import { cardsReducer } from "./cards-slice";
 import { handReducer } from "./hand-slice";
 import { navigationReducer } from "./navigation-slice";
 import { scoreReducer } from "./score-slice";
+import { variantReducer } from "./variant-slice";
 
 const reducer = combineReducers({
   cards: cardsReducer,
   hand: handReducer,
   navigation: navigationReducer,
   score: scoreReducer,
+  variant: variantReducer,
 });
 
 export function createAppStore(useCases: UseCases) {
