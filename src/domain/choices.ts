@@ -6,17 +6,30 @@ import {
   CardId,
   CardMatcher,
   PreScoringEffect,
+  Suit,
   TakenAttribute,
 } from "./card";
 import { matches, othersIn } from "./card-matching";
 
-// The choices made for cards in a hand: each choosing card's ID, mapped to the ID of the card it chose.
-export type Choices = Readonly<Record<CardId, CardId>>;
+// A choice made for a card: the card chosen, and the suit chosen for it, for a choice that includes a suit.
+export type Choice = {
+  readonly cardId: CardId;
+  readonly suit?: Suit;
+};
 
-// What resolving found for a card with a choice: the card chosen, or null while pending, and the cards that may be chosen.
+// The choices made for cards in a hand: each choosing card's ID, mapped to its choice.
+export type Choices = Readonly<Record<CardId, Choice>>;
+
+/*
+  What resolving found for a card with a choice: the card chosen, or null while pending, and the cards that may be
+  chosen. A choice that includes a suit also reports the suit chosen, and the suits each option may be given, which
+  leave out the suit it has. It is pending, with neither chosen, until both are made.
+*/
 export type ChoiceReport = {
   readonly chosenId: CardId | null;
   readonly optionIds: readonly CardId[];
+  readonly chosenSuit?: Suit | null;
+  readonly suitOptions?: Readonly<Record<CardId, readonly Suit[]>>;
 };
 
 // The variant's rules and cards that choices need.
@@ -91,15 +104,42 @@ function choiceOptions(
   );
 }
 
-// The chosen card among the options, or undefined while pending. A choice that no longer fits the hand counts as pending: it is never replaced with another.
+// The suits each option may be given, for a choice that includes a suit: the choice's suits, less the option's own.
+function suitOptionsFor(
+  suits: readonly Suit[],
+  options: readonly Card[],
+): Readonly<Record<CardId, readonly Suit[]>> {
+  return Object.fromEntries(
+    options.map((option) => [
+      option.id,
+      suits.filter((suit) => suit !== option.suit),
+    ]),
+  );
+}
+
+/*
+  The chosen card among the options, and the suit chosen for it, or undefined while pending. A choice that no longer
+  fits the hand counts as pending: it is never replaced with another. For a choice that includes a suit, the suit must be
+  one the card may be given; for any other, no suit may be given.
+*/
 function chosenCard(
   chooser: Card,
   options: readonly Card[],
+  suitOptions: Readonly<Record<CardId, readonly Suit[]>> | undefined,
   choices: Choices,
-): Card | undefined {
-  const targetId = choices[chooser.id];
+): { card: Card; suit: Suit | undefined } | undefined {
+  const choice = choices[chooser.id];
+  const card = options.find(({ id }) => id === choice?.cardId);
 
-  return options.find(({ id }) => id === targetId);
+  if (!card || !choice) {
+    return undefined;
+  }
+
+  const suitFits = suitOptions
+    ? choice.suit !== undefined && suitOptions[card.id].includes(choice.suit)
+    : choice.suit === undefined;
+
+  return suitFits ? { card, suit: choice.suit } : undefined;
 }
 
 // Fills in the chosen card's ID in a matcher for the chosen card. While the choice is pending, it is dropped, so it targets nothing.
@@ -167,16 +207,24 @@ function checkChoice(
   hand: readonly Card[],
   choices: Choices,
   deckCards: readonly Card[],
-): { report: ChoiceReport; chosen: Card | undefined } {
+): {
+  report: ChoiceReport;
+  chosen: Card | undefined;
+  chosenSuit: Suit | undefined;
+} {
   const options = choiceOptions(chooser, hand, deckCards);
-  const chosen = chosenCard(chooser, options, choices);
+  const suits = chooser.choice?.suits;
+  const suitOptions = suits && suitOptionsFor(suits, options);
+  const chosen = chosenCard(chooser, options, suitOptions, choices);
 
   return {
     report: {
-      chosenId: chosen?.id ?? null,
+      chosenId: chosen?.card.id ?? null,
       optionIds: options.map(({ id }) => id),
+      ...(suitOptions && { chosenSuit: chosen?.suit ?? null, suitOptions }),
     },
-    chosen,
+    chosen: chosen?.card,
+    chosenSuit: chosen?.suit,
   };
 }
 
@@ -203,14 +251,24 @@ function withAttributesTaken(
   }, card);
 }
 
-// What one pre-scoring effect does to the hand. New kinds, such as changing a suit, go here.
+// What one pre-scoring effect does to the hand. New kinds go here.
 function fireEffect(
   state: PreScoredHand,
   effect: PreScoringEffect,
   card: Card,
   chosen: Card | undefined,
+  chosenSuit: Suit | undefined,
 ): PreScoredHand {
   switch (effect.kind) {
+    case "give":
+      return chosen && chosenSuit
+        ? {
+            ...state,
+            cards: state.cards.map((other) =>
+              other.id === chosen.id ? { ...other, suit: chosenSuit } : other,
+            ),
+          }
+        : state;
     case "take":
       return chosen
         ? {
@@ -248,7 +306,8 @@ function fireCard(
     : state;
 
   return (card.preScoring ?? []).reduce(
-    (current, effect) => fireEffect(current, effect, card, checked?.chosen),
+    (current, effect) =>
+      fireEffect(current, effect, card, checked?.chosen, checked?.chosenSuit),
     withReport,
   );
 }
@@ -314,21 +373,28 @@ function resolveChoices(
   return bindChoices(firePreScoring(cards, choices, rules), choices, rules);
 }
 
-// Checks if the chooser, a card in the hand, may choose the target, given the hand and the other choices made.
+/*
+  Checks if the chooser, a card in the hand, may make the choice, given the hand and the other choices made. A choice
+  that includes a suit needs a suit the chosen card may be given, and any other choice needs no suit.
+*/
 export function isValidChoice(
   chooserId: CardId,
-  targetId: CardId,
+  { cardId, suit }: Choice,
   cards: readonly Card[],
   choices: Choices,
   rules: ChoiceRules,
 ): boolean {
-  return (
-    cards.some(({ id }) => id === chooserId) &&
-    (resolveChoices(cards, choices, rules).choices[
-      chooserId
-    ]?.optionIds.includes(targetId) ??
-      false)
-  );
+  const report = cards.some(({ id }) => id === chooserId)
+    ? resolveChoices(cards, choices, rules).choices[chooserId]
+    : undefined;
+
+  if (!report?.optionIds.includes(cardId)) {
+    return false;
+  }
+
+  return report.suitOptions
+    ? suit !== undefined && report.suitOptions[cardId].includes(suit)
+    : suit === undefined;
 }
 
 /*
@@ -346,9 +412,10 @@ export function withInvalidChoicesDropped(
 
   return Object.fromEntries(
     Object.entries(choices).filter(
-      ([chooserId, targetId]) =>
+      ([chooserId, { cardId, suit }]) =>
         cards.some(({ id }) => id === chooserId) &&
-        reports[chooserId]?.chosenId === targetId,
+        reports[chooserId]?.chosenId === cardId &&
+        (reports[chooserId]?.chosenSuit ?? undefined) === suit,
     ),
   );
 }

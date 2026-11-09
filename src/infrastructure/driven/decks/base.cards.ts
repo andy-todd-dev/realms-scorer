@@ -4,6 +4,8 @@ import {
   absent,
   addToHand,
   allOf,
+  andSuit,
+  allSuitNames,
   allSuits,
   allSuitsDifferent,
   anyOf,
@@ -13,12 +15,14 @@ import {
   CardDefinition,
   chooseCard,
   chosenCard,
+  chosenSuit,
   clearPenalty,
   clearPenaltySuitWord,
   except,
   fromDiscardArea,
   fromGame,
   fromHand,
+  give,
   points,
   present,
   sameSuitSet,
@@ -699,13 +703,17 @@ export const BASE_DECK_CARDS: Record<BaseCardId, CardDefinition> = {
       suit("weather"),
     ),
   },
-  // Placeholder: this exists only so that Candle's rule can name it, and the base variant can
-  // list it for pre-scoring. Its suit and base strength are arbitrary, not the printed values,
-  // and it has no rules yet. Replace it with the real card details when it is added.
   "book-of-changes": {
     name: "Book of Changes",
-    suit: "wild",
+    suit: "artifact",
     baseStrength: 3,
+    bonus: {
+      text: "You may change the suit of one other card. Its name, bonuses, and penalties remain the same.",
+      // The card prints this as its bonus, but it happens before scoring, so the rule is in preScoring.
+      effects: [],
+    },
+    preScoring: [give(chosenCard, chosenSuit)],
+    choice: andSuit(chooseCard(fromHand, ...allSuits), ...allSuitNames),
   },
   doppelganger: {
     name: "Doppelgänger",

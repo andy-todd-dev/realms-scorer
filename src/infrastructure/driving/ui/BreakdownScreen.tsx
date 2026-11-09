@@ -20,6 +20,7 @@ import { HStack } from "./gluestack/hstack";
 import { Pressable } from "./gluestack/pressable";
 import { Text } from "./gluestack/text";
 import { VStack } from "./gluestack/vstack";
+import { chosenText } from "./choice-wording";
 import { Screen } from "./Screen";
 import { SuitDot } from "./SuitDot";
 import { NO_VALUE, SUITS } from "./theme";
@@ -208,7 +209,7 @@ export function BreakdownScreen() {
                     testID={`chosen-card-${row.id}`}
                     className="font-body-semibold text-accent-foreground"
                   >
-                    {` → ${row.chosenName}`}
+                    {` → ${chosenText(row.chosenName, row.chosenSuit)}`}
                   </Text>
                 )}{" "}
                 <Text size="xs" className="text-muted-foreground">

@@ -28,6 +28,9 @@ export type ChosenCardMatcher = { readonly chosen: true; readonly id?: CardId };
 
 export type CardMatcher = SuitMatcher | CardIdMatcher | ChosenCardMatcher;
 
+// The suit that the effect's owner chose, for cards whose choice includes a suit. Choices.ts supplies it when firing.
+export type ChosenSuitMatcher = { readonly chosenSuit: true };
+
 export type EffectCondition =
   | { readonly present: CardMatcher }
   | { readonly absent: CardMatcher }
@@ -86,7 +89,7 @@ export type CardEffect =
 */
 export type TakenAttribute = "name" | "suit" | "baseStrength" | "penalty";
 
-// An effect that fires before scoring, for cards the variant lists, in its order. Later kinds may change a suit.
+// An effect that fires before scoring, for cards the variant lists, in its order.
 export type PreScoringEffect =
   | {
       // Adds the chosen card to the hand.
@@ -98,6 +101,12 @@ export type PreScoringEffect =
       readonly kind: "take";
       readonly from: ChosenCardMatcher;
       readonly attributes: readonly TakenAttribute[];
+    }
+  | {
+      // Gives the chosen card the chosen suit. Everything else stays the chosen card's own.
+      readonly kind: "give";
+      readonly to: ChosenCardMatcher;
+      readonly suit: ChosenSuitMatcher;
     };
 
 export type CardAbility = {
@@ -108,7 +117,7 @@ export type CardAbility = {
 // A choice the player makes for a card, such as which card's penalty it clears. The app never makes it for them.
 export type CardChoice = {
   /*
-    Where the chosen card comes from. What happens to it is up to the card's effects. Later kinds may choose a suit.
+    Where the chosen card comes from. What happens to it is up to the card's effects.
     - cardInHand: another card in the hand.
     - cardInDiscardArea: a card from the discard area. The app can't see the discard area, so any card in the variant's
       deck that isn't in the hand counts as being there.
@@ -117,6 +126,8 @@ export type CardChoice = {
   readonly kind: "cardInHand" | "cardInDiscardArea" | "cardInGame";
   // The cards that can be chosen.
   readonly from: readonly CardMatcher[];
+  // Set when the player also chooses a suit for the chosen card: the suits they may choose, less the one it already has.
+  readonly suits?: readonly Suit[];
 };
 
 export type Card = {

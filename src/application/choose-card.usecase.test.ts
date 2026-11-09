@@ -39,7 +39,22 @@ const adder: Card = {
   preScoring: [{ kind: "addToHand", card: { chosen: true } }],
   choice: { kind: "cardInDiscardArea", from: [{ suit: "army" }] },
 };
-const deck = [chooser, flood, army, adder];
+// Before scoring, gives another Flood or Army in the hand an Army or Flame suit.
+const giver: Card = {
+  id: "giver",
+  name: "Giver",
+  suit: "artifact",
+  baseStrength: 3,
+  preScoring: [
+    { kind: "give", to: { chosen: true }, suit: { chosenSuit: true } },
+  ],
+  choice: {
+    kind: "cardInHand",
+    from: [{ suit: "flood" }, { suit: "army" }],
+    suits: ["army", "flame"],
+  },
+};
+const deck = [chooser, flood, army, adder, giver];
 
 const variant: Variant = {
   id: "variant",
@@ -78,7 +93,7 @@ describe("ChooseCardUseCase", () => {
   it("records a choice of a matching card in the hand", async () => {
     await expect(
       createUseCase().execute("variant", hand, "chooser", "flood"),
-    ).resolves.toEqual({ ...hand, choices: { chooser: "flood" } });
+    ).resolves.toEqual({ ...hand, choices: { chooser: { cardId: "flood" } } });
   });
 
   it("rejects a card that doesn't match the choice", async () => {
@@ -109,7 +124,10 @@ describe("ChooseCardUseCase", () => {
 
     await expect(
       createUseCase().execute("variant", adderHand, "adder", "army"),
-    ).resolves.toEqual({ ...adderHand, choices: { adder: "army" } });
+    ).resolves.toEqual({
+      ...adderHand,
+      choices: { adder: { cardId: "army" } },
+    });
   });
 
   it("rejects a choice from the discard area of a card in the hand", async () => {
@@ -133,14 +151,14 @@ describe("ChooseCardUseCase", () => {
   it("checks a choice against the hand after pre-scoring, as scoring does", async () => {
     const withAddedArmy: Hand = {
       cardIds: ["adder", "chooser"],
-      choices: { adder: "army" },
+      choices: { adder: { cardId: "army" } },
     };
 
     await expect(
       createUseCase().execute("variant", withAddedArmy, "chooser", "army"),
     ).resolves.toEqual({
       ...withAddedArmy,
-      choices: { adder: "army", chooser: "army" },
+      choices: { adder: { cardId: "army" }, chooser: { cardId: "army" } },
     });
   });
 
@@ -156,14 +174,51 @@ describe("ChooseCardUseCase", () => {
     });
     const withAddedArmy: Hand = {
       cardIds: ["adder", "chooser"],
-      choices: { adder: "army", chooser: "army" },
+      choices: { adder: { cardId: "army" }, chooser: { cardId: "army" } },
     };
 
     await expect(
       useCase.execute("variant", withAddedArmy, "adder", "army-2"),
     ).resolves.toEqual({
       cardIds: ["adder", "chooser"],
-      choices: { adder: "army-2" },
+      choices: { adder: { cardId: "army-2" } },
+    });
+  });
+
+  describe("a choice that includes a suit", () => {
+    const giverHand = handOf("giver", "flood");
+
+    it("records the card and the suit", async () => {
+      await expect(
+        createUseCase().execute("variant", giverHand, "giver", "flood", "army"),
+      ).resolves.toEqual({
+        ...giverHand,
+        choices: { giver: { cardId: "flood", suit: "army" } },
+      });
+    });
+
+    it("rejects a card without a suit", async () => {
+      await expect(
+        createUseCase().execute("variant", giverHand, "giver", "flood"),
+      ).rejects.toThrow("giver can't choose flood");
+    });
+
+    it("rejects a suit the choice doesn't include", async () => {
+      await expect(
+        createUseCase().execute(
+          "variant",
+          giverHand,
+          "giver",
+          "flood",
+          "beast",
+        ),
+      ).rejects.toThrow("giver can't choose flood as beast");
+    });
+
+    it("rejects a suit for a choice that doesn't include one", async () => {
+      await expect(
+        createUseCase().execute("variant", hand, "chooser", "flood", "army"),
+      ).rejects.toThrow("chooser can't choose flood as army");
     });
   });
 

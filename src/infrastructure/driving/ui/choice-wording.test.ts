@@ -1,7 +1,9 @@
 import {
   choiceInstruction,
+  chosenText,
   describeTargets,
   noChoiceText,
+  suitInstruction,
 } from "./choice-wording";
 
 describe("describeTargets", () => {
@@ -138,5 +140,18 @@ describe("noChoiceText", () => {
     ).toBe(
       "Every Army is in your hand, so there's none to take from the discard area.",
     );
+  });
+});
+
+describe("chosenText", () => {
+  it("names the card, with the suit chosen for it when there is one", () => {
+    expect(chosenText("Swamp", null)).toBe("Swamp");
+    expect(chosenText("Swamp", "flame")).toBe("Swamp as Flame");
+  });
+});
+
+describe("suitInstruction", () => {
+  it("names the card whose suit is chosen", () => {
+    expect(suitInstruction("Swamp")).toBe("Choose a new suit for Swamp.");
   });
 });

@@ -66,3 +66,12 @@ export function noChoiceText(
     game: `There's no ${described} in the game to choose.`,
   }[from];
 }
+
+// A chosen card, with the suit chosen for it for a choice that includes one: "Swamp", or "Swamp as Flame".
+export function chosenText(cardName: string, suit: Suit | null): string {
+  return suit === null ? cardName : `${cardName} as ${SUITS[suit].label}`;
+}
+
+export function suitInstruction(cardName: string): string {
+  return `Choose a new suit for ${cardName}.`;
+}

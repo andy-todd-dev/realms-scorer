@@ -22,6 +22,7 @@ import {
   selectHandProgress,
 } from "../state/selectors";
 import { ChoiceSheet } from "./ChoiceSheet";
+import { chosenText } from "./choice-wording";
 import { Box } from "./gluestack/box";
 import { Button, ButtonIcon, ButtonText } from "./gluestack/button";
 import { Heading } from "./gluestack/heading";
@@ -247,6 +248,7 @@ function CardTile({ card }: { card: CardTileData }) {
       {choice && (
         <ChoiceStrip
           cardId={id}
+          cardName={name}
           choice={choice}
           onPress={() => dispatch(choiceSheetOpened(id))}
         />
@@ -258,10 +260,12 @@ function CardTile({ card }: { card: CardTileData }) {
 // A separate button under a selected tile, for a card that needs a choice: orange while pending, gold once made.
 function ChoiceStrip({
   cardId,
-  choice: { pending, text, accessibilityLabel },
+  cardName,
+  choice: { pending, text, chosenSuit, accessibilityLabel },
   onPress,
 }: {
   cardId: string;
+  cardName: string;
   choice: NonNullable<CardTileData["choice"]>;
   onPress: () => void;
 }) {
@@ -269,7 +273,11 @@ function ChoiceStrip({
     <Pressable
       testID={`choice-strip-${cardId}`}
       accessibilityRole="button"
-      accessibilityLabel={accessibilityLabel}
+      accessibilityLabel={
+        chosenSuit === null
+          ? accessibilityLabel
+          : `${cardName}: ${chosenText(text, chosenSuit)}. Change`
+      }
       onPress={onPress}
       className={
         pending
@@ -285,7 +293,7 @@ function ChoiceStrip({
             : "flex-1 font-body-semibold leading-tight text-accent-foreground"
         }
       >
-        {text}
+        {chosenText(text, chosenSuit)}
       </Text>
       <Icon
         as={ChevronRight}

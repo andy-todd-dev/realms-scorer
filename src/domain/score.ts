@@ -36,6 +36,13 @@ import { conditionHolds } from "./conditions";
   hand." Ruled by the user: this is a pre-scoring ability, though the card prints it as its bonus. The penalty taken
   replaces the Doppelgänger's own, and is then cleared or applied as any other penalty would be.
 
+  Book of Changes: "You may change the suit of one other card. Its name, bonuses, and penalties remain the same." Ruled
+  by the user: this is a pre-scoring ability, though the card prints it as its bonus. "Other card" could mean any card
+  in the game, but only a card in the hand matters for scoring, so the player chooses one there, including one that an
+  earlier pre-scoring card added or changed. Any suit can be chosen, Wild included, except the one the card already
+  has: a player who doesn't want to change it just doesn't. It can't change its own suit. A Doppelgänger that
+  duplicates the changed card takes its printed suit, as the Doppelgänger fires first.
+
   Collector: "+10 if 3 different cards in the same suit, +40 if 4, +100 if 5." Ruled by the user: within a suit only
   the highest tier pays, but each suit that reaches a tier pays. Collector counts itself, "different" means a different
   name, so a card that took another's name doesn't add to the count, and Wild counts as a suit.
@@ -47,7 +54,7 @@ import { conditionHolds } from "./conditions";
 
   Our interpretation of how these fit together, so scoring runs in this order:
   1. Fire pre-scoring effects (choices.ts): the variant's listed cards, in order, each with its choice checked against
-     the hand the cards before it left. Necromancer adds its card to the hand here.
+     the hand the cards before it left. Necromancer adds its card to the hand here, and Book of Changes changes a suit.
   2. Bind the other choices (choices.ts): check each against the hand step 1 left, and fill in each card's effects on
      "the chosen card" with the card chosen. Nothing takes effect here. A pending choice, or one that no longer fits,
      targets nothing. Commands keep the stored choices valid, so this check is a safety net.
@@ -172,7 +179,7 @@ export type CardScore = {
   readonly total: number;
   // Only for a card that an effect added to the hand: the card whose effect added it.
   readonly addedBy?: CardId;
-  // Only for a card that took another card's suit: the suit it was scored as.
+  // Only for a card whose suit changed before scoring: the suit it was scored as.
   readonly suit?: Suit;
   // Only for cards that need a choice: the card chosen, or null while pending, and the cards that may be chosen.
   readonly choice?: ChoiceReport;
@@ -250,7 +257,10 @@ export function scoreHand(
     const addedBy = bound.addedBy[cardScore.cardId];
     const report = bound.choices[cardScore.cardId];
     const { suit } = bound.cards[index];
-    const original = cards.find(({ id }) => id === cardScore.cardId);
+    // A card pre-scoring added to the hand isn't in it, so its own suit comes from the deck.
+    const original = [...cards, ...rules.deckCards].find(
+      ({ id }) => id === cardScore.cardId,
+    );
 
     return {
       ...cardScore,

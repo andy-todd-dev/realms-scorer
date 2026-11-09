@@ -18,6 +18,8 @@ import {
 import {
   cardRevealed,
   cardRevealRequested,
+  choiceSheetCardPicked,
+  choiceSheetCardUnpicked,
   choiceSheetClosed,
   choiceSheetOpened,
   screenOpened,
@@ -466,6 +468,7 @@ describe("breaking down the score", () => {
           name: "Queen",
           suit: "leader",
           chosenName: null,
+          chosenSuit: null,
           choicePending: false,
           addedByName: null,
           blanked: false,
@@ -477,6 +480,7 @@ describe("breaking down the score", () => {
           name: "King",
           suit: "leader",
           chosenName: null,
+          chosenSuit: null,
           choicePending: false,
           addedByName: null,
           blanked: false,
@@ -488,6 +492,7 @@ describe("breaking down the score", () => {
           name: "Knights",
           suit: "army",
           chosenName: null,
+          chosenSuit: null,
           choicePending: false,
           addedByName: null,
           blanked: true,
@@ -776,6 +781,7 @@ describe("choosing a card", () => {
     expect(tileFor(store, "island")?.choice).toEqual({
       pending: true,
       text: "Choose…",
+      chosenSuit: null,
       accessibilityLabel: "Choose a card for Island",
     });
     expect(selectHandProgress(store.getState())).toMatchObject({
@@ -794,10 +800,13 @@ describe("choosing a card", () => {
       chooseCard({ chooserId: "island", targetId: "swamp" }),
     );
 
-    expect(selectHand(store.getState()).choices).toEqual({ island: "swamp" });
+    expect(selectHand(store.getState()).choices).toEqual({
+      island: { cardId: "swamp" },
+    });
     expect(tileFor(store, "island")?.choice).toEqual({
       pending: false,
       text: "Swamp",
+      chosenSuit: null,
       accessibilityLabel: "Island: Swamp. Change",
     });
     expect(selectHandProgress(store.getState())).toMatchObject({
@@ -909,6 +918,8 @@ describe("choosing a card", () => {
         chooserId: "island",
         title: "Island",
         from: "hand",
+        choosesSuit: false,
+        suitStep: null,
         targets: [
           { suit: "flood", exceptNames: [] },
           { suit: "flame", exceptNames: [] },
@@ -1216,5 +1227,126 @@ describe("choosing a card from the game", () => {
     expect(selectBreakdown(store.getState()).rows).toMatchObject([
       { id: "shapeshifter", suit: "beast", chosenName: "Dragon" },
     ]);
+  });
+});
+
+describe("choosing a card and a suit", () => {
+  // Before scoring, gives one other card in the hand an Army, Leader or Wild suit.
+  const book: Card = {
+    id: "book",
+    name: "Book",
+    suit: "artifact",
+    baseStrength: 3,
+    preScoring: [
+      { kind: "give", to: { chosen: true }, suit: { chosenSuit: true } },
+    ],
+    choice: {
+      kind: "cardInHand",
+      from: [{ suit: "leader" }, { suit: "army" }],
+      suits: ["wild", "leader", "army"],
+    },
+  };
+
+  async function createStoreWithHand(cardIds: readonly CardId[]) {
+    const store = createStore(async () => [book, king, knights], {
+      scoreByTheRules: true,
+      preScoring: ["book"],
+    });
+    await store.dispatch(loadVariant());
+    for (const cardId of cardIds) {
+      await store.dispatch(addCardToHand(cardId));
+    }
+    await store.dispatch(scoreHand());
+    return store;
+  }
+
+  const tileFor = (store: ReturnType<typeof createStore>, cardId: CardId) =>
+    selectCardSections(store.getState())
+      .flatMap((section) => section.cards)
+      .find((card) => card.id === cardId);
+
+  it("lists cards first, with no suit step until one is picked", async () => {
+    const store = await createStoreWithHand(["book", "king", "knights"]);
+
+    store.dispatch(choiceSheetOpened("book"));
+
+    expect(selectChoiceSheet(store.getState())).toMatchObject({
+      choosesSuit: true,
+      suitStep: null,
+      groups: [{ options: [{ id: "king" }, { id: "knights" }] }],
+    });
+  });
+
+  it("offers the picked card's suits, leaving out its own, in grid order", async () => {
+    const store = await createStoreWithHand(["book", "king"]);
+
+    store.dispatch(choiceSheetOpened("book"));
+    store.dispatch(choiceSheetCardPicked("king"));
+
+    expect(selectChoiceSheet(store.getState())?.suitStep).toEqual({
+      cardId: "king",
+      cardName: "King",
+      options: [
+        { suit: "army", current: false },
+        { suit: "wild", current: false },
+      ],
+    });
+    expect(selectHand(store.getState()).choices).toEqual({});
+
+    store.dispatch(choiceSheetCardUnpicked());
+
+    expect(selectChoiceSheet(store.getState())?.suitStep).toBeNull();
+  });
+
+  it("records the card and suit, closes the sheet, and shows both", async () => {
+    const store = await createStoreWithHand(["book", "king"]);
+
+    store.dispatch(choiceSheetOpened("book"));
+    store.dispatch(choiceSheetCardPicked("king"));
+    await store.dispatch(
+      chooseCard({ chooserId: "book", targetId: "king", suit: "army" }),
+    );
+    await store.dispatch(scoreHand());
+
+    expect(selectHand(store.getState()).choices).toEqual({
+      book: { cardId: "king", suit: "army" },
+    });
+    expect(selectChoiceSheet(store.getState())).toBeNull();
+    expect(tileFor(store, "book")?.choice).toMatchObject({
+      pending: false,
+      text: "King",
+      chosenSuit: "army",
+    });
+    expect(selectBreakdown(store.getState()).rows).toMatchObject([
+      { id: "king", suit: "army" },
+      { id: "book", chosenName: "King", chosenSuit: "army" },
+    ]);
+  });
+
+  it("ticks the current suit when the same card is picked again", async () => {
+    const store = await createStoreWithHand(["book", "king"]);
+
+    await store.dispatch(
+      chooseCard({ chooserId: "book", targetId: "king", suit: "wild" }),
+    );
+    await store.dispatch(scoreHand());
+    store.dispatch(choiceSheetOpened("book"));
+    store.dispatch(choiceSheetCardPicked("king"));
+
+    expect(selectChoiceSheet(store.getState())?.suitStep?.options).toEqual([
+      { suit: "army", current: false },
+      { suit: "wild", current: true },
+    ]);
+  });
+
+  it("starts again from the cards when the sheet is reopened", async () => {
+    const store = await createStoreWithHand(["book", "king"]);
+
+    store.dispatch(choiceSheetOpened("book"));
+    store.dispatch(choiceSheetCardPicked("king"));
+    store.dispatch(choiceSheetClosed());
+    store.dispatch(choiceSheetOpened("book"));
+
+    expect(selectChoiceSheet(store.getState())?.suitStep).toBeNull();
   });
 });

@@ -18,24 +18,37 @@ export const selectCardToReveal = (state: RootState) =>
   state.navigation.cardToReveal;
 const selectChoiceSheetFor = (state: RootState) =>
   state.navigation.choiceSheetFor;
+const selectChoiceSheetPickedCard = (state: RootState) =>
+  state.navigation.choiceSheetPickedCard;
 
 const choicesNeededText = (count: number) =>
   count === 1 ? "1 choice needed" : `${count} choices needed`;
 
-// The strip under a selected tile for a card that needs a choice: pending until the player chooses, then the chosen card's name.
+/*
+  The strip under a selected tile for a card that needs a choice: pending until the player chooses, then the chosen
+  card's name, and the suit chosen for it for a choice that includes one, which the UI puts into words.
+*/
 function tileChoice(
   name: string,
   chosenName: string | null,
-): { pending: boolean; text: string; accessibilityLabel: string } {
+  chosenSuit: Suit | null,
+): {
+  pending: boolean;
+  text: string;
+  chosenSuit: Suit | null;
+  accessibilityLabel: string;
+} {
   return chosenName === null
     ? {
         pending: true,
         text: "Choose…",
+        chosenSuit: null,
         accessibilityLabel: `Choose a card for ${name}`,
       }
     : {
         pending: false,
         text: chosenName,
+        chosenSuit,
         accessibilityLabel: `${name}: ${chosenName}. Change`,
       };
 }
@@ -65,7 +78,11 @@ export const selectCardSections = createSelector(
               disabled: isHandFull && !selected,
               choice:
                 selected && choice !== null
-                  ? tileChoice(name, nameOf(choices[id]))
+                  ? tileChoice(
+                      name,
+                      nameOf(choices[id]?.cardId),
+                      choices[id]?.suit ?? null,
+                    )
                   : null,
             };
           }),
@@ -126,10 +143,20 @@ export const selectHandProgress = createSelector(
   },
 );
 
-// The choice sheet for the card it was opened for. Its options come from the latest score, as the rules decide them, and are limited to cards still in the hand.
+/*
+  The choice sheet for the card it was opened for. Its options come from the latest score, as the rules decide them, and
+  are limited to cards still in the hand. For a choice that includes a suit, picking a card leads to a second step,
+  choosing its suit from those the score allows.
+*/
 export const selectChoiceSheet = createSelector(
-  [selectChoiceSheetFor, selectCards, selectHand, selectHandScore],
-  (chooserId, cards, hand, handScore) => {
+  [
+    selectChoiceSheetFor,
+    selectChoiceSheetPickedCard,
+    selectCards,
+    selectHand,
+    selectHandScore,
+  ],
+  (chooserId, pickedCardId, cards, hand, handScore) => {
     const chooser = cards.find((card) => card.id === chooserId);
 
     if (!chooser?.choice) {
@@ -139,9 +166,12 @@ export const selectChoiceSheet = createSelector(
     const nameOf = (cardId: CardId) =>
       cards.find((card) => card.id === cardId)?.name ?? cardId;
 
-    const optionIds =
-      handScore?.cards.find((scored) => scored.cardId === chooser.id)?.choice
-        ?.optionIds ?? [];
+    const report = handScore?.cards.find(
+      (scored) => scored.cardId === chooser.id,
+    )?.choice;
+    const optionIds = report?.optionIds ?? [];
+    const suitOptions = report?.suitOptions;
+    const currentChoice = hand.choices[chooser.id];
     const { from } = chooser.choice;
     // Cards in the hand as the latest score has it: those in it, then any that pre-scoring added.
     const inScoredHand = (cardId: CardId) =>
@@ -160,7 +190,7 @@ export const selectChoiceSheet = createSelector(
           id,
           name,
           suit,
-          current: hand.choices[chooser.id] === id,
+          current: currentChoice?.cardId === id,
         })),
     );
 
@@ -179,10 +209,32 @@ export const selectChoiceSheet = createSelector(
                 .sort((a, b) => a.name.localeCompare(b.name)),
             }));
 
+    // The card picked for a choice that includes a suit, while it is still an option, with the suits it may be given in grid order.
+    const picked = options.find(({ id }) => id === pickedCardId);
+    const suitStep =
+      picked && suitOptions?.[picked.id]
+        ? {
+            cardId: picked.id,
+            cardName: picked.name,
+            options: [...suitOptions[picked.id]]
+              .sort((a, b) => a.localeCompare(b))
+              .map((suit) => ({
+                suit,
+                current:
+                  currentChoice?.cardId === picked.id &&
+                  currentChoice.suit === suit,
+              })),
+          }
+        : null;
+
     return {
       chooserId: chooser.id,
       title: chooser.name,
       from,
+      // Set when the player chooses a suit too, so picking a card leads to choosing its suit.
+      choosesSuit: suitOptions !== undefined,
+      // Set once a card is picked, for choosing its suit.
+      suitStep,
       // What may be chosen, with card names for the UI to describe.
       targets: chooser.choice.targets.map((target): ChoiceTarget =>
         "suit" in target
@@ -197,6 +249,7 @@ export const selectChoiceSheet = createSelector(
 export type ChoiceSheet = NonNullable<ReturnType<typeof selectChoiceSheet>>;
 export type ChoiceOptionGroup = ChoiceSheet["groups"][number];
 export type ChoiceOption = ChoiceOptionGroup["options"][number];
+export type ChoiceSuitStep = NonNullable<ChoiceSheet["suitStep"]>;
 // What a choice may take, for the UI to put into words: a suit, other than some cards, or a card.
 export type ChoiceTarget =
   | { readonly suit: Suit; readonly exceptNames: readonly string[] }
@@ -243,7 +296,9 @@ export const selectBreakdown = createSelector(
         );
 
         const choosesCard = choice !== null && addedBy === null;
-        const chosenName = choosesCard ? nameOf(choices[id] ?? null) : null;
+        const chosenName = choosesCard
+          ? nameOf(choices[id]?.cardId ?? null)
+          : null;
 
         return {
           id,
@@ -252,6 +307,8 @@ export const selectBreakdown = createSelector(
           suit: cardScore?.suit ?? suit,
           // The chosen card's name, for a card with a choice that has been made.
           chosenName,
+          // The suit chosen for that card, for a choice that includes one.
+          chosenSuit: chosenName === null ? null : (choices[id]?.suit ?? null),
           choicePending: choosesCard && chosenName === null,
           // For a card taken from the discard area, the name of the card that took it. It isn't in the hand, so it can't be removed from it.
           addedByName: addedBy === null ? null : nameOf(addedBy),
