@@ -1,0 +1,83 @@
+{
+  "photo": "warlock-lord.jpg",
+  "cards": ["warlock-lord"],
+  "width": 3072,
+  "height": 4080,
+  "blocks": [
+    {
+      "frame": {
+        "top": 738,
+        "right": 1631,
+        "left": 789,
+        "bottom": 1475
+      },
+      "lines": [
+        {
+          "text": "25 Warlock Lord.",
+          "frame": {
+            "top": 738,
+            "right": 1631,
+            "left": 789,
+            "bottom": 1475
+          }
+        }
+      ]
+    },
+    {
+      "frame": {
+        "top": 1562,
+        "right": 1168,
+        "left": 914,
+        "bottom": 1857
+      },
+      "lines": [
+        {
+          "text": "WIZarO",
+          "frame": {
+            "top": 1562,
+            "right": 1168,
+            "left": 914,
+            "bottom": 1857
+          }
+        }
+      ]
+    },
+    {
+      "frame": {
+        "top": 1530,
+        "right": 2157,
+        "left": 1469,
+        "bottom": 2148
+      },
+      "lines": [
+        {
+          "text": "PENALTY:",
+          "frame": {
+            "top": 1667,
+            "right": 1892,
+            "left": 1619,
+            "bottom": 1901
+          }
+        },
+        {
+          "text": "-10 for each Leader and",
+          "frame": {
+            "top": 1590,
+            "right": 2102,
+            "left": 1520,
+            "bottom": 2085
+          }
+        },
+        {
+          "text": "other Wzard.",
+          "frame": {
+            "top": 1755,
+            "right": 2029,
+            "left": 1679,
+            "bottom": 2059
+          }
+        }
+      ]
+    }
+  ]
+}

@@ -3,6 +3,7 @@ import { ChooseCardUseCase } from "../../../application/choose-card.usecase";
 import { ClearHandUseCase } from "../../../application/clear-hand.usecase";
 import { LoadVariantUseCase } from "../../../application/load-variant.usecase";
 import { RemoveCardFromHandUseCase } from "../../../application/remove-card-from-hand.usecase";
+import { ReplaceHandUseCase } from "../../../application/replace-hand.usecase";
 import { ScoreHandUseCase } from "../../../application/score-hand.usecase";
 import type { Card, CardId } from "../../../domain/card";
 import type { DeckId } from "../../../domain/deck";
@@ -123,7 +124,12 @@ function createStore(
     clearHand: new ClearHandUseCase(),
     // The real use case, so card views and choice descriptions are built as in the app.
     loadVariant: new LoadVariantUseCase(catalogs),
+    // Scanning is covered by the component tests.
+    recogniseHand: {
+      execute: () => Promise.reject(new Error("Not used in these tests")),
+    },
     removeCardFromHand: new RemoveCardFromHandUseCase(catalogs),
+    replaceHand: new ReplaceHandUseCase(catalogs),
     scoreHand: scoreByTheRules
       ? new ScoreHandUseCase(catalogs)
       : {

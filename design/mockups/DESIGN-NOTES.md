@@ -108,6 +108,14 @@ Check the exact eligibility rules against the rulebook when implementing. Expans
 - "Photos" picks an existing image and follows the same path as a camera capture.
 - The same name-matching logic can later support voice entry.
 
+**As built (first version):**
+
+- "Scan" opens a sheet with "Take photo" (the system camera) and "Choose from Photos". There is no in-app camera view yet: `Scan.dc.html`'s live boxes are illustrative. While the photo is read, a full-screen "Reading your cards…" state covers the home screen.
+- A scan replaces the hand. The check screen says so when the hand already has cards ("This replaces the 3 cards in your hand.").
+- A scan finds at most the hand size (7). Extra cards, such as the Necromancer's 8th, and choices are added on the grid afterwards. Finding fewer than 7 is flagged in orange on the check screen.
+- "None of these" adds the other cards and returns home, leaving that one to pick by hand.
+- The check screen's back button retakes the photo, leaving the hand as it was. If reading fails, or finds no cards, or the camera isn't allowed, the screen explains why, with "Try again" and "Pick cards by hand".
+
 ### Scoring and the breakdown
 
 - The live score on the home screen and the breakdown total must always agree. Recalculate on every change to the hand.

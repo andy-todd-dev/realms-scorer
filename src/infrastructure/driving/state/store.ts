@@ -3,6 +3,7 @@ import { UseCases } from "../../../application/use-cases";
 import { cardsReducer } from "./cards-slice";
 import { handReducer } from "./hand-slice";
 import { navigationReducer } from "./navigation-slice";
+import { scanReducer } from "./scan-slice";
 import { scoreReducer } from "./score-slice";
 import { variantReducer } from "./variant-slice";
 
@@ -10,6 +11,7 @@ const reducer = combineReducers({
   cards: cardsReducer,
   hand: handReducer,
   navigation: navigationReducer,
+  scan: scanReducer,
   score: scoreReducer,
   variant: variantReducer,
 });

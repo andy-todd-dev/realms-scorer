@@ -13,16 +13,27 @@ appId: dev.andytodd.realmsscorer
     id: hand-score
     text: "0"
 
-# With an empty hand there is nothing to clear or break down, and scanning isn't implemented yet
+# With an empty hand there is nothing to clear or break down
 - assertVisible:
     id: clear-hand
     enabled: false
 - assertVisible:
-    id: scan-hand
-    enabled: false
-- assertVisible:
     id: show-breakdown
     enabled: false
+
+# Scan offers the camera or a saved photo, and closing the sheet leaves the hand as it was.
+# Reading a photo needs the system camera or photo picker, so it's covered by the component tests.
+- tapOn:
+    id: scan-hand
+- assertVisible:
+    id: scan-take-photo
+- assertVisible:
+    id: scan-choose-photo
+- tapOn:
+    id: close-scan-sheet
+- assertNotVisible:
+    id: scan-take-photo
+- assertVisible: "Tap cards or scan"
 
 # Cards load through the real wiring. Leaders are partway down the alphabetical list, so scroll to
 # them. Centring keeps the tiles clear of the score bar.

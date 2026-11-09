@@ -1,0 +1,349 @@
+{
+  "photo": "sword-of-keth.jpg",
+  "cards": ["sword-of-keth", "warlock-lord"],
+  "width": 3072,
+  "height": 4080,
+  "blocks": [
+    {
+      "frame": {
+        "top": 5,
+        "right": 106,
+        "left": 34,
+        "bottom": 261
+      },
+      "lines": [
+        {
+          "text": "erba you wl",
+          "frame": {
+            "top": 5,
+            "right": 106,
+            "left": 34,
+            "bottom": 261
+          }
+        }
+      ]
+    },
+    {
+      "frame": {
+        "top": -7,
+        "right": 176,
+        "left": 98,
+        "bottom": 195
+      },
+      "lines": [
+        {
+          "text": "atb. Perba",
+          "frame": {
+            "top": -7,
+            "right": 176,
+            "left": 98,
+            "bottom": 195
+          }
+        }
+      ]
+    },
+    {
+      "frame": {
+        "top": -6,
+        "right": 305,
+        "left": 230,
+        "bottom": 180
+      },
+      "lines": [
+        {
+          "text": "Score Pad",
+          "frame": {
+            "top": -6,
+            "right": 305,
+            "left": 230,
+            "bottom": 180
+          }
+        }
+      ]
+    },
+    {
+      "frame": {
+        "top": -6,
+        "right": 388,
+        "left": 314,
+        "bottom": 161
+      },
+      "lines": [
+        {
+          "text": "Rulebook",
+          "frame": {
+            "top": -6,
+            "right": 388,
+            "left": 314,
+            "bottom": 161
+          }
+        }
+      ]
+    },
+    {
+      "frame": {
+        "top": 11,
+        "right": 462,
+        "left": 401,
+        "bottom": 141
+      },
+      "lines": [
+        {
+          "text": "d cards)",
+          "frame": {
+            "top": 11,
+            "right": 462,
+            "left": 401,
+            "bottom": 141
+          }
+        }
+      ]
+    },
+    {
+      "frame": {
+        "top": 13,
+        "right": 535,
+        "left": 459,
+        "bottom": 207
+      },
+      "lines": [
+        {
+          "text": "suits and tl",
+          "frame": {
+            "top": 13,
+            "right": 535,
+            "left": 459,
+            "bottom": 207
+          }
+        }
+      ]
+    },
+    {
+      "frame": {
+        "top": 0,
+        "right": 575,
+        "left": 522,
+        "bottom": 89
+      },
+      "lines": [
+        {
+          "text": "Cards",
+          "frame": {
+            "top": 0,
+            "right": 575,
+            "left": 522,
+            "bottom": 89
+          }
+        }
+      ]
+    },
+    {
+      "frame": {
+        "top": 0,
+        "right": 690,
+        "left": 598,
+        "bottom": 191
+      },
+      "lines": [
+        {
+          "text": "ponent",
+          "frame": {
+            "top": 0,
+            "right": 690,
+            "left": 598,
+            "bottom": 191
+          }
+        }
+      ]
+    },
+    {
+      "frame": {
+        "top": 8,
+        "right": 830,
+        "left": 759,
+        "bottom": 153
+      },
+      "lines": [
+        {
+          "text": "gos 14+ 34",
+          "frame": {
+            "top": 8,
+            "right": 830,
+            "left": 759,
+            "bottom": 153
+          }
+        }
+      ]
+    },
+    {
+      "frame": {
+        "top": 1810,
+        "right": 1055,
+        "left": 967,
+        "bottom": 2140
+      },
+      "lines": [
+        {
+          "text": "uodeaM",
+          "frame": {
+            "top": 1810,
+            "right": 1055,
+            "left": 967,
+            "bottom": 2140
+          }
+        }
+      ]
+    },
+    {
+      "frame": {
+        "top": 1542,
+        "right": 1735,
+        "left": 1154,
+        "bottom": 1678
+      },
+      "lines": [
+        {
+          "text": "Sword of Kech",
+          "frame": {
+            "top": 1542,
+            "right": 1735,
+            "left": 1154,
+            "bottom": 1678
+          }
+        }
+      ]
+    },
+    {
+      "frame": {
+        "top": 2272,
+        "right": 1555,
+        "left": 1354,
+        "bottom": 2335
+      },
+      "lines": [
+        {
+          "text": "BONUS:",
+          "frame": {
+            "top": 2272,
+            "right": 1555,
+            "left": 1354,
+            "bottom": 2335
+          }
+        }
+      ]
+    },
+    {
+      "frame": {
+        "top": 2310,
+        "right": 1761,
+        "left": 1154,
+        "bottom": 2430
+      },
+      "lines": [
+        {
+          "text": "+10 with any one Leader.",
+          "frame": {
+            "top": 2310,
+            "right": 1761,
+            "left": 1154,
+            "bottom": 2430
+          }
+        }
+      ]
+    },
+    {
+      "frame": {
+        "top": 2415,
+        "right": 1534,
+        "left": 1431,
+        "bottom": 2484
+      },
+      "lines": [
+        {
+          "text": "OR-",
+          "frame": {
+            "top": 2415,
+            "right": 1534,
+            "left": 1431,
+            "bottom": 2484
+          }
+        }
+      ]
+    },
+    {
+      "frame": {
+        "top": 2485,
+        "right": 1754,
+        "left": 1226,
+        "bottom": 2659
+      },
+      "lines": [
+        {
+          "text": "+40 with both Leader",
+          "frame": {
+            "top": 2487,
+            "right": 1746,
+            "left": 1226,
+            "bottom": 2594
+          }
+        },
+        {
+          "text": "and Shield of Keth.",
+          "frame": {
+            "top": 2555,
+            "right": 1713,
+            "left": 1249,
+            "bottom": 2657
+          }
+        }
+      ]
+    },
+    {
+      "frame": {
+        "top": 3228,
+        "right": 3070,
+        "left": 2415,
+        "bottom": 3352
+      },
+      "lines": [
+        {
+          "text": "25) Warlock Lord",
+          "frame": {
+            "top": 3228,
+            "right": 3070,
+            "left": 2415,
+            "bottom": 3352
+          }
+        }
+      ]
+    },
+    {
+      "frame": {
+        "top": 3920,
+        "right": 3011,
+        "left": 2499,
+        "bottom": 4067
+      },
+      "lines": [
+        {
+          "text": "PENALTY:",
+          "frame": {
+            "top": 3931,
+            "right": 2869,
+            "left": 2649,
+            "bottom": 3987
+          }
+        },
+        {
+          "text": "-10 for each Leader and",
+          "frame": {
+            "top": 3976,
+            "right": 3012,
+            "left": 2504,
+            "bottom": 4067
+          }
+        }
+      ]
+    }
+  ]
+}

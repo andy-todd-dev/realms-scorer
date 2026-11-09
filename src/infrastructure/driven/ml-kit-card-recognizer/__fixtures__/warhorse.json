@@ -1,0 +1,93 @@
+{
+  "photo": "warhorse.jpg",
+  "cards": ["warhorse"],
+  "width": 3072,
+  "height": 4080,
+  "blocks": [
+    {
+      "frame": {
+        "top": 1913,
+        "right": 1026,
+        "left": 851,
+        "bottom": 2143
+      },
+      "lines": [
+        {
+          "text": "Beast",
+          "frame": {
+            "top": 1913,
+            "right": 1026,
+            "left": 851,
+            "bottom": 2143
+          }
+        }
+      ]
+    },
+    {
+      "frame": {
+        "top": 1273,
+        "right": 1487,
+        "left": 1008,
+        "bottom": 1603
+      },
+      "lines": [
+        {
+          "text": "Warborse",
+          "frame": {
+            "top": 1273,
+            "right": 1487,
+            "left": 1008,
+            "bottom": 1603
+          }
+        }
+      ]
+    },
+    {
+      "frame": {
+        "top": 2094,
+        "right": 1717,
+        "left": 1488,
+        "bottom": 2263
+      },
+      "lines": [
+        {
+          "text": "BONUS:",
+          "frame": {
+            "top": 2094,
+            "right": 1717,
+            "left": 1488,
+            "bottom": 2263
+          }
+        }
+      ]
+    },
+    {
+      "frame": {
+        "top": 2044,
+        "right": 1983,
+        "left": 1339,
+        "bottom": 2507
+      },
+      "lines": [
+        {
+          "text": "Wizard.",
+          "frame": {
+            "top": 2228,
+            "right": 1793,
+            "left": 1567,
+            "bottom": 2395
+          }
+        },
+        {
+          "text": "+14 with any Leader or",
+          "frame": {
+            "top": 2045,
+            "right": 1946,
+            "left": 1340,
+            "bottom": 2447
+          }
+        }
+      ]
+    }
+  ]
+}

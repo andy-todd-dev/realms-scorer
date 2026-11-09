@@ -29,6 +29,13 @@ export const clearHand = createAppAsyncThunk(
   (_: void, { extra }) => extra.clearHand.execute(),
 );
 
+// Replaces the whole hand, as when confirming a scan.
+export const replaceHand = createAppAsyncThunk(
+  "hand/replace",
+  (cardIds: readonly CardId[], { extra, getState }) =>
+    extra.replaceHand.execute(getState().variant.id, cardIds),
+);
+
 export const chooseCard = createAppAsyncThunk(
   "hand/chooseCard",
   (
@@ -58,6 +65,7 @@ const handSlice = createSlice({
       .addCase(addCardToHand.fulfilled, (_, action) => action.payload)
       .addCase(removeCardFromHand.fulfilled, (_, action) => action.payload)
       .addCase(clearHand.fulfilled, (_, action) => action.payload)
+      .addCase(replaceHand.fulfilled, (_, action) => action.payload)
       .addCase(chooseCard.fulfilled, (_, action) => action.payload);
   },
 });
