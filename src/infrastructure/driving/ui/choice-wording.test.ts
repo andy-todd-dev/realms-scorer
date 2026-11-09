@@ -45,6 +45,40 @@ describe("describeTargets", () => {
       ]),
     ).toBe("Swamp or Flame");
   });
+
+  describe("with every suit", () => {
+    const everySuit = [
+      "army",
+      "leader",
+      "wizard",
+      "weapon",
+      "artifact",
+      "beast",
+      "land",
+      "weather",
+      "flood",
+      "flame",
+      "wild",
+    ] as const;
+
+    it("says any card will do", () => {
+      const targets = everySuit.map((suit) => ({ suit, exceptNames: [] }));
+
+      expect(describeTargets(targets)).toBe("card");
+      expect(choiceInstruction(targets, "hand")).toBe(
+        "Choose one card in your hand.",
+      );
+    });
+
+    it("lists the suits when one leaves cards out", () => {
+      const targets = everySuit.map((suit) => ({
+        suit,
+        exceptNames: suit === "land" ? ["Mountain"] : [],
+      }));
+
+      expect(describeTargets(targets)).toContain("Land other than Mountain");
+    });
+  });
 });
 
 describe("choiceInstruction", () => {

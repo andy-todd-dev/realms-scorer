@@ -21,6 +21,7 @@ import {
   fromHand,
   points,
   present,
+  sameSuitSet,
   suit,
   sum,
   take,
@@ -31,6 +32,7 @@ export type BaseCardId =
   | "enchantress"
   | "warlock-lord"
   | "necromancer"
+  | "collector"
   | "king"
   | "queen"
   | "princess"
@@ -74,6 +76,7 @@ export type BaseCardId =
   | "shield-of-keth"
   | "gem-of-order"
   | "island"
+  | "fountain-of-life"
   | "book-of-changes"
   | "doppelganger"
   | "mirage"
@@ -140,6 +143,21 @@ export const BASE_DECK_CARDS: Record<BaseCardId, CardDefinition> = {
       suit("wizard"),
       suit("beast"),
     ),
+  },
+  collector: {
+    name: "Collector",
+    suit: "wizard",
+    baseStrength: 7,
+    bonus: {
+      text: "+10 if 3 different cards in the same suit, +40 if 4 different cards in the same suit, +100 if 5 different cards in the same suit.",
+      effects: [
+        sameSuitSet([
+          { count: 3, points: 10 },
+          { count: 4, points: 40 },
+          { count: 5, points: 100 },
+        ]),
+      ],
+    },
   },
   king: {
     name: "King",
@@ -664,6 +682,23 @@ export const BASE_DECK_CARDS: Record<BaseCardId, CardDefinition> = {
     },
     choice: chooseCard(fromHand, suit("flood"), suit("flame")),
   },
+  "fountain-of-life": {
+    name: "Fountain of Life",
+    suit: "flood",
+    baseStrength: 1,
+    bonus: {
+      text: "Add the base strength of any one Weapon, Flood, Flame, Land or Weather in your hand.",
+      effects: [sum(chosenCard, "baseStrength")],
+    },
+    choice: chooseCard(
+      fromHand,
+      suit("weapon"),
+      suit("flood"),
+      suit("flame"),
+      suit("land"),
+      suit("weather"),
+    ),
+  },
   // Placeholder: this exists only so that Candle's rule can name it, and the base variant can
   // list it for pre-scoring. Its suit and base strength are arbitrary, not the printed values,
   // and it has no rules yet. Replace it with the real card details when it is added.
@@ -672,18 +707,36 @@ export const BASE_DECK_CARDS: Record<BaseCardId, CardDefinition> = {
     suit: "wild",
     baseStrength: 3,
   },
-  // Placeholders: Doppelgänger and Mirage exist only so that the base variant can list them
-  // for pre-scoring. Their suits and base strengths are arbitrary, not the printed values, and
-  // they have no rules yet. Replace each with the real card details when it is added.
   doppelganger: {
     name: "Doppelgänger",
     suit: "wild",
     baseStrength: 0,
+    bonus: {
+      text: "May duplicate the name, base strength, suit, and penalty (but not bonus) of any one other card in your hand.",
+      // The card prints this as its bonus, but it happens before scoring, so the rule is in preScoring.
+      effects: [],
+    },
+    preScoring: [take(chosenCard, "name", "baseStrength", "suit", "penalty")],
+    choice: chooseCard(fromHand, ...allSuits),
   },
   mirage: {
     name: "Mirage",
     suit: "wild",
     baseStrength: 0,
+    bonus: {
+      text: "May duplicate the name and suit of any one Army, Land, Weather, Flood, or Flame in the game. Does not take the bonus, penalty, or base strength of the card duplicated.",
+      // The card prints this as its bonus, but it happens before scoring, so the rule is in preScoring.
+      effects: [],
+    },
+    preScoring: [take(chosenCard, "name", "suit")],
+    choice: chooseCard(
+      fromGame,
+      suit("army"),
+      suit("land"),
+      suit("weather"),
+      suit("flood"),
+      suit("flame"),
+    ),
   },
   shapeshifter: {
     name: "Shapeshifter",
