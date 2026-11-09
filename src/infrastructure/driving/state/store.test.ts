@@ -214,7 +214,7 @@ describe("loading the variant", () => {
     expect(selectHandProgress(store.getState())).toMatchObject({
       isComplete: false,
       pips: [],
-      reviewLabel: "0 cards",
+      pipsAccessibilityLabel: "0 cards. Show breakdown",
     });
   });
 
@@ -447,7 +447,7 @@ describe("breaking down the score", () => {
     return store;
   }
 
-  it("shows the totals and each card's figures, highest-scoring first", async () => {
+  it("shows each card's figures, highest-scoring first and blanked cards last", async () => {
     const store = await createScoredStore({
       cards: [
         scored("queen", 6, 10, -3),
@@ -461,13 +461,12 @@ describe("breaking down the score", () => {
     });
 
     expect(selectBreakdown(store.getState())).toEqual({
-      stats: { base: "14", bonus: "+10", penalty: "\u22123" },
       rows: [
         {
           id: "queen",
           name: "Queen",
           suit: "leader",
-          chosenName: null,
+          chosen: null,
           chosenSuit: null,
           choicePending: false,
           addedByName: null,
@@ -479,7 +478,7 @@ describe("breaking down the score", () => {
           id: "king",
           name: "King",
           suit: "leader",
-          chosenName: null,
+          chosen: null,
           chosenSuit: null,
           choicePending: false,
           addedByName: null,
@@ -491,7 +490,7 @@ describe("breaking down the score", () => {
           id: "knights",
           name: "Knights",
           suit: "army",
-          chosenName: null,
+          chosen: null,
           chosenSuit: null,
           choicePending: false,
           addedByName: null,
@@ -500,25 +499,27 @@ describe("breaking down the score", () => {
           figures: { total: "0", base: "0", bonus: null, penalty: null },
         },
       ],
-      sum: "14 + 10 \u2212 3",
-      blanked: "Knights",
     });
   });
 
-  it("says none are blanked and shows no penalties as 0", async () => {
+  it("lists a blanked card after one with a negative score", async () => {
     const store = await createScoredStore({
-      cards: [scored("queen", 6), scored("king", 8), scored("knights", 20)],
-      base: 34,
+      cards: [
+        scored("queen", 6),
+        scored("king", 0, 0, 0, true),
+        scored("knights", 2, 0, -5),
+      ],
+      base: 8,
       bonus: 0,
-      penalty: 0,
-      total: 34,
+      penalty: -5,
+      total: 3,
     });
 
-    const { stats, sum, blanked } = selectBreakdown(store.getState());
-
-    expect(stats).toEqual({ base: "34", bonus: "0", penalty: "0" });
-    expect(sum).toBe("34 + 0 \u2212 0");
-    expect(blanked).toBe("none");
+    expect(selectBreakdown(store.getState()).rows.map(({ id }) => id)).toEqual([
+      "queen",
+      "knights",
+      "king",
+    ]);
   });
 
   it("lists cards without figures, in hand order, before there is a score", async () => {
@@ -526,10 +527,8 @@ describe("breaking down the score", () => {
     await store.dispatch(addCardToHand("queen"));
     await store.dispatch(addCardToHand("king"));
 
-    const { stats, rows, sum } = selectBreakdown(store.getState());
+    const { rows } = selectBreakdown(store.getState());
 
-    expect(stats).toBeNull();
-    expect(sum).toBeNull();
     expect(rows.map(({ id, figures }) => [id, figures])).toEqual([
       ["queen", undefined],
       ["king", undefined],
@@ -601,7 +600,7 @@ describe("tracking progress towards a full hand", () => {
       choicesText: null,
       pips: [false, false, false, false, false, false, false],
       countLabel: "Tap cards or scan",
-      reviewLabel: "0 of 7 cards",
+      breakdownWarning: null,
       pipsAccessibilityLabel: "0 of 7 cards. Show breakdown",
     });
   });
@@ -616,7 +615,7 @@ describe("tracking progress towards a full hand", () => {
       choicesText: null,
       pips: [true, true, true, true, true, false, false],
       countLabel: "5 of 7 cards",
-      reviewLabel: "5 of 7 cards",
+      breakdownWarning: "5 of 7 cards",
       pipsAccessibilityLabel: "5 of 7 cards. Show breakdown",
     });
   });
@@ -631,7 +630,7 @@ describe("tracking progress towards a full hand", () => {
       choicesText: null,
       pips: [true, true, true, true, true, true, true],
       countLabel: "7 cards ✓",
-      reviewLabel: "7 cards · complete",
+      breakdownWarning: null,
       pipsAccessibilityLabel: "7 cards. Show breakdown",
     });
   });
@@ -788,7 +787,7 @@ describe("choosing a card", () => {
       firstPendingChoiceCardId: "island",
       choicesText: "1 choice needed",
       countLabel: "1 choice needed ›",
-      reviewLabel: "1 choice needed",
+      breakdownWarning: "1 choice needed",
       pipsAccessibilityLabel: "1 choice needed. Go to the card",
     });
   });
@@ -889,10 +888,14 @@ describe("choosing a card", () => {
 
     expect(
       selectBreakdown(store.getState()).rows.map(
-        ({ id, chosenName, choicePending }) => [id, chosenName, choicePending],
+        ({ id, chosen, choicePending }) => [id, chosen, choicePending],
       ),
     ).toEqual([
-      ["island", "Swamp", false],
+      [
+        "island",
+        { id: "swamp", name: "Swamp", suit: "flood", inHand: true },
+        false,
+      ],
       ["mirage", null, true],
       ["swamp", null, false],
     ]);
@@ -1131,7 +1134,11 @@ describe("choosing a card from the discard area", () => {
     });
     expect(
       selectBreakdown(store.getState()).rows.map(
-        ({ id, chosenName, addedByName }) => [id, chosenName, addedByName],
+        ({ id, chosen, addedByName }) => [
+          id,
+          chosen?.name ?? null,
+          addedByName,
+        ],
       ),
     ).toEqual([
       ["dragon", null, "Necromancer"],
@@ -1225,7 +1232,12 @@ describe("choosing a card from the game", () => {
     await store.dispatch(scoreHand());
 
     expect(selectBreakdown(store.getState()).rows).toMatchObject([
-      { id: "shapeshifter", suit: "beast", chosenName: "Dragon" },
+      {
+        id: "shapeshifter",
+        suit: "beast",
+        // Dragon isn't in the hand, so it has no row to go to.
+        chosen: { name: "Dragon", inHand: false },
+      },
     ]);
   });
 });
@@ -1319,7 +1331,12 @@ describe("choosing a card and a suit", () => {
     });
     expect(selectBreakdown(store.getState()).rows).toMatchObject([
       { id: "king", suit: "army" },
-      { id: "book", chosenName: "King", chosenSuit: "army" },
+      {
+        id: "book",
+        // King's dot shows the suit it was given.
+        chosen: { name: "King", suit: "army", inHand: true },
+        chosenSuit: "army",
+      },
     ]);
   });
 

@@ -444,16 +444,28 @@ describe("the breakdown screen", () => {
     await showBreakdown();
 
     expect(screen.getByTestId("breakdown-title")).toHaveTextContent(
-      "Your hand: 14",
+      "Score breakdown",
     );
     expect(screen.getByTestId("breakdown-total")).toHaveTextContent("14");
-    expect(screen.getByTestId("breakdown-count")).toHaveTextContent(
+    expect(screen.getByTestId("breakdown-warning")).toHaveTextContent(
       "2 of 7 cards",
     );
     expect(
       screen.getAllByTestId(/^breakdown-card-/).map((row) => row.props.testID),
     ).toEqual(["breakdown-card-king", "breakdown-card-queen"]);
     expect(screen.queryByTestId("breakdown-card-knights")).toBeNull();
+  });
+
+  it("opens from a button labelled Breakdown", async () => {
+    const { tapCard } = await renderApp();
+
+    await tapCard("king");
+
+    expect(screen.getByTestId("show-breakdown")).toHaveTextContent("Breakdown");
+    expect(screen.getByTestId("show-breakdown")).toHaveProp(
+      "accessibilityLabel",
+      "Show score breakdown",
+    );
   });
 
   it("opens from the pips too", async () => {
@@ -476,7 +488,7 @@ describe("the breakdown screen", () => {
     expect(screen.getByTestId("card-tile-king")).toBeChecked();
   });
 
-  it("marks a full hand as complete", async () => {
+  it("shows no warning for a full hand", async () => {
     const { showBreakdown, tapCard } = await renderApp({
       loadCards: async () => eightCards,
     });
@@ -486,9 +498,8 @@ describe("the breakdown screen", () => {
     }
     await showBreakdown();
 
-    expect(screen.getByTestId("breakdown-count")).toHaveTextContent(
-      "7 cards · complete",
-    );
+    expect(screen.getByTestId("breakdown-total")).toBeOnTheScreen();
+    expect(screen.queryByTestId("breakdown-warning")).toBeNull();
   });
 
   it("removes a card in place, and rescores", async () => {
@@ -505,7 +516,7 @@ describe("the breakdown screen", () => {
 
     expect(screen.queryByTestId("breakdown-card-king")).toBeNull();
     expect(screen.getByTestId("breakdown-card-queen")).toBeOnTheScreen();
-    expect(screen.getByTestId("breakdown-count")).toHaveTextContent(
+    expect(screen.getByTestId("breakdown-warning")).toHaveTextContent(
       "1 of 7 cards",
     );
     await waitFor(() =>
@@ -528,7 +539,7 @@ describe("the breakdown screen", () => {
     await expectScore("0");
   });
 
-  it("shows the base, bonuses and penalties of the hand and of each card", async () => {
+  it("shows each card's base, bonuses and penalties, with blanked cards last", async () => {
     const { showBreakdown, tapCard } = await renderApp({
       scoreHand: async () =>
         handScoreOf([
@@ -565,18 +576,7 @@ describe("the breakdown screen", () => {
     await showBreakdown();
 
     await waitFor(() =>
-      expect(screen.getByTestId("breakdown-base")).toHaveTextContent("14"),
-    );
-    expect(screen.getByTestId("breakdown-bonus")).toHaveTextContent("+10");
-    expect(screen.getByTestId("breakdown-penalty")).toHaveTextContent(
-      "\u22123",
-    );
-    expect(screen.getByTestId("breakdown-sum")).toHaveTextContent(
-      "14 + 10 \u2212 3",
-    );
-    expect(screen.getByTestId("breakdown-total")).toHaveTextContent("21");
-    expect(screen.getByTestId("breakdown-blanked")).toHaveTextContent(
-      "Blanked cards: Knights",
+      expect(screen.getByTestId("breakdown-total")).toHaveTextContent("21"),
     );
 
     expect(
@@ -594,9 +594,10 @@ describe("the breakdown screen", () => {
       /Bonuses|Penalties/,
     );
     expect(screen.getByTestId("card-total-knights")).toHaveTextContent("0");
-    expect(screen.getByTestId("breakdown-card-knights")).toHaveTextContent(
-      /Blanked: scores 0/,
+    expect(screen.getByTestId("row-badge-knights")).toHaveTextContent(
+      "Blanked",
     );
+    expect(screen.queryByTestId("row-badge-king")).toBeNull();
   });
 
   it("shows a placeholder total when scoring fails", async () => {
@@ -608,7 +609,6 @@ describe("the breakdown screen", () => {
     await showBreakdown();
 
     expect(screen.getByTestId("breakdown-total")).toHaveTextContent("–");
-    expect(screen.getByTestId("breakdown-base")).toHaveTextContent("–");
     expect(screen.getByTestId("card-total-king")).toHaveTextContent("–");
     expect(screen.getByTestId("breakdown-card-king")).toBeOnTheScreen();
   });
@@ -754,8 +754,13 @@ describe("choosing a card", () => {
     await press("close-choice-sheet");
     await showBreakdown();
 
-    expect(screen.getByTestId("chosen-card-island")).toHaveTextContent(
-      "→ Swamp",
+    expect(screen.getByTestId("breakdown-card-island")).toHaveTextContent(
+      /Chose.*Swamp.*Base strength/,
+    );
+    // Swamp is in the hand, so its chip leads to its row.
+    expect(screen.getByTestId("chosen-card-island")).toHaveProp(
+      "accessibilityLabel",
+      "Island chose Swamp. Go to Swamp",
     );
     expect(screen.queryByTestId("choice-needed-island")).toBeNull();
   });
@@ -813,11 +818,14 @@ describe("choosing a card", () => {
     await tapCard("island");
     await showBreakdown();
 
-    expect(screen.getByTestId("breakdown-count")).toHaveTextContent(
+    expect(screen.getByTestId("breakdown-warning")).toHaveTextContent(
       "1 choice needed",
     );
+    expect(screen.getByTestId("row-badge-island")).toHaveTextContent(
+      "Choice needed",
+    );
     expect(screen.getByTestId("choice-needed-island")).toHaveTextContent(
-      "Choice needed: choose on the cards screen ›",
+      "Choose on the cards screen",
     );
 
     await press("choice-needed-island");
@@ -896,7 +904,7 @@ describe("choosing a card from the discard area", () => {
     expect(screen.getByTestId("card-total-knights")).toHaveTextContent("20");
     expect(screen.queryByTestId("remove-card-knights")).toBeNull();
     expect(screen.getByTestId("chosen-card-necromancer")).toHaveTextContent(
-      "→ Knights",
+      "Knights",
     );
   });
 });
@@ -948,6 +956,9 @@ describe("choosing a card and a suit", () => {
     expect(
       await screen.findByTestId("choice-sheet-instruction"),
     ).toHaveTextContent("Choose a new suit for King.");
+    expect(screen.getByTestId("choice-sheet-title")).toHaveTextContent(
+      "King becomes…",
+    );
     expect(screen.getByTestId("choice-suit-army")).toBeOnTheScreen();
     expect(screen.getByTestId("choice-suit-wild")).toBeOnTheScreen();
     expect(screen.queryByTestId("choice-suit-leader")).toBeNull();
@@ -979,17 +990,18 @@ describe("choosing a card and a suit", () => {
     // 3 + 8 + (1 + 5 for the King as an Army)
     await expectScore("17");
     expect(screen.getByTestId("choice-strip-book")).toHaveTextContent(
-      "King as Army",
+      "King → Army",
     );
     expect(screen.getByTestId("choice-strip-book")).toHaveProp(
       "accessibilityLabel",
-      "Book: King as Army. Change",
+      "Book: King → Army. Change",
     );
 
     await showBreakdown();
 
-    expect(screen.getByTestId("chosen-card-book")).toHaveTextContent(
-      "→ King as Army",
+    expect(screen.getByTestId("chosen-card-book")).toHaveTextContent("King");
+    expect(screen.getByTestId("breakdown-card-book")).toHaveTextContent(
+      /Chose.*King.*→ Army/,
     );
     expect(screen.getByTestId("breakdown-card-king")).toHaveTextContent(/Army/);
   });

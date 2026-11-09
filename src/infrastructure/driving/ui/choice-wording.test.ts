@@ -146,7 +146,7 @@ describe("noChoiceText", () => {
 describe("chosenText", () => {
   it("names the card, with the suit chosen for it when there is one", () => {
     expect(chosenText("Swamp", null)).toBe("Swamp");
-    expect(chosenText("Swamp", "flame")).toBe("Swamp as Flame");
+    expect(chosenText("Swamp", "flame")).toBe("Swamp → Flame");
   });
 });
 

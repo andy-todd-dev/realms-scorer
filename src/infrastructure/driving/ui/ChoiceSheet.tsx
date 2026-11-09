@@ -30,6 +30,7 @@ import {
   choiceInstruction,
   noChoiceText,
   suitInstruction,
+  suitStepTitle,
 } from "./choice-wording";
 import { Box } from "./gluestack/box";
 import { Button, ButtonIcon } from "./gluestack/button";
@@ -101,10 +102,7 @@ function SheetBody({
             size="icon"
             onPress={() => dispatch(choiceSheetCardUnpicked())}
           >
-            <ButtonIcon
-              as={ChevronLeft}
-              className="h-5 w-5 text-subtle-foreground"
-            />
+            <ButtonIcon as={ChevronLeft} className="h-5 w-5 text-foreground" />
           </Button>
         )}
         <Heading
@@ -113,7 +111,7 @@ function SheetBody({
           accessibilityRole="header"
           className="flex-1"
         >
-          {title}
+          {suitStep ? suitStepTitle(suitStep.cardName) : title}
         </Heading>
         <Button
           testID="close-choice-sheet"
@@ -152,7 +150,7 @@ function SheetBody({
           </Text>
         </Box>
       ) : (
-        <ActionsheetScrollView contentContainerClassName="gap-3 px-4">
+        <ActionsheetScrollView contentContainerClassName="gap-3.5 px-4">
           {groups.map((group) => (
             <OptionGroup
               key={group.suit ?? "hand"}
@@ -198,6 +196,7 @@ function OptionGroup({
         <OptionRow
           key={option.id}
           option={option}
+          showSuit={suit === null}
           onPress={() => onChoose(option.id)}
         />
       ))}
@@ -207,9 +206,12 @@ function OptionGroup({
 
 function OptionRow({
   option: { id, name, suit, current },
+  showSuit,
   onPress,
 }: {
   option: ChoiceOption;
+  // Options under a suit heading leave the suit out, as the heading already says it.
+  showSuit: boolean;
   onPress: () => void;
 }) {
   return (
@@ -226,9 +228,11 @@ function OptionRow({
     >
       <SuitDot suit={suit} />
       <Text className="flex-1 font-body-medium">{name}</Text>
-      <Text size="xs" className="text-muted-foreground">
-        {SUITS[suit].label}
-      </Text>
+      {showSuit && (
+        <Text size="xs" className="text-muted-foreground">
+          {SUITS[suit].label}
+        </Text>
+      )}
       {current && <Icon as={HeavyCheck} className="h-4 w-4 text-primary" />}
     </Pressable>
   );

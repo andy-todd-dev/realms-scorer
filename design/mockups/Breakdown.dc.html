@@ -12,91 +12,159 @@
 <link href="https://fonts.googleapis.com/css2?family=Marcellus&amp;family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
 <style>
 body{margin:0}
-a{color:#E3B75B}a:hover{color:#F0CD82}
 </style>
 </helmet>
 <div style="width: 390px; height: 844px; box-sizing: border-box; background: #141821; color: #EDE9E0; font-family: Inter, system-ui, sans-serif; display: flex; flex-direction: column; overflow: hidden">
 
-  <header style="display: flex; align-items: center; gap: 4px; padding: 16px 12px 0">
+  <header style="display: flex; align-items: center; gap: 4px; padding: 16px 12px 4px">
     <a href="Main.dc.html" aria-label="Back to cards" style="width: 44px; height: 44px; color: #EDE9E0; display: flex; align-items: center; justify-content: center">
       <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 6l-6 6 6 6"></path></svg>
     </a>
-    <div style="flex: 1; display: flex; flex-direction: column">
-      <h1 style="margin: 0; font-family: Marcellus, Georgia, serif; font-size: 24px; font-weight: 400">Your hand: {{total}}</h1>
-      <p style="margin: 0; font-size: 14px; color: {{countColor}}">{{countText}}</p>
-    </div>
+    <h1 style="margin: 0; flex: 1; font-family: Marcellus, Georgia, serif; font-size: 24px; font-weight: 400">Score breakdown</h1>
   </header>
 
-  <div style="margin: 12px 16px 0; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px">
-    <div style="padding: 10px 12px; border-radius: 12px; background: #1E2430"><p style="margin: 0; font-size: 12px; color: #A9B0BD">Base</p><p style="margin: 2px 0 0; font-size: 20px; font-weight: 600">{{base}}</p></div>
-    <div style="padding: 10px 12px; border-radius: 12px; background: #1E2430"><p style="margin: 0; font-size: 12px; color: #A9B0BD">Bonuses</p><p style="margin: 2px 0 0; font-size: 20px; font-weight: 600; color: #9DD49A">+{{bonus}}</p></div>
-    <div style="padding: 10px 12px; border-radius: 12px; background: #1E2430"><p style="margin: 0; font-size: 12px; color: #A9B0BD">Penalties</p><p style="margin: 2px 0 0; font-size: 20px; font-weight: 600">0</p></div>
-  </div>
-
-  <ol style="list-style: none; margin: 14px 0 0; padding: 0 16px 12px; flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 8px">
+  <ol style="list-style: none; margin: 8px 0 0; padding: 0 16px 12px; flex: 1; min-height: 0; overflow-y: auto; display: flex; flex-direction: column; gap: 8px">
     <sc-for list="{{rows}}" as="r" hint-placeholder-count="7">
-      <li style="padding: 6px 4px 12px 14px; border-radius: 16px; background: #1A1F2A; display: flex; flex-direction: column; gap: 6px">
+      <li id="row-{{r.anchor}}" style="padding: 6px 4px 12px 14px; border-radius: 16px; border: 1.5px {{r.borderStyle}} {{r.borderColor}}; background: {{r.bg}}; display: flex; flex-direction: column; gap: 6px">
         <div style="display: flex; align-items: center; gap: 10px">
-          <span aria-hidden="true" style="width: 10px; height: 10px; border-radius: 5px; box-sizing: border-box; border: 1px solid #8D95A3; background: {{r.color}}"></span>
-          <span style="flex: 1; font-size: 16px; font-weight: 600">{{r.name}} <span style="font-weight: 400; font-size: 12px; color: #A9B0BD">{{r.suit}}</span></span>
-          <span style="font-size: 18px; font-weight: 700; font-variant-numeric: tabular-nums; color: {{accent}}">{{r.total}}</span>
+          <span aria-hidden="true" style="flex: none; width: 10px; height: 10px; border-radius: 5px; box-sizing: border-box; border: 1px solid #8D95A3; background: {{r.color}}"></span>
+          <span style="flex: 1; display: flex; align-items: center; flex-wrap: wrap; gap: 6px">
+            <span style="font-size: 16px; font-weight: 600; color: {{r.nameColor}}">{{r.name}}</span>
+            <span style="font-size: 12px; color: #A9B0BD">{{r.suit}}</span>
+            <sc-if value="{{r.badge}}" hint-placeholder-val="{{ false }}">
+              <span style="padding: 1px 8px; border-radius: 9999px; border: 1px solid {{r.badgeBorder}}; font-size: 12px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: {{r.badgeColor}}">{{r.badge}}</span>
+            </sc-if>
+          </span>
+          <span style="font-size: 18px; font-weight: 700; font-variant-numeric: tabular-nums; color: {{r.totalColor}}">{{r.total}}</span>
           <button type="button" onClick="{{r.remove}}" aria-label="Remove {{r.name}} from hand" style="width: 44px; height: 44px; border: 0; background: transparent; color: #8D95A3; display: flex; align-items: center; justify-content: center">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"></path></svg>
           </button>
         </div>
-        <div style="display: flex; justify-content: space-between; font-size: 14px; color: #C9CED8; padding: 0 54px 0 20px"><span>Base strength</span><span style="font-variant-numeric: tabular-nums">{{r.base}}</span></div>
-        <sc-if value="{{r.bonusText}}" hint-placeholder-val="{{ true }}">
-          <div style="display: flex; justify-content: space-between; gap: 12px; font-size: 14px; padding: 0 54px 0 20px"><span style="color: #C9CED8; line-height: 1.4">{{r.why}}</span><span style="color: #9DD49A; font-variant-numeric: tabular-nums; flex: none">{{r.bonusText}}</span></div>
-        </sc-if>
-        <sc-if value="{{r.note}}" hint-placeholder-val="{{ false }}">
-          <p style="margin: 0; padding: 0 54px 0 20px; font-size: 12px; color: #A9B0BD; line-height: 1.4">{{r.note}}</p>
+        <sc-for list="{{r.lines}}" as="l" hint-placeholder-count="2">
+          <div style="display: flex; justify-content: space-between; align-items: baseline; gap: 12px; font-size: 14px; padding: 0 54px 0 20px">
+            <span style="display: flex; align-items: center; flex-wrap: wrap; gap: 6px; line-height: 1.4; color: {{l.textColor}}; text-decoration: {{l.deco}}">
+              <sc-if value="{{l.lead}}" hint-placeholder-val="{{ false }}"><span>{{l.lead}}</span></sc-if>
+              <sc-if value="{{l.chipName}}" hint-placeholder-val="{{ false }}">
+                <a href="{{l.chipHref}}" aria-label="{{l.chipLabel}}" style="flex: none; display: inline-flex; align-items: center; gap: 6px; padding: 2px 10px 2px 8px; border-radius: 9999px; border: 1.5px solid {{l.chipBorder}}; background: #232A38; color: #EDE9E0; font-size: 14px; font-weight: 600; text-decoration: none">
+                  <span aria-hidden="true" style="width: 8px; height: 8px; border-radius: 4px; box-sizing: border-box; border: 1px solid #8D95A3; background: {{l.chipColor}}"></span>
+                  {{l.chipName}}
+                </a>
+              </sc-if>
+              {{l.text}}
+            </span>
+            <span style="flex: none; font-variant-numeric: tabular-nums; color: {{l.valueColor}}; text-decoration: {{l.deco}}">{{l.value}}</span>
+          </div>
+        </sc-for>
+        <sc-if value="{{r.pendingLink}}" hint-placeholder-val="{{ false }}">
+          <a href="Main.dc.html" style="margin-left: 20px; min-height: 44px; align-self: flex-start; display: flex; align-items: center; gap: 4px; color: #F8B596; font-size: 14px; font-weight: 600; text-decoration: none">
+            Choose on the cards screen
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6"></path></svg>
+          </a>
         </sc-if>
       </li>
     </sc-for>
   </ol>
 
-  <footer style="padding: 14px 20px 28px; border-top: 1px solid #232A38; display: flex; flex-direction: column; gap: 4px">
+  <footer style="padding: 12px 20px 28px; border-top: 1px solid #232A38; display: flex; flex-direction: column; gap: 2px">
+    <sc-if value="{{warning}}" hint-placeholder-val="{{ false }}">
+      <p style="margin: 0; font-size: 14px; font-weight: 600; color: #F8B596">{{warning}}</p>
+    </sc-if>
     <div style="display: flex; justify-content: space-between; align-items: baseline">
-      <span style="font-size: 16px; color: #C9CED8">{{base}} + {{bonus}} − 0</span>
-      <span style="font-family: Marcellus, Georgia, serif; font-size: 36px; color: {{accent}}">{{total}}</span>
+      <span style="font-size: 12px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: #A9B0BD">Total</span>
+      <span style="font-family: Marcellus, Georgia, serif; font-size: 36px; line-height: 1.1; color: {{accent}}">{{total}}</span>
     </div>
-    <p style="margin: 0; font-size: 12px; color: #A9B0BD">Blanked cards: none</p>
   </footer>
 </div>
 </x-dc>
-<script type="text/x-dc" data-dc-script data-props='{"accent":{"editor":"color","default":"#E3B75B","options":["#E3B75B","#7FC4E8","#9DD49A"]},"$preview":{"width":390,"height":844}}'>
-// Sample hand and figures only. In the app, removing a card re-runs the scoring engine,
-// which can change other cards' bonuses too; here the row is simply taken out.
+<script type="text/x-dc" data-dc-script data-props='{"accent":{"editor":"color","default":"#E3B75B","options":["#E3B75B","#7FC4E8","#9DD49A"]},"showPendingChoice":{"editor":"boolean","default":false},"startAtRow":{"editor":"int","default":0,"min":0,"max":6},"$preview":{"width":390,"height":844}}'>
+// Sample hand and figures only, to show every row state. Card values are from memory: check them
+// against the rulebook. In the app, removing a card re-runs the scoring engine, which can change other
+// cards' bonuses, penalties and blanking; here the row is simply taken out.
+//
+// Line kinds: bonus (green), penalty (red), cleared (struck through), choice (this card's own choice,
+// shown first), target (this card was chosen by another card), blanked (why it scores nothing).
+const FLOOD = '#1F4FA8';
 const ROWS = [
-  { name: 'Unicorn', suit: 'Beast', color: '#1E7B3A', base: 9, bonus: 30, why: 'With Princess', note: '' },
-  { name: 'Rangers', suit: 'Army', color: '#000000', base: 5, bonus: 20, why: '+10 × 2 Lands (Bell Tower, Mountain)', note: '' },
-  { name: 'Bell Tower', suit: 'Land', color: '#8B5A2B', base: 8, bonus: 15, why: 'With a Wizard (Enchantress)', note: '' },
-  { name: 'Enchantress', suit: 'Wizard', color: '#EE7FB8', base: 5, bonus: 15, why: '+5 × 3 (Bell Tower, Mountain, Island)', note: '' },
-  { name: 'Princess', suit: 'Leader', color: '#8E44C9', base: 2, bonus: 16, why: '+8 × 2 (Rangers, Enchantress)', note: '' },
-  { name: 'Island', suit: 'Flood', color: '#1F4FA8', base: 14, bonus: 0, why: '', note: 'No penalties in hand to clear.' },
-  { name: 'Mountain', suit: 'Land', color: '#8B5A2B', base: 9, bonus: 0, why: '', note: 'Bonus needs Smoke and Wildfire, not in hand.' }
+  { name: 'Unicorn', suit: 'Beast', color: '#1E7B3A', base: 9, lines: [
+    { kind: 'bonus', text: 'With Princess', value: 30 }
+  ] },
+  { name: 'Swamp', suit: 'Flood', color: FLOOD, base: 18, lines: [
+    { kind: 'cleared', text: '−3 × 1 Army (Rangers)', value: -3 },
+    { kind: 'target', chip: 'Island', text: 'cleared this penalty', label: 'Island cleared this penalty. Go to Island' }
+  ] },
+  // Doppelgänger takes the chosen card's name, base strength, suit and penalty (not its bonus).
+  { name: 'Doppelgänger', suit: 'Flood · copied from Swamp', color: FLOOD, base: 18, baseLabel: 'Base strength (Swamp’s)', lines: [
+    { kind: 'choice', lead: 'Chose', chip: 'Swamp', text: '', label: 'Doppelgänger copies Swamp. Go to Swamp' },
+    { kind: 'penalty', text: 'Swamp’s penalty: −3 × 1 Army (Rangers)', value: -3 }
+  ] },
+  { name: 'Island', suit: 'Flood', color: FLOOD, base: 14, lines: [
+    { kind: 'choice', lead: 'Chose', chip: 'Swamp', text: '', label: 'Island cleared the penalty on Swamp. Go to Swamp' }
+  ] },
+  { name: 'Princess', suit: 'Leader', color: '#8E44C9', base: 2, lines: [
+    { kind: 'bonus', text: '+8 × 1 Army (Rangers)', value: 8 }
+  ] },
+  { name: 'Rangers', suit: 'Army', color: '#000000', base: 5, lines: [] },
+  { name: 'Smoke', suit: 'Weather', color: '#7CC4EE', base: 27, blanked: true, lines: [
+    { kind: 'blanked', text: 'Blanked: needs at least one Flame card in your hand.' }
+  ] }
 ];
+const PENDING = { name: 'Shapeshifter', suit: 'Wild', color: '#E6E8EA', base: 0, pending: true, lines: [
+  { kind: 'blanked', text: 'Scores nothing until you choose which card it copies.' }
+] };
 class Component extends DCLogic {
   state = { removed: [] };
   renderVals() {
     const accent = this.props.accent ?? '#E3B75B';
-    const rows = ROWS.filter((r) => !this.state.removed.includes(r.name));
-    const base = rows.reduce((t, r) => t + r.base, 0);
-    const bonus = rows.reduce((t, r) => t + r.bonus, 0);
+    const showPending = this.props.showPendingChoice ?? false;
+    const all = (showPending ? [PENDING] : []).concat(ROWS);
+    const rows = all.filter((r) => !this.state.removed.includes(r.name));
+    const sumKind = (r, k) => r.lines.filter((l) => l.kind === k).reduce((t, l) => t + l.value, 0);
+    const rowTotal = (r) => (r.blanked || r.pending ? 0 : r.base + sumKind(r, 'bonus') + sumKind(r, 'penalty'));
+    const total = rows.reduce((t, r) => t + rowTotal(r), 0);
+    const pending = rows.filter((r) => r.pending).length;
     const n = rows.length;
+    const warning = pending ? pending + (pending === 1 ? ' choice needed' : ' choices needed') : n < 7 ? n + ' of 7 cards' : '';
+    const fmt = (v) => (v > 0 ? '+' + v : v < 0 ? '−' + Math.abs(v) : '');
+    const styleLine = (l) => {
+      const chipRow = l.chip ? ROWS.find((x) => x.name === l.chip) : null;
+      const s = { lead: l.lead || '', chipName: l.chip || '', chipColor: chipRow ? chipRow.color : '', chipHref: l.chip ? '#row-' + l.chip.replace(/[^A-Za-z]/g, '') : '', chipLabel: l.label || '', chipBorder: l.kind === 'choice' ? accent : '#4A5262', text: l.text, value: '', textColor: '#C9CED8', valueColor: '#C9CED8', deco: 'none' };
+      if (l.kind === 'bonus') return { ...s, value: fmt(l.value), valueColor: '#9DD49A' };
+      if (l.kind === 'penalty') return { ...s, value: fmt(l.value), valueColor: '#FF8A8A' };
+      if (l.kind === 'cleared') return { ...s, value: fmt(l.value), textColor: '#A9B0BD', valueColor: '#A9B0BD', deco: 'line-through' };
+      if (l.kind === 'target') return { ...s, textColor: '#A9B0BD' };
+      if (l.kind === 'blanked') return { ...s, textColor: '#EDE9E0' };
+      return s;
+    };
     return {
       accent,
-      base,
-      bonus,
-      total: base + bonus,
-      countText: n >= 7 ? n + ' cards · complete' : n + ' of 7 cards',
-      countColor: n >= 7 ? accent : '#A9B0BD',
-      rows: rows.map((r) => ({
-        ...r,
-        total: r.base + r.bonus,
-        bonusText: r.bonus ? '+' + r.bonus : '',
-        remove: () => this.setState({ removed: this.state.removed.concat(r.name) })
-      }))
+      total,
+      warning,
+      // startAtRow simulates the list scrolled down (used by the "scrolled" artboard).
+      rows: rows.slice(Number(this.props.startAtRow ?? 0)).map((r) => {
+        const baseLine = { ...styleLine({ kind: 'base', text: r.baseLabel || 'Base strength' }), value: String(r.base), deco: r.blanked ? 'line-through' : 'none', textColor: r.blanked ? '#A9B0BD' : '#C9CED8', valueColor: r.blanked ? '#A9B0BD' : '#C9CED8' };
+        // A card's own choice comes first, above base strength.
+        const choiceLines = r.lines.filter((l) => l.kind === 'choice').map(styleLine);
+        const otherLines = r.lines.filter((l) => l.kind !== 'choice').map(styleLine);
+        const lines = r.pending ? r.lines.map(styleLine) : choiceLines.concat([baseLine], otherLines);
+        return {
+          name: r.name,
+          anchor: r.name.replace(/[^A-Za-z]/g, ''),
+          suit: r.suit,
+          color: r.color,
+          lines,
+          total: rowTotal(r),
+          nameColor: r.blanked ? '#C9CED8' : '#EDE9E0',
+          totalColor: r.blanked || r.pending ? '#A9B0BD' : accent,
+          bg: r.blanked ? 'repeating-linear-gradient(-45deg, #222836 0px, #222836 6px, #161A23 6px, #161A23 12px)' : r.pending ? '#2A1F1A' : '#1A1F2A',
+          borderStyle: r.blanked ? 'dashed' : 'solid',
+          borderColor: r.blanked ? '#4A5262' : r.pending ? '#F08A5D' : 'transparent',
+          badge: r.blanked ? 'Blanked' : r.pending ? 'Choice needed' : '',
+          badgeBorder: r.pending ? '#F08A5D' : '#4A5262',
+          badgeColor: r.pending ? '#F8B596' : '#C9CED8',
+          pendingLink: !!r.pending,
+          remove: () => this.setState({ removed: this.state.removed.concat(r.name) })
+        };
+      })
     };
   }
 }
