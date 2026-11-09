@@ -67,9 +67,14 @@ export function noChoiceText(
   }[from];
 }
 
-// A chosen card, with the suit chosen for it for a choice that includes one: "Swamp", or "Swamp as Flame".
+// A chosen card, with the suit chosen for it for a choice that includes one: "Swamp", or "Swamp → Flame".
 export function chosenText(cardName: string, suit: Suit | null): string {
-  return suit === null ? cardName : `${cardName} as ${SUITS[suit].label}`;
+  return suit === null ? cardName : `${cardName} → ${SUITS[suit].label}`;
+}
+
+// The sheet's title while choosing the suit a picked card becomes.
+export function suitStepTitle(cardName: string): string {
+  return `${cardName} becomes…`;
 }
 
 export function suitInstruction(cardName: string): string {

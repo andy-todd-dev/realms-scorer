@@ -1,6 +1,7 @@
 import ChevronLeft from "lucide-react-native/icons/chevron-left";
+import ChevronRight from "lucide-react-native/icons/chevron-right";
 import X from "lucide-react-native/icons/x";
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { BackHandler, ScrollView } from "react-native";
 import { removeCardFromHand } from "../state/hand-slice";
 import { useAppDispatch, useAppSelector } from "../state/hooks";
@@ -13,37 +14,54 @@ import {
 } from "../state/selectors";
 import { Box } from "./gluestack/box";
 import { Button, ButtonIcon } from "./gluestack/button";
-import { Card } from "./gluestack/card";
 import { Divider } from "./gluestack/divider";
 import { Heading } from "./gluestack/heading";
 import { HStack } from "./gluestack/hstack";
+import { Icon } from "./gluestack/icon";
 import { Pressable } from "./gluestack/pressable";
 import { Text } from "./gluestack/text";
 import { VStack } from "./gluestack/vstack";
-import { chosenText } from "./choice-wording";
+import { CardChip } from "./CardChip";
+import { RowBadge } from "./RowBadge";
 import { Screen } from "./Screen";
+import { StripedFill } from "./StripedFill";
 import { SuitDot } from "./SuitDot";
 import { NO_VALUE, SUITS } from "./theme";
 
 // NativeWind has no class for this on native, so it has to be a style.
 const TABULAR_NUMBERS = { fontVariant: ["tabular-nums" as const] };
 
-// One line under a card's name, such as its base strength or bonus points.
+// One line under a card's name, such as its base strength or bonus points. Struck through for a figure that doesn't count.
 function FigureLine({
   label,
   value,
   valueClassName,
+  struck = false,
 }: {
   label: string;
   value: string;
   valueClassName: string;
+  struck?: boolean;
 }) {
   return (
     <HStack className="justify-between gap-3 pr-13.5 pl-5">
-      <Text size="sm" className="text-subtle-foreground">
+      <Text
+        size="sm"
+        className={
+          struck
+            ? "text-muted-foreground line-through"
+            : "text-subtle-foreground"
+        }
+      >
         {label}
       </Text>
-      <Text size="sm" className={valueClassName} style={TABULAR_NUMBERS}>
+      <Text
+        size="sm"
+        className={
+          struck ? "text-muted-foreground line-through" : valueClassName
+        }
+        style={TABULAR_NUMBERS}
+      >
         {value}
       </Text>
     </HStack>
@@ -53,33 +71,27 @@ function FigureLine({
 function CardFigures({ row }: { row: BreakdownRow }) {
   const { blanked, figures } = row;
 
-  if (blanked) {
-    return (
-      <Text size="sm" className="pr-13.5 pl-5 text-muted-foreground">
-        Blanked: scores 0
-      </Text>
-    );
-  }
-
   if (!figures) {
     return null;
   }
 
+  // A blanked card's text doesn't apply, so only its base strength is shown, struck through.
   return (
     <>
       <FigureLine
         label="Base strength"
         value={figures.base}
         valueClassName="text-subtle-foreground"
+        struck={blanked}
       />
-      {figures.bonus && (
+      {!blanked && figures.bonus && (
         <FigureLine
           label="Bonuses"
           value={figures.bonus}
           valueClassName="text-success"
         />
       )}
-      {figures.penalty && (
+      {!blanked && figures.penalty && (
         <FigureLine
           label="Penalties"
           value={figures.penalty}
@@ -90,33 +102,72 @@ function CardFigures({ row }: { row: BreakdownRow }) {
   );
 }
 
+// The row's own choice, first under its name: "Chose [Swamp]", or "Chose [Bell Tower] → Wizard" with a suit.
+function ChoseLine({
+  row,
+  onGoToCard,
+}: {
+  row: BreakdownRow;
+  onGoToCard: (cardId: string) => void;
+}) {
+  const { chosen, chosenSuit } = row;
+
+  if (!chosen) {
+    return null;
+  }
+
+  return (
+    <HStack className="flex-wrap items-center gap-1.5 pr-13.5 pl-5">
+      <Text size="sm" className="text-subtle-foreground">
+        Chose
+      </Text>
+      <CardChip
+        testID={`chosen-card-${row.id}`}
+        name={chosen.name}
+        suit={chosen.suit}
+        variant="chose"
+        accessibilityLabel={
+          chosen.inHand
+            ? `${row.name} chose ${chosen.name}. Go to ${chosen.name}`
+            : `${row.name} chose ${chosen.name}`
+        }
+        onPress={chosen.inHand ? () => onGoToCard(chosen.id) : undefined}
+      />
+      {chosenSuit && (
+        <Text size="sm" className="text-subtle-foreground">
+          → {SUITS[chosenSuit].label}
+        </Text>
+      )}
+    </HStack>
+  );
+}
+
+function rowClassName({ blanked, choicePending }: BreakdownRow): string {
+  if (blanked) {
+    return "gap-1.5 overflow-hidden rounded-2xl border-[1.5px] border-dashed border-border-strong pt-1 pr-1 pb-3 pl-3.5";
+  }
+
+  return choicePending
+    ? "gap-1.5 rounded-2xl border-[1.5px] border-warning bg-warning-muted pt-1 pr-1 pb-3 pl-3.5"
+    : "gap-1.5 rounded-2xl border-[1.5px] border-transparent bg-muted pt-1 pr-1 pb-3 pl-3.5";
+}
+
 export function BreakdownScreen() {
   const dispatch = useAppDispatch();
-  const { stats, rows, sum, blanked } = useAppSelector(selectBreakdown);
-  const { isComplete, reviewLabel, choicesText } =
-    useAppSelector(selectHandProgress);
+  const { rows } = useAppSelector(selectBreakdown);
+  const { breakdownWarning } = useAppSelector(selectHandProgress);
   const score = useAppSelector(selectScore) ?? NO_VALUE;
-  const tiles = [
-    {
-      testID: "breakdown-base",
-      label: "Base",
-      value: stats?.base ?? NO_VALUE,
-      className: "text-foreground",
-    },
-    {
-      testID: "breakdown-bonus",
-      label: "Bonuses",
-      value: stats?.bonus ?? NO_VALUE,
-      className: "text-success",
-    },
-    {
-      testID: "breakdown-penalty",
-      label: "Penalties",
-      value: stats?.penalty ?? NO_VALUE,
-      className:
-        stats && stats.penalty !== "0" ? "text-destructive" : "text-foreground",
-    },
-  ];
+  const scrollRef = useRef<ScrollView>(null);
+  // Where each card's row starts in the list, so a card chip can scroll to it.
+  const rowOffsets = useRef(new Map<string, number>());
+
+  const goToCard = (cardId: string) => {
+    const y = rowOffsets.current.get(cardId);
+
+    if (y !== undefined) {
+      scrollRef.current?.scrollTo({ y, animated: true });
+    }
+  };
 
   useEffect(() => {
     const subscription = BackHandler.addEventListener(
@@ -132,7 +183,7 @@ export function BreakdownScreen() {
 
   return (
     <Screen>
-      <HStack className="items-center gap-1 px-3 pt-4">
+      <HStack className="items-center gap-1 px-3 pt-4 pb-1">
         <Button
           testID="back-to-cards"
           accessibilityLabel="Back to cards"
@@ -142,85 +193,66 @@ export function BreakdownScreen() {
         >
           <ButtonIcon as={ChevronLeft} className="h-5.5 w-5.5" />
         </Button>
-        <VStack className="flex-1">
-          <Heading
-            testID="breakdown-title"
-            size="xl"
-            accessibilityRole="header"
-          >
-            Your hand: {score}
-          </Heading>
-          <Text
-            testID="breakdown-count"
-            size="sm"
-            className={
-              choicesText
-                ? "font-body-semibold text-warning-foreground"
-                : isComplete
-                  ? "text-primary"
-                  : "text-muted-foreground"
-            }
-          >
-            {reviewLabel}
-          </Text>
-        </VStack>
-      </HStack>
-
-      {/* Padding rather than gap, so that three tiles fill the row exactly. */}
-      <HStack className="mx-3 mt-3">
-        {tiles.map(({ testID, label, value, className }) => (
-          <Box key={label} className="w-1/3 p-1">
-            <Card className="gap-0.5 rounded-xl border-0 px-3 py-2.5">
-              <Text size="xs" className="text-muted-foreground">
-                {label}
-              </Text>
-              <Text
-                testID={testID}
-                className={`font-body-semibold text-xl ${className}`}
-                style={TABULAR_NUMBERS}
-              >
-                {value}
-              </Text>
-            </Card>
-          </Box>
-        ))}
+        <Heading
+          testID="breakdown-title"
+          size="xl"
+          accessibilityRole="header"
+          className="flex-1"
+        >
+          Score breakdown
+        </Heading>
       </HStack>
 
       <ScrollView
-        className="mt-2.5 flex-1"
+        ref={scrollRef}
+        className="mt-2 flex-1"
         contentContainerClassName="gap-2 px-4 pb-3"
       >
         {rows.map((row) => (
           <VStack
-            key={row.id}
+            // border-dashed sets a CSS variable, and react-native-css needs a new component when that changes.
+            key={`${row.id}-${row.blanked}`}
             testID={`breakdown-card-${row.id}`}
-            className={
-              row.choicePending
-                ? "gap-1.5 rounded-2xl border-[1.5px] border-warning bg-muted pt-1 pr-1 pb-3 pl-3.5"
-                : "gap-1.5 rounded-2xl bg-muted pt-1 pr-1 pb-3 pl-3.5"
+            onLayout={(event) =>
+              rowOffsets.current.set(row.id, event.nativeEvent.layout.y)
             }
+            className={rowClassName(row)}
           >
+            {row.blanked && <StripedFill />}
             <HStack className="items-center gap-2.5">
               <SuitDot suit={row.suit} />
-              <Text className="flex-1 font-body-semibold">
-                {row.name}
-                {row.chosenName && (
-                  <Text
-                    testID={`chosen-card-${row.id}`}
-                    className="font-body-semibold text-accent-foreground"
-                  >
-                    {` → ${chosenText(row.chosenName, row.chosenSuit)}`}
-                  </Text>
-                )}{" "}
+              <HStack className="flex-1 flex-wrap items-center gap-x-1.5">
+                <Text
+                  className={
+                    row.blanked
+                      ? "font-body-semibold text-subtle-foreground"
+                      : "font-body-semibold text-foreground"
+                  }
+                >
+                  {row.name}
+                </Text>
                 <Text size="xs" className="text-muted-foreground">
                   {SUITS[row.suit].label}
                   {row.addedByName && ` · added by ${row.addedByName}`}
                 </Text>
-              </Text>
+                {row.blanked && (
+                  <RowBadge testID={`row-badge-${row.id}`} kind="blanked" />
+                )}
+                {row.choicePending && (
+                  <RowBadge
+                    testID={`row-badge-${row.id}`}
+                    kind="choiceNeeded"
+                  />
+                )}
+              </HStack>
               <Text
                 testID={`card-total-${row.id}`}
                 size="lg"
-                className="font-body-bold text-primary"
+                className={
+                  row.blanked || row.choicePending
+                    ? "font-body-bold text-muted-foreground"
+                    : "font-body-bold text-primary"
+                }
                 style={TABULAR_NUMBERS}
               >
                 {row.figures?.total ?? NO_VALUE}
@@ -240,35 +272,48 @@ export function BreakdownScreen() {
                 <Box className="h-11 w-11" />
               )}
             </HStack>
+            <ChoseLine row={row} onGoToCard={goToCard} />
+            <CardFigures row={row} />
             {row.choicePending && (
               <Pressable
                 testID={`choice-needed-${row.id}`}
                 accessibilityRole="button"
                 onPress={() => dispatch(cardRevealRequested(row.id))}
-                className="min-h-11 justify-center pr-13.5 pl-5"
+                className="ml-5 min-h-11 flex-row items-center gap-1 self-start"
               >
                 <Text
                   size="sm"
                   className="font-body-semibold text-warning-foreground"
                 >
-                  Choice needed: choose on the cards screen ›
+                  Choose on the cards screen
                 </Text>
+                <Icon
+                  as={ChevronRight}
+                  className="h-4 w-4 text-warning-foreground"
+                />
               </Pressable>
             )}
-            <CardFigures row={row} />
           </VStack>
         ))}
       </ScrollView>
 
       <Divider />
-      <VStack className="gap-1 px-5 pt-3.5 pb-4">
+      <VStack className="gap-0.5 px-5 pt-3 pb-4">
+        {breakdownWarning && (
+          <Text
+            testID="breakdown-warning"
+            size="sm"
+            className="font-body-semibold text-warning-foreground"
+          >
+            {breakdownWarning}
+          </Text>
+        )}
         <HStack className="items-baseline justify-between">
           <Text
-            testID="breakdown-sum"
-            className="text-subtle-foreground"
-            style={TABULAR_NUMBERS}
+            size="xs"
+            className="font-body-semibold tracking-widest text-muted-foreground uppercase"
           >
-            {sum ?? NO_VALUE}
+            Total
           </Text>
           <Text
             testID="breakdown-total"
@@ -277,13 +322,6 @@ export function BreakdownScreen() {
             {score}
           </Text>
         </HStack>
-        <Text
-          testID="breakdown-blanked"
-          size="xs"
-          className="text-muted-foreground"
-        >
-          Blanked cards: {blanked}
-        </Text>
       </VStack>
     </Screen>
   );

@@ -10,10 +10,8 @@ import { HStack } from "./gluestack/hstack";
 import { Pressable } from "./gluestack/pressable";
 import { Text } from "./gluestack/text";
 import { VStack } from "./gluestack/vstack";
+import { GemPip } from "./GemPip";
 import { NO_VALUE } from "./theme";
-
-// Matches the bar's top padding, on top of the inset.
-const BOTTOM_PADDING = 10;
 
 export function ScoreBar() {
   const dispatch = useAppDispatch();
@@ -41,8 +39,8 @@ export function ScoreBar() {
     <>
       <Divider />
       <HStack
-        className="items-center gap-3 bg-muted px-4 pt-2.5"
-        style={{ paddingBottom: bottom + BOTTOM_PADDING }}
+        className="items-center gap-4 bg-muted px-4 pt-3"
+        style={{ paddingBottom: bottom }}
       >
         <VStack className="min-w-14">
           <Text
@@ -64,21 +62,21 @@ export function ScoreBar() {
           accessibilityLabel={pipsAccessibilityLabel}
           disabled={isEmpty}
           onPress={onPipsPress}
-          className="min-h-11 flex-1 justify-center gap-1.5 data-[disabled=true]:opacity-100"
+          className="min-h-11 flex-1 items-center justify-center gap-1.5 data-[disabled=true]:opacity-100"
         >
-          <HStack className="gap-1">
+          <HStack className="gap-0.5 rounded-full border border-border bg-tray px-1.5 py-1">
             {/* border-dashed sets a CSS variable, and react-native-css needs a new component when
                 that changes, so these keys and the button's make the swap explicit. */}
-            {pips.map((filled, index) => (
-              <Box
-                key={`${index}-${filled}`}
-                className={
-                  filled
-                    ? "h-3 w-3 rounded-full border border-primary bg-primary"
-                    : "h-3 w-3 rounded-full border-[1.5px] border-dashed border-border-strong"
-                }
-              />
-            ))}
+            {pips.map((filled, index) =>
+              filled ? (
+                <GemPip key={`${index}-${filled}`} />
+              ) : (
+                <Box
+                  key={`${index}-${filled}`}
+                  className="h-3.5 w-3.5 rounded-full border-[1.5px] border-dashed border-border-strong"
+                />
+              ),
+            )}
           </HStack>
           <Text
             testID="hand-count"
@@ -103,17 +101,18 @@ export function ScoreBar() {
             className="min-h-12 border-dashed data-[disabled=true]:opacity-100"
           >
             <ButtonText className="text-sm text-muted-foreground">
-              Show breakdown
+              Breakdown
             </ButtonText>
           </Button>
         ) : (
           <Button
             key="ready"
             testID="show-breakdown"
+            accessibilityLabel="Show score breakdown"
             onPress={showBreakdown}
             className="min-h-12 gap-1 pr-3 pl-4"
           >
-            <ButtonText className="text-sm">Show breakdown</ButtonText>
+            <ButtonText className="text-sm">Breakdown</ButtonText>
             <ButtonIcon as={ChevronRight} className="h-4 w-4" />
           </Button>
         )}

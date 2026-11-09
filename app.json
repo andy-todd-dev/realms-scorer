@@ -2,6 +2,7 @@
   "name": "Realms Scorer",
   "slug": "realms-scorer",
   "version": "0.1.0",
+  "userInterfaceStyle": "dark",
   "android": {
     "package": "dev.andytodd.realmsscorer"
   },
@@ -17,7 +18,8 @@
           "node_modules/@expo-google-fonts/inter/700Bold/Inter_700Bold.ttf"
         ]
       }
-    ]
+    ],
+    "./plugins/with-no-navigation-bar-scrim"
   ],
   "extra": {
     "eas": {

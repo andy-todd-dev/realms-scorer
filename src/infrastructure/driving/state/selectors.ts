@@ -134,8 +134,9 @@ export const selectHandProgress = createSelector(
             : isComplete
               ? `${countText} ✓`
               : countText,
-      reviewLabel:
-        choicesText ?? (isComplete ? `${countText} · complete` : countText),
+      // The breakdown footer's warning: a pending choice first, then an incomplete hand. A complete hand needs none.
+      breakdownWarning:
+        choicesText ?? (isComplete || count === 0 ? null : countText),
       pipsAccessibilityLabel: choicesText
         ? `${choicesText}. Go to the card`
         : `${countText}. Show breakdown`,
@@ -296,20 +297,33 @@ export const selectBreakdown = createSelector(
         );
 
         const choosesCard = choice !== null && addedBy === null;
-        const chosenName = choosesCard
-          ? nameOf(choices[id]?.cardId ?? null)
-          : null;
+        const chosenCard = choosesCard
+          ? allCards.find((card) => card.id === choices[id]?.cardId)
+          : undefined;
+        const chosenScore = handScore?.cards.find(
+          (scored) => scored.cardId === chosenCard?.id,
+        );
 
         return {
           id,
           name,
           // The suit it was scored as, which differs from its own when it took another card's.
           suit: cardScore?.suit ?? suit,
-          // The chosen card's name, for a card with a choice that has been made.
-          chosenName,
+          // The chosen card, for a card with a choice that has been made, with its suit as scored when it is in the hand. Only a card in the hand has a row of its own.
+          chosen: chosenCard
+            ? {
+                id: chosenCard.id,
+                name: chosenCard.name,
+                suit: chosenScore?.suit ?? chosenCard.suit,
+                // In the hand, or added to it by the latest score.
+                inHand:
+                  cards.some((card) => card.id === chosenCard.id) ||
+                  chosenScore !== undefined,
+              }
+            : null,
           // The suit chosen for that card, for a choice that includes one.
-          chosenSuit: chosenName === null ? null : (choices[id]?.suit ?? null),
-          choicePending: choosesCard && chosenName === null,
+          chosenSuit: chosenCard ? (choices[id]?.suit ?? null) : null,
+          choicePending: choosesCard && !chosenCard,
           // For a card taken from the discard area, the name of the card that took it. It isn't in the hand, so it can't be removed from it.
           addedByName: addedBy === null ? null : nameOf(addedBy),
           blanked: cardScore?.blanked ?? false,
@@ -322,25 +336,15 @@ export const selectBreakdown = createSelector(
           },
         };
       })
-      // Stable, so ties keep hand order. Unscored cards rank as -Infinity, and two of them give NaN, which || 0 treats as a tie.
-      .sort((a, b) => (b.points ?? -Infinity) - (a.points ?? -Infinity) || 0);
+      // Blanked cards go last. Stable, so ties keep hand order. Unscored cards rank as -Infinity, and two of them give NaN, which || 0 treats as a tie.
+      .sort(
+        (a, b) =>
+          Number(a.blanked) - Number(b.blanked) ||
+          (b.points ?? -Infinity) - (a.points ?? -Infinity) ||
+          0,
+      );
 
-    const blankedNames = rows
-      .filter(({ blanked }) => blanked)
-      .map(({ name }) => name);
-
-    return {
-      stats: handScore && {
-        base: String(handScore.base),
-        bonus: signed(handScore.bonus),
-        penalty: signed(handScore.penalty),
-      },
-      rows,
-      sum:
-        handScore &&
-        `${handScore.base} + ${handScore.bonus} ${MINUS} ${-handScore.penalty}`,
-      blanked: blankedNames.length > 0 ? blankedNames.join(", ") : "none",
-    };
+    return { rows };
   },
 );
 

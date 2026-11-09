@@ -46,6 +46,18 @@
     --warning-foreground: 248 181 150;
     --success: 157 212 154;
     --camera: 11 13 18;
+    /* The blanked breakdown row's diagonal bands */
+    --stripe: 34 40 54;
+    --stripe-alt: 22 26 35;
+    /* Card chips on the breakdown */
+    --chip: 35 42 56;
+    /* The tray behind the progress pips, and the diamond gem that fills a pip */
+    --tray: 11 14 20;
+    --gem-body: 207 227 242;
+    --gem-table: 244 250 255;
+    --gem-lines: 111 147 176;
+    --gem-glint: 255 255 255;
+    --gem-glow: 190 225 255;
 
     /* Suit colours, matching the printed cards */
     --suit-army: 0 0 0;
@@ -92,6 +104,15 @@
   --color-warning-foreground: rgb(var(--warning-foreground));
   --color-success: rgb(var(--success));
   --color-camera: rgb(var(--camera));
+  --color-stripe: rgb(var(--stripe));
+  --color-stripe-alt: rgb(var(--stripe-alt));
+  --color-chip: rgb(var(--chip));
+  --color-tray: rgb(var(--tray));
+  --color-gem-body: rgb(var(--gem-body));
+  --color-gem-table: rgb(var(--gem-table));
+  --color-gem-lines: rgb(var(--gem-lines));
+  --color-gem-glint: rgb(var(--gem-glint));
+  --color-gem-glow: rgb(var(--gem-glow));
 
   --color-suit-army: rgb(var(--suit-army));
   --color-suit-artifact: rgb(var(--suit-artifact));

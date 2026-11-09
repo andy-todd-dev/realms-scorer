@@ -10,13 +10,14 @@ These notes cover the intent behind the mockups in this folder: the things that 
 
 ## Screens and flow
 
-| File                 | Screen                 | Purpose                                                                                                                   |
-| -------------------- | ---------------------- | ------------------------------------------------------------------------------------------------------------------------- |
-| `Main.dc.html`       | Home: pick your hand   | The app opens here. Tap grid of every card, the hand so far, and a live score                                             |
-| `ChooseCard.dc.html` | Choosing a card        | The home screen with the choice sheet open for Shapeshifter (it imports `Main.dc.html`; not a separate screen in the app) |
-| `Scan.dc.html`       | Scan your hand         | Camera view; one photo captures the whole hand                                                                            |
-| `ScanReview.dc.html` | Check your cards       | Confirm uncertain matches from the scan, then return home with the cards selected                                         |
-| `Breakdown.dc.html`  | Hand & score breakdown | Every card in the hand and how the total was calculated; also where the hand is reviewed and cards removed                |
+| File                        | Screen                 | Purpose                                                                                                                                                     |
+| --------------------------- | ---------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `Main.dc.html`              | Home: pick your hand   | The app opens here. Tap grid of every card, the hand so far, and a live score                                                                               |
+| `ChooseCard.dc.html`        | Choosing a card        | The home screen with the choice sheet open for Shapeshifter (it imports `Main.dc.html`; not a separate screen in the app)                                   |
+| `Scan.dc.html`              | Scan your hand         | Camera view; one photo captures the whole hand                                                                                                              |
+| `ScanReview.dc.html`        | Check your cards       | Confirm uncertain matches from the scan, then return home with the cards selected                                                                           |
+| `BreakdownScrolled.dc.html` | Breakdown, scrolled    | The breakdown with its list scrolled to the end, showing Island's choice and the blanked Smoke card (it imports `Breakdown.dc.html`; not a separate screen) |
+| `Breakdown.dc.html`         | Hand & score breakdown | Every card in the hand and how the total was calculated; also where the hand is reviewed and cards removed                                                  |
 
 Flows:
 
@@ -42,29 +43,27 @@ Entering a hand card by card was too slow, so the design is built around the fac
 - **Suit headings are just the suit dot and name.** A per-suit count of selected cards was tried and removed as noise: the gold selected tiles already show where the selections are.
 - **Bottom bar is a single row with a fixed height** (about 56pt plus the safe-area inset), whatever the hand size. There is deliberately no list of card names here: an earlier version had a row of name chips, which looked cluttered and duplicated the gold selected tiles. Spacing: `pt-3` above, safe-area inset below, `px-4` sides, `gap-4` between the three groups, which are vertically centred. The score sits left, the button right, and the pips group (pips plus count line) is centred in the space between them, so the bar reads as balanced rather than left-heavy. The bar stays at the bottom rather than moving into the header, because that is where one-handed thumbs reach easily and it keeps the score large. Left to right it holds:
   - the **score** (gold, `text-3xl`) under a small "SCORE" label;
-  - **Progress pips:** seven small circles (more if the hand legitimately grows to 8). Each selected card fills one pip in the gold accent; empty slots are dashed outlines. They are a count, nothing more, so they use **one colour only**: suit colours were tried and rejected, because coloured dots next to a suit-coloured grid read as if they meant something specific (which card, which suit) and could mislead. Beneath them, "N of 7 cards", which turns gold and reads "7 cards ✓" once the hand is full. Tapping the pips opens the breakdown, same as the button.
+  - **Progress pips:** seven small circles (more if the hand legitimately grows to 8). Each selected card fills one pip with a cut diamond in a gold setting, with a soft glow; empty slots are dashed outlines. The pips sit in a dark, fully rounded tray. They are a count, nothing more, so they use **one colour only**: suit colours were tried and rejected, because coloured dots next to a suit-coloured grid read as if they meant something specific (which card, which suit) and could mislead. Beneath them, "N of 7 cards", which turns gold and reads "7 cards ✓" once the hand is full. Tapping the pips opens the breakdown, same as the button.
   - a compact **"Breakdown ›"** button (48pt tall, 14pt text) on the right, with the accessibility label "Show score breakdown". The label is deliberately one word: the chevron already says "go to", and the shorter label keeps the one-row bar from overflowing on narrow phones (360pt wide). With an empty hand the count reads "Tap cards or scan" and the button is disabled. Otherwise it is always enabled, even while a choice is pending (see "Cards that need a choice").
 
 ## Behaviour to implement
 
 ### Hand size
 
-- The hand holds at most 7 cards in the base game; the size comes from the variant. Once it is full, the tiles of cards not in it are disabled (dimmed), and the count line reads "7 cards ✓". Removing a card enables them again.
-- The Necromancer's eighth card doesn't count towards the 7: it is a choice, not a selected tile (see "Cards that need a choice").
+- The target is 7, but the picker must not block an 8th card: the Necromancer lets a player end with 8. Adjust the counter wording when a hand is legitimately larger.
 - A card can be in the hand only once.
 
 ### Cards that need a choice
 
 Some cards only score once the player picks another card. **The player always makes the choice; the app never picks one for them, not even as a default.**
 
-| Card            | Chooses                          | From                                                                     |
-| --------------- | -------------------------------- | ------------------------------------------------------------------------ |
-| Shapeshifter    | A card to copy (name and suit)   | Any Artifact, Leader, Wizard, Weapon or Beast in the game                |
-| Mirage          | A card to copy (name and suit)   | Any Army, Land, Weather, Flood or Flame in the game                      |
-| Doppelgänger    | A card to duplicate              | Another card in the hand                                                 |
-| Island          | A card whose penalty is cleared  | A Flood or Flame card in the hand                                        |
-| Necromancer     | An eighth card for the hand      | An Army, Leader, Wizard or Beast from the discard area (not in the hand) |
-| Book of Changes | A card, then the suit it becomes | Another card in the hand, then any suit except Wild and its current one  |
+| Card            | Chooses                          | From                                                                    |
+| --------------- | -------------------------------- | ----------------------------------------------------------------------- |
+| Shapeshifter    | A card to copy (name and suit)   | Any Artifact, Leader, Wizard, Weapon or Beast in the game               |
+| Mirage          | A card to copy (name and suit)   | Any Army, Land, Weather, Flood or Flame in the game                     |
+| Doppelgänger    | A card to duplicate              | Another card in the hand                                                |
+| Island          | A card whose penalty is cleared  | A Flood or Flame card in the hand                                       |
+| Book of Changes | A card, then the suit it becomes | Another card in the hand, then any suit except Wild and its current one |
 
 Check the exact eligibility rules against the rulebook when implementing. Expansions add more cards like these, so model this as a general "choose a card" effect in the card definitions, not as special cases.
 
@@ -84,7 +83,7 @@ Check the exact eligibility rules against the rulebook when implementing. Expans
 - Tapping the count line (or pips) scrolls the grid to the first card that needs a choice.
 - **The "Breakdown" button is always available** whenever the hand has cards, including while choices are pending. On the breakdown:
   - a made choice is displayed on the card's row ("Shapeshifter → as Dragon (Beast)");
-  - a pending choice card is listed with its row marked in orange ("Choice needed: choose on the cards screen"), scoring as if it had no effect yet, and the header's count line reads "1 choice needed" in orange as on the home bar.
+  - a pending choice card is listed with its row marked in orange (see "Breakdown row states"), scoring as if it had no effect yet, and the footer shows "1 choice needed" in orange above the total.
   - Choices are made and changed on the grid only, so there is one place to edit them. The orange note on the breakdown row can link back to the grid, scrolled to that card.
 
 **Keeping choices valid:**
@@ -93,7 +92,7 @@ Check the exact eligibility rules against the rulebook when implementing. Expans
 - Some choices affect others: Book of Changes alters a suit, which can change what Island may target. Apply choices in the order the rulebook sets out; if an earlier choice invalidates a later one, the later one resets to pending.
 - Scanned hands arrive on the grid with any choice cards pending, flagged the same way.
 - "Clear" removes all choices with the hand.
-- **Necromancer** chooses its eighth card like any other choice card, from the discard area: any Army, Leader, Wizard or Beast not in the hand, as the app can't see the real discard area. The sheet groups the options by suit, sorted like the grid. The chosen card joins the hand for scoring only: it isn't a selected tile, doesn't fill a pip, and is listed on the breakdown as "added by Necromancer" with no remove button. If the player later selects that card on the grid, the choice goes back to pending.
+- **Necromancer** needs nothing extra: choosing the card from the discard is done by selecting the 8th card on the grid. The pips show 8 slots when Necromancer is in the hand.
 
 ### Card picker order
 
@@ -111,14 +110,37 @@ Check the exact eligibility rules against the rulebook when implementing. Expans
 
 ### Scoring and the breakdown
 
-- The live score on the home screen and the breakdown must always agree: the breakdown splits the same total into **Base**, **Bonuses** and **Penalties**. Recalculate on every change to the hand.
+- The live score on the home screen and the breakdown total must always agree. Recalculate on every change to the hand.
+- **Layout: one total, shown once.** The header is just the back button and the title **"Score breakdown"**. The total appears only in the fixed footer: a small "TOTAL" label and the large gold number (`font-heading text-4xl`). There is deliberately no base / bonuses / penalties summary and no list of blanked cards: an earlier version had both (plus the total repeated in the header), and they only duplicated what the rows already show. Players check the maths card by card, and the row totals add up to the footer total.
+- **The footer only adds a line when something needs attention**, in orange above the total: "5 of 7 cards" when the hand is incomplete (so a partial total isn't mistaken for a final score) or "1 choice needed" when a choice is pending (which takes priority). A complete hand shows no count at all.
 - The breakdown lists each card with its base strength, then each bonus or penalty that applied **and the reason in plain words, naming the other cards involved** (e.g. "+10 × 2 Lands (Bell Tower, Mountain)"). The aim is that a player can check the maths against the physical cards.
-- If a card has a bonus that didn't trigger, show a short note saying what was missing (e.g. "Bonus needs Smoke and Wildfire, not in hand"). This helps players learn the cards.
+- **Only show effects that actually applied.** A bonus or penalty that didn't trigger gets no line at all: no "Bonus needs Lands" style notes explaining why something didn't take effect. They were tried and removed as clutter; a card with no effects simply shows its base strength.
 - **The breakdown is also the hand review.** It is the only place the whole hand is listed by name, so:
-  - the header shows the total and the card count ("5 of 7 cards", or "7 cards · complete" in gold), so an incomplete hand never looks like a final score;
   - each row has a remove button (accessibility label "Remove Unicorn from hand"); removing re-runs the scoring and updates the screen in place. Swapping a card for another is done back on the home grid;
-  - every card in the hand appears, including **blanked cards**, which must be shown clearly as scoring 0 (a blanked card scores nothing and its text doesn't apply). The footer also lists them.
-- Order cards by contribution, highest first. If checking the hand by suit proves awkward, add a "Points / Suit" sort switch later.
+  - every card in the hand appears, including **blanked cards**, which must be shown clearly as scoring 0 (a blanked card scores nothing and its text doesn't apply).
+- Order cards by contribution, highest first, with blanked cards last. If checking the hand by suit proves awkward, add a "Points / Suit" sort switch later.
+
+#### Breakdown row states
+
+Every card row has a header (suit dot, name, suit, optional badge, the card's total, remove button), a "Base strength" line, then one line per effect. The mockup's sample hand shows each state (toggle "showPendingChoice" in Tweaks for the pending one).
+
+| State                                                             | How it looks                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
+| ----------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Normal**                                                        | `muted` background. Total in gold.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 |
+| **Bonus line**                                                    | Explanation in `subtle-foreground`, naming the cards involved ("+8 × 2 (Rangers, Enchantress)"); value in `success` with a plus sign.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              |
+| **Penalty line**                                                  | Same layout; value in `destructive` with a minus sign.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             |
+| **No effects** (e.g. Rangers with no Lands)                       | Just the header and "Base strength". No note about effects that didn't apply.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      |
+| **Blanked card**                                                  | Row has a **diagonal-stripe fill** (alternating dark greys, about 6pt bands at −45°, close enough in lightness that all text keeps full contrast) and a dashed `border-strong` outline, so it reads as void at a glance. In the app the stripes are a rotated square of `bg-stripe` / `bg-stripe-alt` bands behind the row (`StripedFill.tsx`), which keeps the colours as tokens. A grey outlined **BLANKED** badge after the name. Base strength struck through. A line in full-strength text giving the reason ("Blanked: needs at least one Flame card in your hand." or "Blanked by Great Flood."). Total shows 0 in muted grey. Listed last. Other cards' rows don't mention that a blanked card was ignored: the blanked row itself is enough, and extra notes are clutter. |
+| **Card that made a choice** (e.g. Island)                         | The **first line of the row, above base strength**: **"Chose"** then a **card chip** for the chosen card (suit dot + name in a small pill with a gold `primary` border): "Chose **[● Swamp]**". Nothing else on the line: the chosen card's own row says what the choice did, so repeating it here is noise. The chip looks like the cards everywhere else in the app, so the choice reads at a glance. No value of its own. Other choice cards use the same form: "Chose [● Dragon]" (Shapeshifter, Mirage), "Chose [● Unicorn]" (Doppelgänger), "Chose [● Bell Tower] → Wizard" (Book of Changes).                                                                                                                                                                               |
+| **Card affected by a choice** (e.g. Swamp)                        | The cancelled penalty stays visible but **struck through** in muted grey ("−3 × 1 Army (Rangers)"), followed by a line with a card chip for the card responsible (grey `border-strong` border): **[● Island]** "cleared this penalty". A card changed by Book of Changes gets "[● Book of Changes] changed its suit to Wizard".                                                                                                                                                                                                                                                                                                                                                                                                                                                    |
+| **Choice still pending**                                          | `warning-muted` background, `warning` border, orange **CHOICE NEEDED** badge, total 0 in grey, a line explaining it scores nothing until chosen, and a "Choose on the cards screen ›" link back to the grid (scrolled to the card). The footer shows "1 choice needed" in orange.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  |
+| **Penalty applied** (e.g. Doppelgänger copying Swamp)             | A penalty line in `subtle-foreground` naming the cards involved, value in `destructive` with a minus sign, and included in the row total.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          |
+| **Card that copies another** (Doppelgänger, Shapeshifter, Mirage) | First line "Chose **[● Swamp]**" as for any choice. The header shows the **copied suit** (dot colour and text: "Flood · copied from Swamp"), the base line is labelled as copied ("Base strength (Swamp's)"), and any copied penalty is labelled with its source ("Swamp's penalty: …"). Doppelgänger copies name, base strength, suit and penalty but not the bonus; Shapeshifter and Mirage copy name and suit only. Check these rules against the rulebook.                                                                                                                                                                                                                                                                                                                     |
+
+Showing both ends of a choice (the "Chose" chip on the chooser and the struck-through, attributed line on the target) lets a player check the maths from either card.
+
+**Card chips link the two ends of a choice:** tapping a chip scrolls the breakdown to that card's row. In the app give each chip a full accessibility label ("Island cleared the penalty on Swamp. Go to Swamp") and enough `hitSlop` to make a 44pt touch target, since the visible pill is smaller.
+
 - The scoring engine should produce this breakdown as structured data (per card: base, a list of modifiers with amount and reason, blanked flag), not just a total, so the UI can render it directly.
 
 ## Visual decisions
@@ -150,7 +172,7 @@ Values are space-separated RGB channels, set per scheme and exposed as utilities
 | ---------------------- | --------- | ------------- | ------------------------------------------------------------ |
 | `background`           | `#141821` | `20 24 33`    | Screen background                                            |
 | `foreground`           | `#EDE9E0` | `237 233 224` | Primary text                                                 |
-| `card`                 | `#1E2430` | `30 36 48`    | Stat tiles on the breakdown                                  |
+| `card`                 | `#1E2430` | `30 36 48`    | Raised surfaces, e.g. the choice sheet                       |
 | `card-foreground`      | `#EDE9E0` | `237 233 224` | Text on cards                                                |
 | `popover`              | `#1E2430` | `30 36 48`    | Sheets / menus, if added                                     |
 | `popover-foreground`   | `#EDE9E0` | `237 233 224` | Text on popovers                                             |
@@ -169,29 +191,33 @@ Values are space-separated RGB channels, set per scheme and exposed as utilities
 
 **App-specific tokens** (add alongside the semantic ones, same format):
 
-| Token                | Hex       | RGB           | Used for                                             |
-| -------------------- | --------- | ------------- | ---------------------------------------------------- |
-| `primary-pressed`    | `#F0CD82` | `240 205 130` | Pressed / hover state of primary                     |
-| `subtle-foreground`  | `#C9CED8` | `201 206 216` | Secondary text: explanations, sub-totals             |
-| `icon`               | `#8D95A3` | `141 149 163` | Decorative icons only (too low-contrast for text)    |
-| `border-strong`      | `#4A5262` | `74 82 98`    | Unselected radio rings, empty progress pips (dashed) |
-| `warning`            | `#F08A5D` | `240 138 93`  | Warning border, uncertain scan outlines              |
-| `warning-muted`      | `#2A1F1A` | `42 31 26`    | "Not sure about this card" panel background          |
-| `warning-foreground` | `#F8B596` | `248 181 150` | Warning text                                         |
-| `success`            | `#9DD49A` | `157 212 154` | Bonuses, matched-card ticks                          |
-| `camera`             | `#0B0D12` | `11 13 18`    | Camera screen background                             |
-| `suit-army`          | `#000000` | `0 0 0`       | Black                                                |
-| `suit-artifact`      | `#E67E22` | `230 126 34`  | Orange                                               |
-| `suit-beast`         | `#1E7B3A` | `30 123 58`   | Green                                                |
-| `suit-flame`         | `#D93636` | `217 54 54`   | Red                                                  |
-| `suit-flood`         | `#1F4FA8` | `31 79 168`   | Dark blue                                            |
-| `suit-land`          | `#8B5A2B` | `139 90 43`   | Brown                                                |
-| `suit-leader`        | `#8E44C9` | `142 68 201`  | Purple                                               |
-| `suit-weapon`        | `#B4B8BE` | `180 184 190` | Grey                                                 |
-| `suit-weather`       | `#7CC4EE` | `124 196 238` | Light blue                                           |
-| `suit-wild`          | `#E6E8EA` | `230 232 234` | White                                                |
-| `suit-wizard`        | `#EE7FB8` | `238 127 184` | Pink                                                 |
-| `suit-dot-ring`      | `#8D95A3` | `141 149 163` | 1px ring round every suit dot                        |
+| Token                                                         | Hex                                                   | RGB                                                                       | Used for                                             |
+| ------------------------------------------------------------- | ----------------------------------------------------- | ------------------------------------------------------------------------- | ---------------------------------------------------- |
+| `primary-pressed`                                             | `#F0CD82`                                             | `240 205 130`                                                             | Pressed / hover state of primary                     |
+| `subtle-foreground`                                           | `#C9CED8`                                             | `201 206 216`                                                             | Secondary text: explanations, sub-totals             |
+| `icon`                                                        | `#8D95A3`                                             | `141 149 163`                                                             | Decorative icons only (too low-contrast for text)    |
+| `border-strong`                                               | `#4A5262`                                             | `74 82 98`                                                                | Unselected radio rings, empty progress pips (dashed) |
+| `warning`                                                     | `#F08A5D`                                             | `240 138 93`                                                              | Warning border, uncertain scan outlines              |
+| `warning-muted`                                               | `#2A1F1A`                                             | `42 31 26`                                                                | "Not sure about this card" panel background          |
+| `warning-foreground`                                          | `#F8B596`                                             | `248 181 150`                                                             | Warning text                                         |
+| `success`                                                     | `#9DD49A`                                             | `157 212 154`                                                             | Bonuses, matched-card ticks                          |
+| `camera`                                                      | `#0B0D12`                                             | `11 13 18`                                                                | Camera screen background                             |
+| `stripe` / `stripe-alt`                                       | `#222836` / `#161A23`                                 | `34 40 54` / `22 26 35`                                                   | Diagonal bands on a blanked breakdown row            |
+| `chip`                                                        | `#232A38`                                             | `35 42 56`                                                                | Card-chip background on the breakdown                |
+| `tray`                                                        | `#0B0E14`                                             | `11 14 20`                                                                | Tray behind the progress pips                        |
+| `gem-body`, `gem-table`, `gem-lines`, `gem-glint`, `gem-glow` | `#CFE3F2`, `#F4FAFF`, `#6F93B0`, `#FFFFFF`, `#BEE1FF` | `207 227 242`, `244 250 255`, `111 147 176`, `255 255 255`, `190 225 255` | The diamond in a filled pip; the glow is used at 75% |
+| `suit-army`                                                   | `#000000`                                             | `0 0 0`                                                                   | Black                                                |
+| `suit-artifact`                                               | `#E67E22`                                             | `230 126 34`                                                              | Orange                                               |
+| `suit-beast`                                                  | `#1E7B3A`                                             | `30 123 58`                                                               | Green                                                |
+| `suit-flame`                                                  | `#D93636`                                             | `217 54 54`                                                               | Red                                                  |
+| `suit-flood`                                                  | `#1F4FA8`                                             | `31 79 168`                                                               | Dark blue                                            |
+| `suit-land`                                                   | `#8B5A2B`                                             | `139 90 43`                                                               | Brown                                                |
+| `suit-leader`                                                 | `#8E44C9`                                             | `142 68 201`                                                              | Purple                                               |
+| `suit-weapon`                                                 | `#B4B8BE`                                             | `180 184 190`                                                             | Grey                                                 |
+| `suit-weather`                                                | `#7CC4EE`                                             | `124 196 238`                                                             | Light blue                                           |
+| `suit-wild`                                                   | `#E6E8EA`                                             | `230 232 234`                                                             | White                                                |
+| `suit-wizard`                                                 | `#EE7FB8`                                             | `238 127 184`                                                             | Pink                                                 |
+| `suit-dot-ring`                                               | `#8D95A3`                                             | `141 149 163`                                                             | 1px ring round every suit dot                        |
 
 Sketch of the additions in `global.css` (match the exact variable naming the CLI generated for the semantic tokens):
 
@@ -236,7 +262,7 @@ Keep a `SUIT_COLOR_CLASS` map in code (`{ army: 'bg-suit-army', … }`) rather t
 
 - **Fonts:** `heading` = Marcellus (regular only, so never bold a heading), `body` = Inter. In React Native each Inter weight is its own font family (`Inter_400Regular`, `Inter_500Medium`, `Inter_600SemiBold`, `Inter_700Bold` from `@expo-google-fonts/inter`), so `font-medium` alone won't switch weight. The `--font-*` entries in `@theme inline` above create `font-heading`, `font-body`, `font-body-medium`, `font-body-semibold` and `font-body-bold`; use those instead of `font-*` weight classes. The family names must match the ones `expo-font` registers (already listed in `theme.ts`).
 - **Spacing:** 4px grid. Screen side padding `px-4`, gaps between list rows `gap-1`, between tiles `gap-1.5`, between sections `gap-3.5` / `gap-4`.
-- **Heights:** full-width primary buttons and hand rows `h-14` (56), the home "Breakdown" button, tiles and radio rows `min-h-12` (48), icon buttons `h-11 w-11` (44), progress pips `h-3 w-3` (12, filled `bg-primary`) with `gap-1`, shutter `h-20 w-20` (80).
+- **Heights:** full-width primary buttons and hand rows `h-14` (56), the home "Breakdown" button, tiles and radio rows `min-h-12` (48), icon buttons `h-11 w-11` (44), progress pips `h-3.5 w-3.5` (14, filled with the gem drawn in `GemPip.tsx`) with `gap-0.5` in a `bg-tray` tray, shutter `h-20 w-20` (80).
 - **Radii:** tiles `rounded-lg` (8), list rows and secondary buttons `rounded-xl` (12), cards, primary buttons and the viewfinder `rounded-2xl` (16), pills, pips and dots `rounded-full`.
 
 ### Component mapping
@@ -253,7 +279,7 @@ Keep a `SUIT_COLOR_CLASS` map in code (`{ army: 'bg-suit-army', … }`) rather t
 | Progress pips                                  | `Pressable` (opens the breakdown) wrapping an `HStack` of `Box` circles; give the `Pressable` an `accessibilityLabel` such as "5 of 7 cards. Show breakdown" |
 | Breakdown row remove                           | `Button`, link / ghost style, icon only, `accessibilityLabel="Remove <card> from hand"`                                                                      |
 | Back, close, flash, remove-card                | `Button`, link / ghost style with `ButtonIcon` only, plus `accessibilityLabel`                                                                               |
-| Stat tiles, breakdown rows, "not sure" panel   | `Card`                                                                                                                                                       |
+| Breakdown rows, "not sure" panel               | `Card`                                                                                                                                                       |
 | Grid tiles                                     | `Pressable` with `accessibilityRole="checkbox"` and `accessibilityState={{ checked }}`                                                                       |
 | Scan candidates                                | `RadioGroup` → `Radio`, `RadioIndicator`, `RadioIcon`, `RadioLabel`                                                                                          |
 | Dividers above bottom bars                     | `Divider`                                                                                                                                                    |
@@ -266,7 +292,7 @@ Icons used, by lucide name: `ChevronLeft` (back), `ChevronRight` (show breakdown
 
 ### Translating the mockup CSS
 
-- **CSS grid doesn't exist in React Native,** even with NativeWind v5. The tile grid and stat tiles use `display: grid` in the HTML; build them as `flex-row flex-wrap` with each tile `basis-[31%]` (or measure widths). gluestack's `Grid`/`GridItem` is another option but was still marked alpha.
+- **CSS grid doesn't exist in React Native,** even with NativeWind v5. The tile grid uses `display: grid` in the HTML; build them as `flex-row flex-wrap` with each tile `basis-[31%]` (or measure widths). gluestack's `Grid`/`GridItem` is another option but was still marked alpha.
 - **Scrolling:** the tile list and breakdown list are `ScrollView`s (or `FlatList` / `SectionList` for the suit-grouped tiles). The suit filter strip, if it comes back, would be a horizontal `ScrollView`.
 - **Tabular numbers:** points columns use tabular figures; use the `tabular-nums` class (maps to `fontVariant`).
 - **Safe areas:** the mockups use fixed top and bottom padding. In the app, use `SafeAreaView` (or `useSafeAreaInsets`) instead, so bars clear the notch and home indicator.
