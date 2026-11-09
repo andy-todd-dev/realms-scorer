@@ -1,0 +1,620 @@
+{
+  "photo": "hand3.jpg",
+  "cards": [
+    "dragon",
+    "enchantress",
+    "warship",
+    "warhorse",
+    "whirlwind",
+    "lightning"
+  ],
+  "width": 4080,
+  "height": 3072,
+  "blocks": [
+    {
+      "frame": {
+        "top": 1500,
+        "right": 663,
+        "left": 333,
+        "bottom": 1547
+      },
+      "lines": [
+        {
+          "text": "+30 with Rainstorm.",
+          "frame": {
+            "top": 1500,
+            "right": 663,
+            "left": 333,
+            "bottom": 1547
+          }
+        }
+      ]
+    },
+    {
+      "frame": {
+        "top": 1553,
+        "right": 570,
+        "left": 435,
+        "bottom": 1588
+      },
+      "lines": [
+        {
+          "text": "BONUS:",
+          "frame": {
+            "top": 1553,
+            "right": 570,
+            "left": 435,
+            "bottom": 1588
+          }
+        }
+      ]
+    },
+    {
+      "frame": {
+        "top": 1973,
+        "right": 778,
+        "left": 351,
+        "bottom": 2069
+      },
+      "lines": [
+        {
+          "text": "1 Ligbning",
+          "frame": {
+            "top": 1973,
+            "right": 778,
+            "left": 351,
+            "bottom": 2069
+          }
+        }
+      ]
+    },
+    {
+      "frame": {
+        "top": 2903,
+        "right": 443,
+        "left": 319,
+        "bottom": 3069
+      },
+      "lines": [
+        {
+          "text": "ONON",
+          "frame": {
+            "top": 2903,
+            "right": 443,
+            "left": 319,
+            "bottom": 3069
+          }
+        }
+      ]
+    },
+    {
+      "frame": {
+        "top": 2999,
+        "right": 587,
+        "left": 475,
+        "bottom": 3051
+      },
+      "lines": [
+        {
+          "text": "S",
+          "frame": {
+            "top": 2999,
+            "right": 587,
+            "left": 475,
+            "bottom": 3051
+          }
+        }
+      ]
+    },
+    {
+      "frame": {
+        "top": 1727,
+        "right": 840,
+        "left": 792,
+        "bottom": 1878
+      },
+      "lines": [
+        {
+          "text": "Flame",
+          "frame": {
+            "top": 1727,
+            "right": 840,
+            "left": 792,
+            "bottom": 1878
+          }
+        }
+      ]
+    },
+    {
+      "frame": {
+        "top": 1402,
+        "right": 1379,
+        "left": 978,
+        "bottom": 1592
+      },
+      "lines": [
+        {
+          "text": "Great Flood.",
+          "frame": {
+            "top": 1421,
+            "right": 1260,
+            "left": 1070,
+            "bottom": 1495
+          }
+        },
+        {
+          "text": "either Blizzard or",
+          "frame": {
+            "top": 1457,
+            "right": 1310,
+            "left": 1042,
+            "bottom": 1536
+          }
+        },
+        {
+          "text": "+40 with Rainstorm and",
+          "frame": {
+            "top": 1487,
+            "right": 1379,
+            "left": 994,
+            "bottom": 1589
+          }
+        }
+      ]
+    },
+    {
+      "frame": {
+        "top": 1554,
+        "right": 1262,
+        "left": 1126,
+        "bottom": 1613
+      },
+      "lines": [
+        {
+          "text": "BONUS:",
+          "frame": {
+            "top": 1554,
+            "right": 1262,
+            "left": 1126,
+            "bottom": 1613
+          }
+        }
+      ]
+    },
+    {
+      "frame": {
+        "top": 1984,
+        "right": 1370,
+        "left": 1090,
+        "bottom": 2095
+      },
+      "lines": [
+        {
+          "text": "Whirlwind",
+          "frame": {
+            "top": 1984,
+            "right": 1370,
+            "left": 1090,
+            "bottom": 2095
+          }
+        }
+      ]
+    },
+    {
+      "frame": {
+        "top": 1661,
+        "right": 1561,
+        "left": 1482,
+        "bottom": 1884
+      },
+      "lines": [
+        {
+          "text": "Weather",
+          "frame": {
+            "top": 1661,
+            "right": 1561,
+            "left": 1482,
+            "bottom": 1884
+          }
+        }
+      ]
+    },
+    {
+      "frame": {
+        "top": 1965,
+        "right": 1528,
+        "left": 1483,
+        "bottom": 2017
+      },
+      "lines": [
+        {
+          "text": "13",
+          "frame": {
+            "top": 1965,
+            "right": 1528,
+            "left": 1483,
+            "bottom": 2017
+          }
+        }
+      ]
+    },
+    {
+      "frame": {
+        "top": 1481,
+        "right": 2008,
+        "left": 1650,
+        "bottom": 1571
+      },
+      "lines": [
+        {
+          "text": "Wzard.",
+          "frame": {
+            "top": 1488,
+            "right": 1875,
+            "left": 1779,
+            "bottom": 1525
+          }
+        },
+        {
+          "text": "+14 with any Leader or",
+          "frame": {
+            "top": 1518,
+            "right": 2008,
+            "left": 1652,
+            "bottom": 1571
+          }
+        }
+      ]
+    },
+    {
+      "frame": {
+        "top": 1571,
+        "right": 1897,
+        "left": 1777,
+        "bottom": 1606
+      },
+      "lines": [
+        {
+          "text": "BONUS:",
+          "frame": {
+            "top": 1571,
+            "right": 1897,
+            "left": 1777,
+            "bottom": 1606
+          }
+        }
+      ]
+    },
+    {
+      "frame": {
+        "top": 2004,
+        "right": 1916,
+        "left": 1678,
+        "bottom": 2071
+      },
+      "lines": [
+        {
+          "text": "Warborse",
+          "frame": {
+            "top": 2004,
+            "right": 1916,
+            "left": 1678,
+            "bottom": 2071
+          }
+        }
+      ]
+    },
+    {
+      "frame": {
+        "top": 1322,
+        "right": 2650,
+        "left": 2245,
+        "bottom": 1426
+      },
+      "lines": [
+        {
+          "text": "all Penalties of all Floods.",
+          "frame": {
+            "top": 1323,
+            "right": 2633,
+            "left": 2280,
+            "bottom": 1387
+          }
+        },
+        {
+          "text": "CLEARS the word Army trom",
+          "frame": {
+            "top": 1365,
+            "right": 2650,
+            "left": 2248,
+            "bottom": 1420
+          }
+        }
+      ]
+    },
+    {
+      "frame": {
+        "top": 1409,
+        "right": 2512,
+        "left": 2394,
+        "bottom": 1450
+      },
+      "lines": [
+        {
+          "text": "BONUS:",
+          "frame": {
+            "top": 1409,
+            "right": 2512,
+            "left": 2394,
+            "bottom": 1450
+          }
+        }
+      ]
+    },
+    {
+      "frame": {
+        "top": 1446,
+        "right": 2669,
+        "left": 2261,
+        "bottom": 1560
+      },
+      "lines": [
+        {
+          "text": "one Flood.",
+          "frame": {
+            "top": 1460,
+            "right": 2536,
+            "left": 2392,
+            "bottom": 1510
+          }
+        },
+        {
+          "text": "BLANKED unless with at least",
+          "frame": {
+            "top": 1490,
+            "right": 2668,
+            "left": 2265,
+            "bottom": 1547
+          }
+        }
+      ]
+    },
+    {
+      "frame": {
+        "top": 1539,
+        "right": 2530,
+        "left": 2397,
+        "bottom": 1577
+      },
+      "lines": [
+        {
+          "text": "PENALTY:",
+          "frame": {
+            "top": 1539,
+            "right": 2530,
+            "left": 2397,
+            "bottom": 1577
+          }
+        }
+      ]
+    },
+    {
+      "frame": {
+        "top": 1966,
+        "right": 2524,
+        "left": 2335,
+        "bottom": 2031
+      },
+      "lines": [
+        {
+          "text": "Warship",
+          "frame": {
+            "top": 1966,
+            "right": 2524,
+            "left": 2335,
+            "bottom": 2031
+          }
+        }
+      ]
+    },
+    {
+      "frame": {
+        "top": 1953,
+        "right": 2723,
+        "left": 2680,
+        "bottom": 2013
+      },
+      "lines": [
+        {
+          "text": "23",
+          "frame": {
+            "top": 1953,
+            "right": 2723,
+            "left": 2680,
+            "bottom": 2013
+          }
+        }
+      ]
+    },
+    {
+      "frame": {
+        "top": 1672,
+        "right": 2765,
+        "left": 2716,
+        "bottom": 1877
+      },
+      "lines": [
+        {
+          "text": "Weapon",
+          "frame": {
+            "top": 1672,
+            "right": 2765,
+            "left": 2716,
+            "bottom": 1877
+          }
+        }
+      ]
+    },
+    {
+      "frame": {
+        "top": 1346,
+        "right": 3124,
+        "left": 3031,
+        "bottom": 1389
+      },
+      "lines": [
+        {
+          "text": "Flame.",
+          "frame": {
+            "top": 1346,
+            "right": 3124,
+            "left": 3031,
+            "bottom": 1389
+          }
+        }
+      ]
+    },
+    {
+      "frame": {
+        "top": 1369,
+        "right": 3231,
+        "left": 2930,
+        "bottom": 1453
+      },
+      "lines": [
+        {
+          "text": "Weather, Flood, and",
+          "frame": {
+            "top": 1369,
+            "right": 3231,
+            "left": 2930,
+            "bottom": 1453
+          }
+        }
+      ]
+    },
+    {
+      "frame": {
+        "top": 1415,
+        "right": 3226,
+        "left": 2964,
+        "bottom": 1489
+      },
+      "lines": [
+        {
+          "text": "+5 for each Land,",
+          "frame": {
+            "top": 1415,
+            "right": 3226,
+            "left": 2964,
+            "bottom": 1489
+          }
+        }
+      ]
+    },
+    {
+      "frame": {
+        "top": 1463,
+        "right": 3160,
+        "left": 3034,
+        "bottom": 1522
+      },
+      "lines": [
+        {
+          "text": "BONUS:",
+          "frame": {
+            "top": 1463,
+            "right": 3160,
+            "left": 3034,
+            "bottom": 1522
+          }
+        }
+      ]
+    },
+    {
+      "frame": {
+        "top": 1866,
+        "right": 3359,
+        "left": 2934,
+        "bottom": 1982
+      },
+      "lines": [
+        {
+          "text": "5 EnchanresS",
+          "frame": {
+            "top": 1866,
+            "right": 3359,
+            "left": 2934,
+            "bottom": 1982
+          }
+        }
+      ]
+    },
+    {
+      "frame": {
+        "top": 1248,
+        "right": 3828,
+        "left": 3495,
+        "bottom": 1419
+      },
+      "lines": [
+        {
+          "text": "one Wizard.",
+          "frame": {
+            "top": 1268,
+            "right": 3752,
+            "left": 3581,
+            "bottom": 1356
+          }
+        },
+        {
+          "text": "40 unless with at least",
+          "frame": {
+            "top": 1288,
+            "right": 3827,
+            "left": 3508,
+            "bottom": 1414
+          }
+        }
+      ]
+    },
+    {
+      "frame": {
+        "top": 1353,
+        "right": 3762,
+        "left": 3605,
+        "bottom": 1431
+      },
+      "lines": [
+        {
+          "text": "PENALTY:",
+          "frame": {
+            "top": 1353,
+            "right": 3762,
+            "left": 3605,
+            "bottom": 1431
+          }
+        }
+      ]
+    },
+    {
+      "frame": {
+        "top": 1769,
+        "right": 3821,
+        "left": 3631,
+        "bottom": 1868
+      },
+      "lines": [
+        {
+          "text": "Dragon",
+          "frame": {
+            "top": 1769,
+            "right": 3821,
+            "left": 3631,
+            "bottom": 1868
+          }
+        }
+      ]
+    }
+  ]
+}

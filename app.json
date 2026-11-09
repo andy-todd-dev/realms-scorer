@@ -19,7 +19,16 @@
         ]
       }
     ],
-    "./plugins/with-no-navigation-bar-scrim"
+    "./plugins/with-no-navigation-bar-scrim",
+    "expo-image",
+    [
+      "expo-image-picker",
+      {
+        "cameraPermission": "Realms Scorer uses the camera to take a photo of your hand and read the card names.",
+        "photosPermission": "Realms Scorer reads card names from a photo of your hand that you choose.",
+        "microphonePermission": false
+      }
+    ]
   ],
   "extra": {
     "eas": {

@@ -1,0 +1,139 @@
+{
+  "photo": "warship.jpg",
+  "cards": ["warship"],
+  "width": 3072,
+  "height": 4080,
+  "blocks": [
+    {
+      "frame": {
+        "top": 1626,
+        "right": 2022,
+        "left": 1943,
+        "bottom": 1828
+      },
+      "lines": [
+        {
+          "text": "Weapon",
+          "frame": {
+            "top": 1626,
+            "right": 2022,
+            "left": 1943,
+            "bottom": 1828
+          }
+        }
+      ]
+    },
+    {
+      "frame": {
+        "top": 1506,
+        "right": 2102,
+        "left": 2028,
+        "bottom": 1563
+      },
+      "lines": [
+        {
+          "text": "23",
+          "frame": {
+            "top": 1506,
+            "right": 2102,
+            "left": 2028,
+            "bottom": 1563
+          }
+        }
+      ]
+    },
+    {
+      "frame": {
+        "top": 1528,
+        "right": 2518,
+        "left": 2224,
+        "bottom": 1652
+      },
+      "lines": [
+        {
+          "text": "Warship",
+          "frame": {
+            "top": 1528,
+            "right": 2518,
+            "left": 2224,
+            "bottom": 1652
+          }
+        }
+      ]
+    },
+    {
+      "frame": {
+        "top": 2024,
+        "right": 2511,
+        "left": 1985,
+        "bottom": 2229
+      },
+      "lines": [
+        {
+          "text": "BLANKED unless with at least",
+          "frame": {
+            "top": 2060,
+            "right": 2503,
+            "left": 1994,
+            "bottom": 2187
+          }
+        },
+        {
+          "text": "PENALTY:",
+          "frame": {
+            "top": 2051,
+            "right": 2337,
+            "left": 2164,
+            "bottom": 2106
+          }
+        },
+        {
+          "text": "one Flood.",
+          "frame": {
+            "top": 2137,
+            "right": 2328,
+            "left": 2144,
+            "bottom": 2196
+          }
+        }
+      ]
+    },
+    {
+      "frame": {
+        "top": 2168,
+        "right": 2487,
+        "left": 1960,
+        "bottom": 2386
+      },
+      "lines": [
+        {
+          "text": "CLEARS the word Army from",
+          "frame": {
+            "top": 2210,
+            "right": 2478,
+            "left": 1969,
+            "bottom": 2341
+          }
+        },
+        {
+          "text": "BONUS:",
+          "frame": {
+            "top": 2201,
+            "right": 2301,
+            "left": 2155,
+            "bottom": 2257
+          }
+        },
+        {
+          "text": "all Penalties of all Floods.",
+          "frame": {
+            "top": 2262,
+            "right": 2441,
+            "left": 1996,
+            "bottom": 2378
+          }
+        }
+      ]
+    }
+  ]
+}

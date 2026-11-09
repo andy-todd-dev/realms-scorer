@@ -1,0 +1,93 @@
+{
+  "photo": "elven-longbow.jpg",
+  "cards": ["elven-longbow"],
+  "width": 3072,
+  "height": 4080,
+  "blocks": [
+    {
+      "frame": {
+        "top": 549,
+        "right": 2743,
+        "left": 183,
+        "bottom": 917
+      },
+      "lines": [
+        {
+          "text": "3Elven Longbow",
+          "frame": {
+            "top": 549,
+            "right": 2743,
+            "left": 183,
+            "bottom": 917
+          }
+        }
+      ]
+    },
+    {
+      "frame": {
+        "top": 1245,
+        "right": 208,
+        "left": -26,
+        "bottom": 2324
+      },
+      "lines": [
+        {
+          "text": "UUeapoOn",
+          "frame": {
+            "top": 1245,
+            "right": 208,
+            "left": -26,
+            "bottom": 2324
+          }
+        }
+      ]
+    },
+    {
+      "frame": {
+        "top": 3107,
+        "right": 1837,
+        "left": 1108,
+        "bottom": 3261
+      },
+      "lines": [
+        {
+          "text": "BONUS",
+          "frame": {
+            "top": 3107,
+            "right": 1837,
+            "left": 1108,
+            "bottom": 3261
+          }
+        }
+      ]
+    },
+    {
+      "frame": {
+        "top": 3292,
+        "right": 2504,
+        "left": 418,
+        "bottom": 3728
+      },
+      "lines": [
+        {
+          "text": "+30wih Ehvem Archers",
+          "frame": {
+            "top": 3299,
+            "right": 2488,
+            "left": 471,
+            "bottom": 3507
+          }
+        },
+        {
+          "text": "Warlord or Beastmaster",
+          "frame": {
+            "top": 3507,
+            "right": 2500,
+            "left": 418,
+            "bottom": 3728
+          }
+        }
+      ]
+    }
+  ]
+}

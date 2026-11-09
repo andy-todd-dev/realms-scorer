@@ -349,3 +349,110 @@ export const selectBreakdown = createSelector(
 );
 
 export type BreakdownRow = ReturnType<typeof selectBreakdown>["rows"][number];
+
+const selectScan = (state: RootState) => state.scan;
+export const selectScanSheetOpen = (state: RootState) =>
+  state.navigation.scanSheetOpen;
+
+const cardsText = (count: number) =>
+  count === 1 ? "1 card" : `${count} cards`;
+
+const SCAN_FAILURES = {
+  unreadable: {
+    title: "Couldn't read the photo",
+    detail: "Try again, or pick your cards by hand.",
+  },
+  noCards: {
+    title: "Couldn't find any cards",
+    detail:
+      "Lay the cards flat with their names showing, and take the photo from above.",
+  },
+  cameraDenied: {
+    title: "The camera isn't allowed",
+    detail:
+      "Allow Realms Scorer to use the camera in your phone's settings, or choose a saved photo.",
+  },
+} as const;
+
+// What to show over the home screen while a photo is read, or when reading it failed. Null otherwise.
+export const selectScanProgress = createSelector([selectScan], (scan) =>
+  scan.status === "recognising"
+    ? { reading: true as const }
+    : scan.status === "failed" && scan.failure !== null
+      ? { reading: false as const, ...SCAN_FAILURES[scan.failure] }
+      : null,
+);
+
+/*
+  The check screen for a scan, or null when there's nothing to check. Cards the scan was sure of are listed as matched;
+  each unsure one offers its candidates, with the player's pick selected, which starts as the best.
+*/
+export const selectScanReview = createSelector(
+  [selectScan, selectCards, selectHandCardIds],
+  (scan, cards, handCardIds) => {
+    const { status, result, picks, confirming, confirmFailed } = scan;
+
+    if (status !== "review" || result === null) {
+      return null;
+    }
+
+    const cardView = (cardId: CardId) => {
+      const card = cards.find((candidate) => candidate.id === cardId);
+
+      return card && { id: card.id, name: card.name, suit: card.suit };
+    };
+    const isDefined = <T>(value: T | undefined): value is T =>
+      value !== undefined;
+
+    const { matches, handSize } = result;
+    const found = matches.length;
+    const unsure = matches.flatMap((match, matchIndex) =>
+      match.confident
+        ? []
+        : [
+            {
+              matchIndex,
+              options: match.candidates
+                .map(cardView)
+                .filter(isDefined)
+                .map((option) => ({
+                  ...option,
+                  selected: picks[matchIndex] === option.id,
+                })),
+            },
+          ],
+    );
+    const unsureText =
+      unsure.length === 0
+        ? "Check them, then add them to your hand."
+        : unsure.length === 1
+          ? "Confirm the one we weren't sure about, then add them to your hand."
+          : `Confirm the ${unsure.length} we weren't sure about, then add them to your hand.`;
+    const missing = handSize - found;
+
+    return {
+      summary: `We found ${found < handSize ? `${found} of ${handSize}` : found} cards. ${unsureText}`,
+      // A scan can find fewer cards than the hand holds, never more.
+      countWarning:
+        missing > 0
+          ? `Add the missing ${missing === 1 ? "card" : `${missing} cards`} on the cards screen.`
+          : null,
+      replaceWarning:
+        handCardIds.length > 0
+          ? `This replaces the ${cardsText(handCardIds.length)} in your hand.`
+          : null,
+      unsure,
+      matched: matches
+        .filter((match) => match.confident)
+        .map((match) => cardView(match.candidates[0]))
+        .filter(isDefined),
+      // The card settled on for each match, in match order, for adding to the hand.
+      picks,
+      confirming,
+      confirmFailed,
+    };
+  },
+);
+
+export type ScanReview = NonNullable<ReturnType<typeof selectScanReview>>;
+export type ScanUnsureMatch = ScanReview["unsure"][number];

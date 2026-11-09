@@ -1,6 +1,12 @@
 import { createSlice, PayloadAction } from "@reduxjs/toolkit";
 import type { CardId } from "../../../domain/card";
-import { chooseCard, clearHand, removeCardFromHand } from "./hand-slice";
+import {
+  chooseCard,
+  clearHand,
+  removeCardFromHand,
+  replaceHand,
+} from "./hand-slice";
+import { scanFailed, scanHand } from "./scan-slice";
 
 export type Screen = "home" | "breakdown";
 
@@ -12,6 +18,8 @@ type NavigationState = {
   choiceSheetPickedCard: CardId | null;
   // A card the grid should scroll to, until it has.
   cardToReveal: CardId | null;
+  // Whether the sheet for choosing between the camera and a saved photo is open.
+  scanSheetOpen: boolean;
 };
 
 const initialState: NavigationState = {
@@ -19,6 +27,7 @@ const initialState: NavigationState = {
   choiceSheetFor: null,
   choiceSheetPickedCard: null,
   cardToReveal: null,
+  scanSheetOpen: false,
 };
 
 const navigationSlice = createSlice({
@@ -52,6 +61,12 @@ const navigationSlice = createSlice({
     cardRevealed(state) {
       state.cardToReveal = null;
     },
+    scanSheetOpened(state) {
+      state.scanSheetOpen = true;
+    },
+    scanSheetClosed(state) {
+      state.scanSheetOpen = false;
+    },
   },
   extraReducers: (builder) => {
     builder
@@ -74,6 +89,17 @@ const navigationSlice = createSlice({
         state.choiceSheetFor = null;
         state.choiceSheetPickedCard = null;
         state.cardToReveal = null;
+      })
+      // A scanned hand replaces the old one, so a sheet open for one of its cards no longer applies.
+      .addCase(replaceHand.fulfilled, (state) => {
+        state.choiceSheetFor = null;
+        state.choiceSheetPickedCard = null;
+      })
+      .addCase(scanHand.pending, (state) => {
+        state.scanSheetOpen = false;
+      })
+      .addCase(scanFailed, (state) => {
+        state.scanSheetOpen = false;
       });
   },
 });
@@ -86,5 +112,7 @@ export const {
   choiceSheetCardUnpicked,
   cardRevealRequested,
   cardRevealed,
+  scanSheetOpened,
+  scanSheetClosed,
 } = navigationSlice.actions;
 export const navigationReducer = navigationSlice.reducer;

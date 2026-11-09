@@ -1,0 +1,84 @@
+{
+  "photo": "lightning.jpg",
+  "cards": ["lightning"],
+  "width": 3072,
+  "height": 4080,
+  "blocks": [
+    {
+      "frame": {
+        "top": 1582,
+        "right": 1655,
+        "left": 1168,
+        "bottom": 1748
+      },
+      "lines": [
+        {
+          "text": "11 Ligbning",
+          "frame": {
+            "top": 1582,
+            "right": 1655,
+            "left": 1168,
+            "bottom": 1748
+          }
+        }
+      ]
+    },
+    {
+      "frame": {
+        "top": 1835,
+        "right": 1267,
+        "left": 1182,
+        "bottom": 1994
+      },
+      "lines": [
+        {
+          "text": "Flame",
+          "frame": {
+            "top": 1835,
+            "right": 1267,
+            "left": 1182,
+            "bottom": 1994
+          }
+        }
+      ]
+    },
+    {
+      "frame": {
+        "top": 2066,
+        "right": 1639,
+        "left": 1505,
+        "bottom": 2134
+      },
+      "lines": [
+        {
+          "text": "BONUS:",
+          "frame": {
+            "top": 2066,
+            "right": 1639,
+            "left": 1505,
+            "bottom": 2134
+          }
+        }
+      ]
+    },
+    {
+      "frame": {
+        "top": 2096,
+        "right": 1741,
+        "left": 1403,
+        "bottom": 2200
+      },
+      "lines": [
+        {
+          "text": "+30 with Rainstorm.",
+          "frame": {
+            "top": 2096,
+            "right": 1741,
+            "left": 1403,
+            "bottom": 2200
+          }
+        }
+      ]
+    }
+  ]
+}

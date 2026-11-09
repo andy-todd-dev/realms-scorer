@@ -3,14 +3,18 @@ import { StatusBar, View } from "react-native";
 import { loadVariant } from "../state/variant-slice";
 import { useAppDispatch, useAppSelector } from "../state/hooks";
 import { scoreHand } from "../state/score-slice";
-import { selectHand, selectScreen } from "../state/selectors";
+import { selectHand, selectScanReview, selectScreen } from "../state/selectors";
 import { BreakdownScreen } from "./BreakdownScreen";
 import { HomeScreen } from "./HomeScreen";
+import { ScanProgress } from "./ScanProgress";
+import { ScanReviewScreen } from "./ScanReviewScreen";
 
 export function Screens() {
   const dispatch = useAppDispatch();
   const screen = useAppSelector(selectScreen);
   const hand = useAppSelector(selectHand);
+  // A scan being checked shows over whichever screen it started from, and leaves it as it was.
+  const reviewingScan = useAppSelector(selectScanReview) !== null;
 
   useEffect(() => {
     dispatch(loadVariant());
@@ -25,10 +29,14 @@ export function Screens() {
     <>
       <StatusBar barStyle="light-content" />
       {/* Home stays mounted behind the breakdown, to keep its scroll position and header state. */}
-      <View className={screen === "home" ? "flex-1" : "hidden"}>
+      <View
+        className={screen === "home" && !reviewingScan ? "flex-1" : "hidden"}
+      >
         <HomeScreen />
       </View>
-      {screen === "breakdown" && <BreakdownScreen />}
+      {screen === "breakdown" && !reviewingScan && <BreakdownScreen />}
+      {reviewingScan && <ScanReviewScreen />}
+      <ScanProgress />
     </>
   );
 }

@@ -12,7 +12,11 @@ import {
   removeCardFromHand,
 } from "../state/hand-slice";
 import { useAppDispatch, useAppSelector } from "../state/hooks";
-import { cardRevealed, choiceSheetOpened } from "../state/navigation-slice";
+import {
+  cardRevealed,
+  choiceSheetOpened,
+  scanSheetOpened,
+} from "../state/navigation-slice";
 import {
   CardSection,
   CardTile as CardTileData,
@@ -32,6 +36,7 @@ import { Pressable } from "./gluestack/pressable";
 import { Text } from "./gluestack/text";
 import { VStack } from "./gluestack/vstack";
 import { Screen } from "./Screen";
+import { ScanSheet } from "./ScanSheet";
 import { ScoreBar } from "./ScoreBar";
 import { SuitDot } from "./SuitDot";
 import { SUITS } from "./theme";
@@ -63,6 +68,7 @@ export function HomeScreen() {
       </View>
       <ScoreBar />
       <ChoiceSheet />
+      <ScanSheet />
     </Screen>
   );
 }
@@ -86,7 +92,12 @@ function Header() {
         <ButtonIcon as={RotateCcw} className="h-4 w-4 text-subtle-foreground" />
         <ButtonText className="text-subtle-foreground">Clear</ButtonText>
       </Button>
-      <Button testID="scan-hand" size="sm" isDisabled className="px-4">
+      <Button
+        testID="scan-hand"
+        size="sm"
+        className="px-4"
+        onPress={() => dispatch(scanSheetOpened())}
+      >
         <ButtonIcon as={Camera} className="h-4.5 w-4.5" />
         <ButtonText className="font-body-semibold">Scan</ButtonText>
       </Button>

@@ -1,0 +1,720 @@
+{
+  "photo": "hand2.jpg",
+  "cards": [
+    "light-cavalry",
+    "rangers",
+    "forge",
+    "candle",
+    "mirage",
+    "blizzard",
+    "air-elemental"
+  ],
+  "width": 3072,
+  "height": 4080,
+  "blocks": [
+    {
+      "frame": {
+        "top": 700,
+        "right": 1394,
+        "left": 1271,
+        "bottom": 916
+      },
+      "lines": [
+        {
+          "text": "-2 for each Land.",
+          "frame": {
+            "top": 711,
+            "right": 1365,
+            "left": 1271,
+            "bottom": 916
+          }
+        },
+        {
+          "text": "PENALTY:",
+          "frame": {
+            "top": 741,
+            "right": 1380,
+            "left": 1317,
+            "bottom": 870
+          }
+        }
+      ]
+    },
+    {
+      "frame": {
+        "top": 1256,
+        "right": 1520,
+        "left": 1369,
+        "bottom": 1541
+      },
+      "lines": [
+        {
+          "text": "CLEARS the word Army",
+          "frame": {
+            "top": 1256,
+            "right": 1520,
+            "left": 1369,
+            "bottom": 1541
+          }
+        }
+      ]
+    },
+    {
+      "frame": {
+        "top": 1314,
+        "right": 1391,
+        "left": 1361,
+        "bottom": 1348
+      },
+      "lines": [
+        {
+          "text": "fro",
+          "frame": {
+            "top": 1314,
+            "right": 1391,
+            "left": 1361,
+            "bottom": 1348
+          }
+        }
+      ]
+    },
+    {
+      "frame": {
+        "top": 1326,
+        "right": 1473,
+        "left": 1367,
+        "bottom": 1521
+      },
+      "lines": [
+        {
+          "text": "om all Penalties.",
+          "frame": {
+            "top": 1326,
+            "right": 1473,
+            "left": 1367,
+            "bottom": 1521
+          }
+        }
+      ]
+    },
+    {
+      "frame": {
+        "top": 522,
+        "right": 1519,
+        "left": 1405,
+        "bottom": 584
+      },
+      "lines": [
+        {
+          "text": "Army",
+          "frame": {
+            "top": 522,
+            "right": 1519,
+            "left": 1405,
+            "bottom": 584
+          }
+        }
+      ]
+    },
+    {
+      "frame": {
+        "top": 3320,
+        "right": 1388,
+        "left": 1281,
+        "bottom": 3577
+      },
+      "lines": [
+        {
+          "text": "Weather.",
+          "frame": {
+            "top": 3384,
+            "right": 1314,
+            "left": 1284,
+            "bottom": 3514
+          }
+        },
+        {
+          "text": "+15 for each other",
+          "frame": {
+            "top": 3320,
+            "right": 1351,
+            "left": 1317,
+            "bottom": 3575
+          }
+        },
+        {
+          "text": "BONUS:",
+          "frame": {
+            "top": 3382,
+            "right": 1386,
+            "left": 1358,
+            "bottom": 3503
+          }
+        }
+      ]
+    },
+    {
+      "frame": {
+        "top": 1270,
+        "right": 1550,
+        "left": 1427,
+        "bottom": 1494
+      },
+      "lines": [
+        {
+          "text": "+10 for each Land.",
+          "frame": {
+            "top": 1270,
+            "right": 1550,
+            "left": 1427,
+            "bottom": 1494
+          }
+        }
+      ]
+    },
+    {
+      "frame": {
+        "top": 1317,
+        "right": 1552,
+        "left": 1485,
+        "bottom": 1424
+      },
+      "lines": [
+        {
+          "text": "BONUS:",
+          "frame": {
+            "top": 1317,
+            "right": 1552,
+            "left": 1485,
+            "bottom": 1424
+          }
+        }
+      ]
+    },
+    {
+      "frame": {
+        "top": 1059,
+        "right": 1657,
+        "left": 1543,
+        "bottom": 1131
+      },
+      "lines": [
+        {
+          "text": "Army",
+          "frame": {
+            "top": 1059,
+            "right": 1657,
+            "left": 1543,
+            "bottom": 1131
+          }
+        }
+      ]
+    },
+    {
+      "frame": {
+        "top": 1620,
+        "right": 1654,
+        "left": 1491,
+        "bottom": 1852
+      },
+      "lines": [
+        {
+          "text": "+9 for each Wea",
+          "frame": {
+            "top": 1631,
+            "right": 1615,
+            "left": 1531,
+            "bottom": 1829
+          }
+        },
+        {
+          "text": "Artfact",
+          "frame": {
+            "top": 1735,
+            "right": 1583,
+            "left": 1523,
+            "bottom": 1845
+          }
+        },
+        {
+          "text": "BONUS:",
+          "frame": {
+            "top": 1729,
+            "right": 1653,
+            "left": 1592,
+            "bottom": 1831
+          }
+        }
+      ]
+    },
+    {
+      "frame": {
+        "top": 1933,
+        "right": 1591,
+        "left": 1440,
+        "bottom": 2273
+      },
+      "lines": [
+        {
+          "text": "any one Wlzard",
+          "frame": {
+            "top": 2000,
+            "right": 1487,
+            "left": 1443,
+            "bottom": 2202
+          }
+        },
+        {
+          "text": "+100 with",
+          "frame": {
+            "top": 1981,
+            "right": 1545,
+            "left": 1518,
+            "bottom": 2107
+          }
+        },
+        {
+          "text": "Changes, Bell Tower, and",
+          "frame": {
+            "top": 1937,
+            "right": 1528,
+            "left": 1473,
+            "bottom": 2272
+          }
+        },
+        {
+          "text": "BONUS:",
+          "frame": {
+            "top": 2043,
+            "right": 1585,
+            "left": 1555,
+            "bottom": 2151
+          }
+        },
+        {
+          "text": "th Book of",
+          "frame": {
+            "top": 2085,
+            "right": 1557,
+            "left": 1526,
+            "bottom": 2219
+          }
+        }
+      ]
+    },
+    {
+      "frame": {
+        "top": 2412,
+        "right": 1569,
+        "left": 1362,
+        "bottom": 2747
+      },
+      "lines": [
+        {
+          "text": "card duplicated.",
+          "frame": {
+            "top": 2496,
+            "right": 1391,
+            "left": 1363,
+            "bottom": 2666
+          }
+        },
+        {
+          "text": "penalty, or base strength of the",
+          "frame": {
+            "top": 2414,
+            "right": 1418,
+            "left": 1386,
+            "bottom": 2747
+          }
+        },
+        {
+          "text": "Does not take the bonus,",
+          "frame": {
+            "top": 2447,
+            "right": 1447,
+            "left": 1418,
+            "bottom": 2717
+          }
+        },
+        {
+          "text": "the game",
+          "frame": {
+            "top": 2527,
+            "right": 1482,
+            "left": 1460,
+            "bottom": 2626
+          }
+        },
+        {
+          "text": "Weather, Flood or Flame in",
+          "frame": {
+            "top": 2429,
+            "right": 1512,
+            "left": 1491,
+            "bottom": 2731
+          }
+        },
+        {
+          "text": "suit of any one Amy, Land",
+          "frame": {
+            "top": 2431,
+            "right": 1541,
+            "left": 1511,
+            "bottom": 2722
+          }
+        },
+        {
+          "text": "May duplicate the name and",
+          "frame": {
+            "top": 2428,
+            "right": 1569,
+            "left": 1541,
+            "bottom": 2730
+          }
+        }
+      ]
+    },
+    {
+      "frame": {
+        "top": 2964,
+        "right": 1469,
+        "left": 1410,
+        "bottom": 3148
+      },
+      "lines": [
+        {
+          "text": "Beast, and Fl",
+          "frame": {
+            "top": 2964,
+            "right": 1469,
+            "left": 1410,
+            "bottom": 3148
+          }
+        }
+      ]
+    },
+    {
+      "frame": {
+        "top": 2895,
+        "right": 1585,
+        "left": 1436,
+        "bottom": 3151
+      },
+      "lines": [
+        {
+          "text": "5 for each Army.",
+          "frame": {
+            "top": 2908,
+            "right": 1499,
+            "left": 1441,
+            "bottom": 3142
+          }
+        },
+        {
+          "text": "BLANKS all Fla",
+          "frame": {
+            "top": 2939,
+            "right": 1553,
+            "left": 1494,
+            "bottom": 3144
+          }
+        },
+        {
+          "text": "PENALTY:",
+          "frame": {
+            "top": 2993,
+            "right": 1584,
+            "left": 1539,
+            "bottom": 3131
+          }
+        }
+      ]
+    },
+    {
+      "frame": {
+        "top": 527,
+        "right": 1773,
+        "left": 1599,
+        "bottom": 907
+      },
+      "lines": [
+        {
+          "text": "17 Light Cavalry",
+          "frame": {
+            "top": 527,
+            "right": 1773,
+            "left": 1599,
+            "bottom": 907
+          }
+        }
+      ]
+    },
+    {
+      "frame": {
+        "top": 3129,
+        "right": 1653,
+        "left": 1473,
+        "bottom": 3206
+      },
+      "lines": [
+        {
+          "text": "Weathor",
+          "frame": {
+            "top": 3129,
+            "right": 1653,
+            "left": 1473,
+            "bottom": 3206
+          }
+        }
+      ]
+    },
+    {
+      "frame": {
+        "top": 1473,
+        "right": 1798,
+        "left": 1697,
+        "bottom": 1545
+      },
+      "lines": [
+        {
+          "text": "lame",
+          "frame": {
+            "top": 1473,
+            "right": 1798,
+            "left": 1697,
+            "bottom": 1545
+          }
+        }
+      ]
+    },
+    {
+      "frame": {
+        "top": 1165,
+        "right": 1904,
+        "left": 1791,
+        "bottom": 1351
+      },
+      "lines": [
+        {
+          "text": "Rangers",
+          "frame": {
+            "top": 1165,
+            "right": 1904,
+            "left": 1791,
+            "bottom": 1351
+          }
+        }
+      ]
+    },
+    {
+      "frame": {
+        "top": 1848,
+        "right": 1805,
+        "left": 1683,
+        "bottom": 1884
+      },
+      "lines": [
+        {
+          "text": "Flame",
+          "frame": {
+            "top": 1848,
+            "right": 1805,
+            "left": 1683,
+            "bottom": 1884
+          }
+        }
+      ]
+    },
+    {
+      "frame": {
+        "top": 2331,
+        "right": 1770,
+        "left": 1738,
+        "bottom": 2362
+      },
+      "lines": [
+        {
+          "text": "Uil",
+          "frame": {
+            "top": 2331,
+            "right": 1770,
+            "left": 1738,
+            "bottom": 2362
+          }
+        }
+      ]
+    },
+    {
+      "frame": {
+        "top": 2769,
+        "right": 1793,
+        "left": 1766,
+        "bottom": 2801
+      },
+      "lines": [
+        {
+          "text": "he",
+          "frame": {
+            "top": 2769,
+            "right": 1793,
+            "left": 1766,
+            "bottom": 2801
+          }
+        }
+      ]
+    },
+    {
+      "frame": {
+        "top": 3206,
+        "right": 1792,
+        "left": 1716,
+        "bottom": 3591
+      },
+      "lines": [
+        {
+          "text": "4 Air Elemental",
+          "frame": {
+            "top": 3206,
+            "right": 1792,
+            "left": 1716,
+            "bottom": 3591
+          }
+        }
+      ]
+    },
+    {
+      "frame": {
+        "top": 1491,
+        "right": 1924,
+        "left": 1888,
+        "bottom": 1518
+      },
+      "lines": [
+        {
+          "text": "9",
+          "frame": {
+            "top": 1491,
+            "right": 1924,
+            "left": 1888,
+            "bottom": 1518
+          }
+        }
+      ]
+    },
+    {
+      "frame": {
+        "top": 1639,
+        "right": 1998,
+        "left": 1926,
+        "bottom": 1775
+      },
+      "lines": [
+        {
+          "text": "Forge",
+          "frame": {
+            "top": 1639,
+            "right": 1998,
+            "left": 1926,
+            "bottom": 1775
+          }
+        }
+      ]
+    },
+    {
+      "frame": {
+        "top": 1881,
+        "right": 1927,
+        "left": 1898,
+        "bottom": 1902
+      },
+      "lines": [
+        {
+          "text": "2",
+          "frame": {
+            "top": 1881,
+            "right": 1927,
+            "left": 1898,
+            "bottom": 1902
+          }
+        }
+      ]
+    },
+    {
+      "frame": {
+        "top": 2023,
+        "right": 1957,
+        "left": 1901,
+        "bottom": 2184
+      },
+      "lines": [
+        {
+          "text": "Candle",
+          "frame": {
+            "top": 2023,
+            "right": 1957,
+            "left": 1901,
+            "bottom": 2184
+          }
+        }
+      ]
+    },
+    {
+      "frame": {
+        "top": 2520,
+        "right": 1939,
+        "left": 1882,
+        "bottom": 2699
+      },
+      "lines": [
+        {
+          "text": "Dirage",
+          "frame": {
+            "top": 2520,
+            "right": 1939,
+            "left": 1882,
+            "bottom": 2699
+          }
+        }
+      ]
+    },
+    {
+      "frame": {
+        "top": 2769,
+        "right": 1922,
+        "left": 1880,
+        "bottom": 2813
+      },
+      "lines": [
+        {
+          "text": "30",
+          "frame": {
+            "top": 2769,
+            "right": 1922,
+            "left": 1880,
+            "bottom": 2813
+          }
+        }
+      ]
+    },
+    {
+      "frame": {
+        "top": 2915,
+        "right": 1966,
+        "left": 1897,
+        "bottom": 3114
+      },
+      "lines": [
+        {
+          "text": "Blizzard",
+          "frame": {
+            "top": 2915,
+            "right": 1966,
+            "left": 1897,
+            "bottom": 3114
+          }
+        }
+      ]
+    }
+  ]
+}

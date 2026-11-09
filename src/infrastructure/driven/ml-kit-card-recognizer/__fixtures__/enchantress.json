@@ -1,0 +1,112 @@
+{
+  "photo": "enchantress.jpg",
+  "cards": ["enchantress"],
+  "width": 3072,
+  "height": 4080,
+  "blocks": [
+    {
+      "frame": {
+        "top": 1797,
+        "right": 1178,
+        "left": 1121,
+        "bottom": 1982
+      },
+      "lines": [
+        {
+          "text": "WIZarO",
+          "frame": {
+            "top": 1797,
+            "right": 1178,
+            "left": 1121,
+            "bottom": 1982
+          }
+        }
+      ]
+    },
+    {
+      "frame": {
+        "top": 1623,
+        "right": 1695,
+        "left": 1177,
+        "bottom": 1711
+      },
+      "lines": [
+        {
+          "text": "6) Enchantress",
+          "frame": {
+            "top": 1623,
+            "right": 1695,
+            "left": 1177,
+            "bottom": 1711
+          }
+        }
+      ]
+    },
+    {
+      "frame": {
+        "top": 2160,
+        "right": 1545,
+        "left": 1393,
+        "bottom": 2200
+      },
+      "lines": [
+        {
+          "text": "BONUS:",
+          "frame": {
+            "top": 2160,
+            "right": 1545,
+            "left": 1393,
+            "bottom": 2200
+          }
+        }
+      ]
+    },
+    {
+      "frame": {
+        "top": 2198,
+        "right": 1668,
+        "left": 1276,
+        "bottom": 2313
+      },
+      "lines": [
+        {
+          "text": "+5 for each Land,",
+          "frame": {
+            "top": 2201,
+            "right": 1621,
+            "left": 1313,
+            "bottom": 2257
+          }
+        },
+        {
+          "text": "Weather, Flood, and",
+          "frame": {
+            "top": 2247,
+            "right": 1668,
+            "left": 1279,
+            "bottom": 2311
+          }
+        }
+      ]
+    },
+    {
+      "frame": {
+        "top": 2306,
+        "right": 1536,
+        "left": 1416,
+        "bottom": 2348
+      },
+      "lines": [
+        {
+          "text": "Flame.",
+          "frame": {
+            "top": 2306,
+            "right": 1536,
+            "left": 1416,
+            "bottom": 2348
+          }
+        }
+      ]
+    }
+  ]
+}

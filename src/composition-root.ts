@@ -13,21 +13,33 @@ import {
   LoadVariantUseCase,
 } from "./application/load-variant.usecase";
 import {
+  RecogniseHand,
+  RecogniseHandUseCase,
+} from "./application/recognise-hand.usecase";
+import {
   RemoveCardFromHand,
   RemoveCardFromHandUseCase,
 } from "./application/remove-card-from-hand.usecase";
+import {
+  ReplaceHand,
+  ReplaceHandUseCase,
+} from "./application/replace-hand.usecase";
 import { ScoreHand, ScoreHandUseCase } from "./application/score-hand.usecase";
 import { UseCases } from "./application/use-cases";
 import { InMemoryCardCatalog } from "./infrastructure/driven/in-memory-card-catalog";
 import { InMemoryVariantCatalog } from "./infrastructure/driven/in-memory-variant-catalog";
+import { MlKitCardRecognizer } from "./infrastructure/driven/ml-kit-card-recognizer/ml-kit-card-recognizer";
 
 type Cradle = {
   addCardToHand: AddCardToHand;
   cardCatalog: InMemoryCardCatalog;
+  cardRecognizer: MlKitCardRecognizer;
   chooseCard: ChooseCard;
   clearHand: ClearHand;
   loadVariant: LoadVariant;
+  recogniseHand: RecogniseHand;
   removeCardFromHand: RemoveCardFromHand;
+  replaceHand: ReplaceHand;
   scoreHand: ScoreHand;
   variantCatalog: InMemoryVariantCatalog;
 };
@@ -43,6 +55,7 @@ export function createUseCases(): UseCases {
       (deps: Cradle) => new AddCardToHandUseCase(deps),
     ).singleton(),
     cardCatalog: asFunction(() => new InMemoryCardCatalog()).singleton(),
+    cardRecognizer: asFunction(() => new MlKitCardRecognizer()).singleton(),
     chooseCard: asFunction(
       (deps: Cradle) => new ChooseCardUseCase(deps),
     ).singleton(),
@@ -50,8 +63,14 @@ export function createUseCases(): UseCases {
     loadVariant: asFunction(
       (deps: Cradle) => new LoadVariantUseCase(deps),
     ).singleton(),
+    recogniseHand: asFunction(
+      (deps: Cradle) => new RecogniseHandUseCase(deps),
+    ).singleton(),
     removeCardFromHand: asFunction(
       (deps: Cradle) => new RemoveCardFromHandUseCase(deps),
+    ).singleton(),
+    replaceHand: asFunction(
+      (deps: Cradle) => new ReplaceHandUseCase(deps),
     ).singleton(),
     scoreHand: asFunction(
       (deps: Cradle) => new ScoreHandUseCase(deps),
@@ -64,7 +83,9 @@ export function createUseCases(): UseCases {
     chooseCard,
     clearHand,
     loadVariant,
+    recogniseHand,
     removeCardFromHand,
+    replaceHand,
     scoreHand,
   } = container.cradle;
 
@@ -73,7 +94,9 @@ export function createUseCases(): UseCases {
     chooseCard,
     clearHand,
     loadVariant,
+    recogniseHand,
     removeCardFromHand,
+    replaceHand,
     scoreHand,
   };
 }
