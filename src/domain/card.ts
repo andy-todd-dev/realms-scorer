@@ -20,8 +20,11 @@ export type SuitMatcher = {
 
 export type CardIdMatcher = { readonly cardId: CardId };
 
-// The card that the effect's owner chose, for cards with a choice. It matches nothing until the choice is resolved (choices.ts).
-export type ChosenCardMatcher = { readonly chosen: true };
+/*
+  The card that the effect's owner chose, for cards with a choice. It matches nothing until the choice is resolved
+  (choices.ts), which sets the chosen card's ID. It then matches only that card, not others that took its name.
+*/
+export type ChosenCardMatcher = { readonly chosen: true; readonly id?: CardId };
 
 export type CardMatcher = SuitMatcher | CardIdMatcher | ChosenCardMatcher;
 
@@ -52,6 +55,14 @@ export type CardEffect =
       }[];
     }
   | {
+      // For each suit, the points of the highest tier that its number of differently named cards reaches, including the owner. Each suit pays separately.
+      readonly kind: "sameSuitSet";
+      readonly tiers: readonly {
+        readonly count: number;
+        readonly points: number;
+      }[];
+    }
+  | {
       readonly kind: "blank";
       readonly targets: readonly CardMatcher[];
     }
@@ -69,8 +80,11 @@ export type CardEffect =
       readonly targets?: readonly CardMatcher[];
     };
 
-// What a card can take from another: its name, so that rules naming that card match it, and its suit. Add others as cards need them.
-export type TakenAttribute = "name" | "suit";
+/*
+  What a card can take from another: its name, so that rules naming that card match it, its suit, its base strength, and
+  its penalty, which replaces the taker's own and has no effect if the other card has none. Add others as cards need them.
+*/
+export type TakenAttribute = "name" | "suit" | "baseStrength" | "penalty";
 
 // An effect that fires before scoring, for cards the variant lists, in its order. Later kinds may change a suit.
 export type PreScoringEffect =

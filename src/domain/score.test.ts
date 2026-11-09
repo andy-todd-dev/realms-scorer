@@ -907,6 +907,82 @@ describe("calculateScore", () => {
     });
   });
 
+  describe("pre-scoring take of base strength and penalty", () => {
+    // Before scoring, takes the name, base strength, suit and penalty of any one Army or Land in the hand. Its own penalty is replaced.
+    const duplicator: Card = {
+      ...card("duplicator", "wild", 0),
+      penalty: { text: "", effects: [{ kind: "points", points: -10 }] },
+      preScoring: [
+        {
+          kind: "take",
+          from: { chosen: true },
+          attributes: ["name", "baseStrength", "suit", "penalty"],
+        },
+      ],
+      choice: {
+        kind: "cardInHand",
+        from: [{ suit: "army" }, { suit: "land" }],
+      },
+    };
+    // An Army with a bonus, which the duplicator mustn't take, and a penalty, which it must.
+    const grunt: Card = {
+      ...card("grunt", "army", 15, [{ kind: "points", points: 4 }]),
+      penalty: {
+        text: "",
+        effects: [{ kind: "points", points: -2, per: { suit: "army" } }],
+      },
+    };
+    const rules = { deckCards: [], preScoring: ["duplicator"] };
+
+    it("takes the chosen card's base strength and penalty, but not its bonus", () => {
+      const { cards, total } = scoreHand(
+        [duplicator, grunt],
+        { duplicator: "grunt" },
+        rules,
+      );
+
+      // Duplicator (15 - 2 for the grunt) + grunt (15 + 4 - 2 for the duplicator, now an Army)
+      expect(total).toBe(30);
+      expect(cards[0]).toEqual({
+        cardId: "duplicator",
+        blanked: false,
+        base: 15,
+        bonus: 0,
+        penalty: -2,
+        total: 13,
+        suit: "army",
+        choice: { chosenId: "grunt", optionIds: ["grunt"] },
+      });
+    });
+
+    it("keeps its own base strength and penalty while the choice is pending", () => {
+      // Duplicator (0 - 10) + grunt (15 + 4)
+      expect(calculateScore([duplicator, grunt], {}, rules)).toBe(9);
+    });
+
+    it("loses its own penalty when the chosen card has none", () => {
+      // Duplicator 4 as a Land + Land 4
+      expect(
+        calculateScore([duplicator, aLand], { duplicator: "land-1" }, rules),
+      ).toBe(8);
+    });
+
+    it("has the taken penalty cleared by a clear on the suit it took", () => {
+      const clearsArmies = card("clearer", "land", 1, [
+        { kind: "clearPenalty", targets: [{ suit: "army" }] },
+      ]);
+
+      // Duplicator 15 + grunt (15 + 4) + clearer 1, with both Army penalties cleared
+      expect(
+        calculateScore(
+          [duplicator, grunt, clearsArmies],
+          { duplicator: "grunt" },
+          rules,
+        ),
+      ).toBe(35);
+    });
+  });
+
   describe("self-blanked cards in scoring", () => {
     const blankedWithoutArmy: CardEffect = {
       kind: "blankSelf",
@@ -1575,6 +1651,139 @@ describe("calculateScore", () => {
 
       expect(calculateScore([subject, anArmy, aLand])).toBe(1); // army-1 and land-1 blanked
       expect(calculateScore([subject, anArmy, aLand, clearsArmyWord])).toBe(12); // 1 + 10 + 1, land-1 blanked
+    });
+  });
+
+  describe("sum of the chosen card", () => {
+    // Adds the base strength of any one Weapon or Land in the hand.
+    const summer: Card = {
+      ...card("summer", "flood", 1, [
+        { kind: "sum", of: { chosen: true }, attribute: "baseStrength" },
+      ]),
+      choice: {
+        kind: "cardInHand",
+        from: [{ suit: "weapon" }, { suit: "land" }],
+      },
+    };
+    const aWeapon = card("weapon-1", "weapon", 9);
+
+    it("adds the chosen card's base strength", () => {
+      expect(
+        calculateScore([summer, aWeapon, aLand], { summer: "weapon-1" }),
+      ).toBe(23); // (1 + 9) + 9 + 4
+    });
+
+    it("adds nothing while the choice is pending", () => {
+      expect(calculateScore([summer, aWeapon])).toBe(10); // 1 + 9
+    });
+
+    it("adds nothing when the chosen card is blanked", () => {
+      const blanksWeapons = card("blanker", "land", 2, [
+        { kind: "blank", targets: [{ suit: "weapon" }] },
+      ]);
+
+      expect(
+        calculateScore([summer, aWeapon, blanksWeapons], {
+          summer: "weapon-1",
+        }),
+      ).toBe(3); // 1 + 2, with the Weapon blanked
+    });
+
+    it("adds only the card chosen, not one that took its name", () => {
+      const namedAsWeapon: Card = {
+        ...card("copy", "weapon", 5),
+        namedAs: "weapon-1",
+      };
+
+      expect(
+        calculateScore([summer, aWeapon, namedAsWeapon], {
+          summer: "weapon-1",
+        }),
+      ).toBe(24); // (1 + 9) + 9 + 5
+    });
+  });
+
+  describe("clearing the chosen card's penalty", () => {
+    it("clears only the card chosen, not one that took its name", () => {
+      const penalised = (id: string): Card => ({
+        ...card(id, "flood", 10),
+        penalty: { text: "", effects: [{ kind: "points", points: -5 }] },
+      });
+      const clearer: Card = {
+        ...card("clearer", "flood", 1, [
+          { kind: "clearPenalty", targets: [{ chosen: true }] },
+        ]),
+        choice: { kind: "cardInHand", from: [{ suit: "flood" }] },
+      };
+      const namesake: Card = { ...penalised("copy"), namedAs: "flood-1" };
+
+      expect(
+        calculateScore([clearer, penalised("flood-1"), namesake], {
+          clearer: "flood-1",
+        }),
+      ).toBe(16); // 1 + 10 + (10 - 5)
+    });
+  });
+
+  describe("sameSuitSet effects", () => {
+    const collector = card("collector", "wizard", 7, [
+      {
+        kind: "sameSuitSet",
+        tiers: [
+          { count: 3, points: 10 },
+          { count: 4, points: 40 },
+          { count: 5, points: 100 },
+        ],
+      },
+    ]);
+    const wizard1 = card("wizard-1", "wizard", 1);
+    const wizard2 = card("wizard-2", "wizard", 2);
+    const wizard3 = card("wizard-3", "wizard", 3);
+    const wizard4 = card("wizard-4", "wizard", 4);
+
+    it("scores nothing below the lowest tier", () => {
+      expect(calculateScore([collector, wizard1])).toBe(8); // 7 + 1
+    });
+
+    it("counts its owner among the cards of its suit", () => {
+      expect(calculateScore([collector, wizard1, wizard2])).toBe(20); // (7 + 10) + 1 + 2
+    });
+
+    it("pays only the highest tier reached", () => {
+      expect(
+        calculateScore([collector, wizard1, wizard2, wizard3, wizard4]),
+      ).toBe(117); // (7 + 100) + 1 + 2 + 3 + 4
+    });
+
+    it("pays each suit that reaches a tier", () => {
+      const armies = [1, 2, 3, 4].map((n) => card(`army-${n}`, "army", n));
+
+      expect(calculateScore([collector, wizard1, wizard2, ...armies])).toBe(70); // (7 + 10 for 3 Wizards + 40 for 4 Armies) + 1 + 2 + (1 + 2 + 3 + 4)
+    });
+
+    it("counts cards of the same name once", () => {
+      const namedAsWizard1: Card = {
+        ...card("copy", "wizard", 0),
+        namedAs: "wizard-1",
+      };
+
+      expect(calculateScore([collector, wizard1, namedAsWizard1])).toBe(8); // 7 + 1 + 0
+    });
+
+    it("counts Wild as a suit", () => {
+      const wilds = [1, 2, 3].map((n) => card(`wild-${n}`, "wild", 0));
+
+      expect(calculateScore([collector, ...wilds])).toBe(17); // (7 + 10) + 0 + 0 + 0
+    });
+
+    it("doesn't count blanked cards", () => {
+      const blanksWizard2 = card("blanker", "land", 1, [
+        { kind: "blank", targets: [{ cardId: "wizard-2" }] },
+      ]);
+
+      expect(calculateScore([collector, wizard1, wizard2, blanksWizard2])).toBe(
+        9,
+      ); // 7 + 1 + 1, with wizard-2 blanked
     });
   });
 

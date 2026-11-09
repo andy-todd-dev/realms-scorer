@@ -1,3 +1,4 @@
+import type { Suit } from "../../../domain/card";
 import type { ChoiceSheet, ChoiceTarget } from "../state/selectors";
 import { SUITS } from "./theme";
 
@@ -22,9 +23,22 @@ function describeTarget(target: ChoiceTarget): string {
     : suit;
 }
 
-// What a choice may take, in words: "Flood or Flame", "Land other than Mountain", "Swamp".
+// Checks if the targets take every suit, with no cards left out, so that any card will do.
+function isAnyCard(targets: readonly ChoiceTarget[]): boolean {
+  const suits = new Set(
+    targets.flatMap((target) =>
+      "suit" in target && target.exceptNames.length === 0 ? [target.suit] : [],
+    ),
+  );
+
+  return Object.keys(SUITS).every((suit) => suits.has(suit as Suit));
+}
+
+// What a choice may take, in words: "Flood or Flame", "Land other than Mountain", "Swamp", or "card" when any card will do.
 export function describeTargets(targets: readonly ChoiceTarget[]): string {
-  return joinWith(targets.map(describeTarget), "or");
+  return isAnyCard(targets)
+    ? "card"
+    : joinWith(targets.map(describeTarget), "or");
 }
 
 export function choiceInstruction(

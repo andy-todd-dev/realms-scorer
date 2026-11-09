@@ -102,7 +102,7 @@ function chosenCard(
   return options.find(({ id }) => id === targetId);
 }
 
-// Replaces a matcher for the chosen card with the chosen card's ID. While the choice is pending, it is dropped, so it targets nothing.
+// Fills in the chosen card's ID in a matcher for the chosen card. While the choice is pending, it is dropped, so it targets nothing.
 function resolveMatchers(
   matchers: readonly CardMatcher[],
   chosenId: CardId | null,
@@ -112,15 +112,20 @@ function resolveMatchers(
       return [matcher];
     }
 
-    return chosenId === null ? [] : [{ cardId: chosenId }];
+    return chosenId === null ? [] : [{ chosen: true, id: chosenId }];
   });
 }
 
-// Resolves the chosen card in an effect's targets. Only targets can name the chosen card so far; add other places here as cards need them.
+// Resolves the chosen card in an effect's targets, or in what a sum adds up. Add other places here as cards need them.
 function resolveEffect(
   effect: CardEffect,
   chosenId: CardId | null,
 ): CardEffect {
+  // While pending, the matcher stays unresolved, so the sum matches nothing.
+  if (effect.kind === "sum" && "chosen" in effect.of && chosenId !== null) {
+    return { ...effect, of: { chosen: true, id: chosenId } };
+  }
+
   if (effect.kind === "blank" || effect.kind === "clearPenalty") {
     return { ...effect, targets: resolveMatchers(effect.targets, chosenId) };
   }
@@ -187,6 +192,13 @@ function withAttributesTaken(
         return { ...taker, name: from.name, namedAs: from.id };
       case "suit":
         return { ...taker, suit: from.suit };
+      case "baseStrength":
+        return { ...taker, baseStrength: from.baseStrength };
+      case "penalty": {
+        const { penalty: _ownPenalty, ...rest } = taker;
+
+        return from.penalty ? { ...rest, penalty: from.penalty } : rest;
+      }
     }
   }, card);
 }

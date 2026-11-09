@@ -10,7 +10,7 @@ function isNamed(card: Card, cardId: CardId): boolean {
   return card.id === cardId || card.namedAs === cardId;
 }
 
-// Checks if the card matches the specified matcher. A matcher can either specify a suit, optionally excepting specific cards, or a specific card ID. A card that took another card's name matches as that card too. A matcher for a chosen card matches nothing until the choice is resolved into a card ID.
+// Checks if the card matches the specified matcher. A matcher can either specify a suit, optionally excepting specific cards, or a specific card ID. A card that took another card's name matches as that card too. A matcher for a chosen card matches nothing until the choice is resolved, and then only the card chosen.
 export function matches(card: Card, matcher: CardMatcher): boolean {
   if ("suit" in matcher) {
     return (
@@ -19,7 +19,11 @@ export function matches(card: Card, matcher: CardMatcher): boolean {
     );
   }
 
-  return "cardId" in matcher && isNamed(card, matcher.cardId);
+  if ("chosen" in matcher) {
+    return matcher.id !== undefined && card.id === matcher.id;
+  }
+
+  return isNamed(card, matcher.cardId);
 }
 
 // Checks if a matcher names the specified suit. A matcher naming a specific card doesn't count, even if that card is of the suit.

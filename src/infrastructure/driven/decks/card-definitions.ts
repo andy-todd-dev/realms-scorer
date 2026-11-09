@@ -104,6 +104,11 @@ export const baseStrengthRun = (
   tiers: readonly { length: number; points: number }[],
 ): CardEffect => ({ kind: "baseStrengthRun", tiers });
 
+// For each suit, the points of the highest tier its number of differently named cards reaches, counting the owner.
+export const sameSuitSet = (
+  tiers: readonly { count: number; points: number }[],
+): CardEffect => ({ kind: "sameSuitSet", tiers });
+
 export const blank = (...targets: CardMatcher[]): CardEffect => ({
   kind: "blank",
   targets,

@@ -28,6 +28,18 @@ import { conditionHolds } from "./conditions";
   not take the bonus, penalty, or base strength of the card duplicated." Ruled by the user: this is a pre-scoring
   ability. It may duplicate a card that is also in the hand, giving two cards of that name.
 
+  Mirage: "May duplicate the name and suit of any one Army, Land, Weather, Flood, or Flame in the game. Does not take the
+  bonus, penalty, or base strength of the card duplicated." Ruled by the user: a pre-scoring ability, as Shapeshifter's
+  is.
+
+  Doppelgänger: "May duplicate the name, base strength, suit, and penalty (but not bonus) of any one other card in your
+  hand." Ruled by the user: this is a pre-scoring ability, though the card prints it as its bonus. The penalty taken
+  replaces the Doppelgänger's own, and is then cleared or applied as any other penalty would be.
+
+  Collector: "+10 if 3 different cards in the same suit, +40 if 4, +100 if 5." Ruled by the user: within a suit only
+  the highest tier pays, but each suit that reaches a tier pays. Collector counts itself, "different" means a different
+  name, so a card that took another's name doesn't add to the count, and Wild counts as a suit.
+
   Ruled by the user: each variant lists the cards whose pre-scoring effects fire before everything else, in its own
   order. For the base game: Necromancer, Doppelgänger, Mirage, Shapeshifter, then Book of Changes. A card's other
   effects, and the choices of other cards such as Island's, take effect at their normal time: Island's when penalties
@@ -81,6 +93,40 @@ function baseStrengthRunPoints(
     }).points;
 }
 
+// For each suit, the number of differently named cards of it. A card that took another's name counts as that card.
+function differentlyNamedCardsPerSuit(
+  cards: readonly Card[],
+): ReadonlyMap<Suit, number> {
+  const namesPerSuit = new Map<Suit, Set<CardId>>();
+
+  cards.forEach((card) => {
+    const names = namesPerSuit.get(card.suit) ?? new Set<CardId>();
+
+    names.add(card.namedAs ?? card.id);
+    namesPerSuit.set(card.suit, names);
+  });
+
+  return new Map([...namesPerSuit].map(([suit, names]) => [suit, names.size]));
+}
+
+// Adds up, for each suit, the points of the highest tier its count reaches. Tiers don't add up within a suit.
+function sameSuitSetPoints(
+  tiers: Extract<CardEffect, { kind: "sameSuitSet" }>["tiers"],
+  cards: readonly Card[],
+): number {
+  return [...differentlyNamedCardsPerSuit(cards).values()].reduce(
+    (total, count) =>
+      total +
+      tiers
+        .filter((tier) => tier.count <= count)
+        .reduce((best, tier) => (tier.count > best.count ? tier : best), {
+          count: 0,
+          points: 0,
+        }).points,
+    0,
+  );
+}
+
 // Calculates the points contributed by a specific effect of the specified card, based on the other cards in the hand.
 function effectPoints(
   effect: CardEffect,
@@ -89,6 +135,10 @@ function effectPoints(
 ): number {
   if (effect.kind === "baseStrengthRun") {
     return baseStrengthRunPoints(effect.tiers, [card, ...others]);
+  }
+
+  if (effect.kind === "sameSuitSet") {
+    return sameSuitSetPoints(effect.tiers, [card, ...others]);
   }
 
   if (effect.kind === "sum") {
