@@ -100,7 +100,7 @@ describe("ScoreHandUseCase", () => {
     await expect(
       createUseCase(catalogOf([chooser, penalisedLeader])).execute("variant", {
         cardIds: ["chooser", "penalised"],
-        choices: { chooser: "penalised" },
+        choices: { chooser: { cardId: "penalised" } },
       }),
     ).resolves.toMatchObject({ total: 11 });
   });
@@ -110,7 +110,7 @@ describe("ScoreHandUseCase", () => {
     await expect(
       createUseCase(catalogOf([necromancer, king, queen])).execute("variant", {
         cardIds: ["necromancer"],
-        choices: { necromancer: "king" },
+        choices: { necromancer: { cardId: "king" } },
       }),
     ).resolves.toMatchObject({
       cards: [

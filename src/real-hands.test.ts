@@ -1,3 +1,4 @@
+import { Choices } from "./domain/choices";
 import { ScoreHandUseCase } from "./application/score-hand.usecase";
 import { InMemoryCardCatalog } from "./infrastructure/driven/in-memory-card-catalog";
 import { InMemoryVariantCatalog } from "./infrastructure/driven/in-memory-variant-catalog";
@@ -22,7 +23,7 @@ describe("scoring real hands", () => {
   const expectScore = async (
     cardIds: readonly string[],
     expected: number,
-    choices: Readonly<Record<string, string>> = {},
+    choices: Choices = {},
   ) => {
     for (const ordering of orderings(cardIds)) {
       await expect(
@@ -75,7 +76,9 @@ describe("scoring real hands", () => {
   describe("Island", () => {
     it("clears the penalty on the Flood it chose", async () => {
       // Island 14 + Swamp 18 (its -3 for the Candle cleared) + Candle 2.
-      await expectScore(["island", "swamp", "candle"], 34, { island: "swamp" });
+      await expectScore(["island", "swamp", "candle"], 34, {
+        island: { cardId: "swamp" },
+      });
     });
 
     it("clears nothing until a card is chosen", async () => {
@@ -86,11 +89,11 @@ describe("scoring real hands", () => {
     it("stops the Great Flood blanking when it clears its penalty", async () => {
       // Island 14 + Great Flood 32 + Candle 2, which is no longer blanked.
       await expectScore(["island", "great-flood", "candle"], 48, {
-        island: "great-flood",
+        island: { cardId: "great-flood" },
       });
       // Island 14 + Great Flood 32, with the Candle blanked.
       await expectScore(["island", "great-flood", "candle"], 46, {
-        island: "candle",
+        island: { cardId: "candle" },
       });
     });
   });
@@ -98,7 +101,9 @@ describe("scoring real hands", () => {
   describe("Necromancer", () => {
     it("adds the card it chose from the discard area", async () => {
       // Necromancer 3 + Dragon 30, whose penalty a Wizard avoids.
-      await expectScore(["necromancer"], 33, { necromancer: "dragon" });
+      await expectScore(["necromancer"], 33, {
+        necromancer: { cardId: "dragon" },
+      });
     });
 
     it("adds nothing until a card is chosen", async () => {
@@ -110,7 +115,7 @@ describe("scoring real hands", () => {
     it("counts as the card whose name it took", async () => {
       // Unicorn 9 + 30 with the Princess, as which the Shapeshifter counts. Shapeshifter keeps its own 0.
       await expectScore(["shapeshifter", "unicorn"], 39, {
-        shapeshifter: "princess",
+        shapeshifter: { cardId: "princess" },
       });
     });
 

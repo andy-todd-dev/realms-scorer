@@ -81,18 +81,24 @@ describe("AddCardToHandUseCase", () => {
     await expect(
       createUseCase(7).execute(
         "variant",
-        { cardIds: ["adder"], choices: { adder: "army" } },
+        { cardIds: ["adder"], choices: { adder: { cardId: "army" } } },
         "army",
       ),
     ).resolves.toEqual(handOf("adder", "army"));
   });
 
   it("keeps choices the card leaves valid", async () => {
-    const hand: Hand = { cardIds: ["adder"], choices: { adder: "army" } };
+    const hand: Hand = {
+      cardIds: ["adder"],
+      choices: { adder: { cardId: "army" } },
+    };
 
     await expect(
       createUseCase(7).execute("variant", hand, "a"),
-    ).resolves.toEqual({ cardIds: ["adder", "a"], choices: { adder: "army" } });
+    ).resolves.toEqual({
+      cardIds: ["adder", "a"],
+      choices: { adder: { cardId: "army" } },
+    });
   });
 
   it("fails for an unknown variant", async () => {

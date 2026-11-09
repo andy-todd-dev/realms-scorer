@@ -69,18 +69,24 @@ describe("RemoveCardFromHandUseCase", () => {
     await expect(
       createUseCase(7).execute(
         "variant",
-        { cardIds: ["adder", "a"], choices: { adder: "army" } },
+        { cardIds: ["adder", "a"], choices: { adder: { cardId: "army" } } },
         "adder",
       ),
     ).resolves.toEqual(handOf("a"));
   });
 
   it("keeps choices the removal leaves valid", async () => {
-    const hand: Hand = { cardIds: ["adder", "a"], choices: { adder: "army" } };
+    const hand: Hand = {
+      cardIds: ["adder", "a"],
+      choices: { adder: { cardId: "army" } },
+    };
 
     await expect(
       createUseCase(7).execute("variant", hand, "a"),
-    ).resolves.toEqual({ cardIds: ["adder"], choices: { adder: "army" } });
+    ).resolves.toEqual({
+      cardIds: ["adder"],
+      choices: { adder: { cardId: "army" } },
+    });
   });
 
   it("fails for an unknown variant", async () => {

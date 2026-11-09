@@ -32,12 +32,12 @@ describe("removeCardFromHand", () => {
   it("keeps the choices, which the caller checks", () => {
     const hand: Hand = {
       cardIds: ["island", "swamp"],
-      choices: { island: "swamp" },
+      choices: { island: { cardId: "swamp" } },
     };
 
     expect(removeCardFromHand(hand, "swamp")).toEqual({
       cardIds: ["island"],
-      choices: { island: "swamp" },
+      choices: { island: { cardId: "swamp" } },
     });
   });
 });
@@ -58,11 +58,11 @@ describe("addCardToHand", () => {
   it("keeps the choices already made", () => {
     const hand: Hand = {
       cardIds: ["island", "swamp"],
-      choices: { island: "swamp" },
+      choices: { island: { cardId: "swamp" } },
     };
 
     expect(addCardToHand(hand, "candle", 7).choices).toEqual({
-      island: "swamp",
+      island: { cardId: "swamp" },
     });
   });
 });
@@ -71,19 +71,27 @@ describe("chooseCard", () => {
   it("records the choice", () => {
     expect(chooseCard(handOf("island", "swamp"), "island", "swamp")).toEqual({
       cardIds: ["island", "swamp"],
-      choices: { island: "swamp" },
+      choices: { island: { cardId: "swamp" } },
     });
   });
 
   it("replaces an earlier choice for the same card", () => {
     const hand: Hand = {
       cardIds: ["island", "swamp", "candle"],
-      choices: { island: "swamp" },
+      choices: { island: { cardId: "swamp" } },
     };
 
     expect(chooseCard(hand, "island", "candle").choices).toEqual({
-      island: "candle",
+      island: { cardId: "candle" },
     });
+  });
+});
+
+describe("chooseCard with a suit", () => {
+  it("records the suit with the card", () => {
+    expect(
+      chooseCard(handOf("book", "swamp"), "book", "swamp", "flame").choices,
+    ).toEqual({ book: { cardId: "swamp", suit: "flame" } });
   });
 });
 
@@ -116,7 +124,7 @@ describe("the hand size", () => {
   it("doesn't count a card chosen for an effect to add", () => {
     const hand: Hand = {
       cardIds: ["necromancer", "b"],
-      choices: { necromancer: "dragon" },
+      choices: { necromancer: { cardId: "dragon" } },
     };
 
     expect(addCardToHand(hand, "c", 3).cardIds).toHaveLength(3);

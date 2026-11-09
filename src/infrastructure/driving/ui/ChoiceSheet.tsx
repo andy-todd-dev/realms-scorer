@@ -1,14 +1,21 @@
 import Check from "lucide-react-native/icons/check";
+import ChevronLeft from "lucide-react-native/icons/chevron-left";
+import type { Suit } from "../../../domain/card";
 import X from "lucide-react-native/icons/x";
 import type { LucideProps } from "lucide-react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { chooseCard } from "../state/hand-slice";
 import { useAppDispatch, useAppSelector } from "../state/hooks";
-import { choiceSheetClosed } from "../state/navigation-slice";
+import {
+  choiceSheetCardPicked,
+  choiceSheetCardUnpicked,
+  choiceSheetClosed,
+} from "../state/navigation-slice";
 import {
   ChoiceOption,
   ChoiceOptionGroup,
   ChoiceSheet as ChoiceSheetData,
+  ChoiceSuitStep,
   selectChoiceSheet,
 } from "../state/selectors";
 import {
@@ -19,7 +26,11 @@ import {
   ActionsheetDragIndicatorWrapper,
   ActionsheetScrollView,
 } from "./gluestack/actionsheet";
-import { choiceInstruction, noChoiceText } from "./choice-wording";
+import {
+  choiceInstruction,
+  noChoiceText,
+  suitInstruction,
+} from "./choice-wording";
 import { Box } from "./gluestack/box";
 import { Button, ButtonIcon } from "./gluestack/button";
 import { Heading } from "./gluestack/heading";
@@ -37,7 +48,10 @@ const HeavyCheck = (props: LucideProps) => <Check {...props} strokeWidth={3} />;
 // Space below the list, on top of the bottom inset.
 const BOTTOM_PADDING = 28;
 
-// Lists the cards that the card the sheet was opened for may choose. Nothing is preselected; the current choice, if any, has a tick.
+/*
+  Lists the cards that the card the sheet was opened for may choose. Nothing is preselected; the current choice, if any,
+  has a tick. For a choice that includes a suit, picking a card then lists the suits it may be given.
+*/
 export function ChoiceSheet() {
   const dispatch = useAppDispatch();
   const sheet = useAppSelector(selectChoiceSheet);
@@ -62,7 +76,7 @@ export function ChoiceSheet() {
 }
 
 function SheetBody({
-  sheet: { chooserId, title, from, targets, groups },
+  sheet: { chooserId, title, from, targets, groups, choosesSuit, suitStep },
   onClose,
 }: {
   sheet: ChoiceSheetData;
@@ -72,7 +86,27 @@ function SheetBody({
 
   return (
     <>
-      <HStack className="items-center gap-1 pt-2 pr-2 pl-4">
+      <HStack
+        className={
+          suitStep
+            ? "items-center gap-1 pt-2 pr-2 pl-1"
+            : "items-center gap-1 pt-2 pr-2 pl-4"
+        }
+      >
+        {suitStep && (
+          <Button
+            testID="choice-sheet-back"
+            accessibilityLabel="Back to cards"
+            variant="ghost"
+            size="icon"
+            onPress={() => dispatch(choiceSheetCardUnpicked())}
+          >
+            <ButtonIcon
+              as={ChevronLeft}
+              className="h-5 w-5 text-subtle-foreground"
+            />
+          </Button>
+        )}
         <Heading
           testID="choice-sheet-title"
           size="lg"
@@ -96,9 +130,22 @@ function SheetBody({
         size="sm"
         className="mr-5 mb-3 ml-4 text-muted-foreground"
       >
-        {choiceInstruction(targets, from)}
+        {suitStep
+          ? suitInstruction(suitStep.cardName)
+          : choiceInstruction(targets, from)}
       </Text>
-      {groups.length === 0 ? (
+      {suitStep ? (
+        <ActionsheetScrollView contentContainerClassName="gap-1 px-4">
+          <SuitOptions
+            step={suitStep}
+            onChoose={(suit) =>
+              dispatch(
+                chooseCard({ chooserId, targetId: suitStep.cardId, suit }),
+              )
+            }
+          />
+        </ActionsheetScrollView>
+      ) : groups.length === 0 ? (
         <Box className="mx-4 rounded-xl border border-dashed border-input p-4">
           <Text size="sm" className="text-muted-foreground">
             {noChoiceText(targets, from)}
@@ -111,7 +158,11 @@ function SheetBody({
               key={group.suit ?? "hand"}
               group={group}
               onChoose={(targetId) =>
-                dispatch(chooseCard({ chooserId, targetId }))
+                dispatch(
+                  choosesSuit
+                    ? choiceSheetCardPicked(targetId)
+                    : chooseCard({ chooserId, targetId }),
+                )
               }
             />
           ))}
@@ -180,5 +231,37 @@ function OptionRow({
       </Text>
       {current && <Icon as={HeavyCheck} className="h-4 w-4 text-primary" />}
     </Pressable>
+  );
+}
+
+// The suits the picked card may be given, with a tick on the current choice, if any.
+function SuitOptions({
+  step: { options },
+  onChoose,
+}: {
+  step: ChoiceSuitStep;
+  onChoose: (suit: Suit) => void;
+}) {
+  return (
+    <>
+      {options.map(({ suit, current }) => (
+        <Pressable
+          key={suit}
+          testID={`choice-suit-${suit}`}
+          accessibilityRole="button"
+          accessibilityState={{ selected: current }}
+          onPress={() => onChoose(suit)}
+          className={
+            current
+              ? "min-h-12 flex-row items-center gap-2.5 rounded-xl border-[1.5px] border-primary bg-accent px-3"
+              : "min-h-12 flex-row items-center gap-2.5 rounded-xl border-[1.5px] border-border bg-muted px-3"
+          }
+        >
+          <SuitDot suit={suit} />
+          <Text className="flex-1 font-body-medium">{SUITS[suit].label}</Text>
+          {current && <Icon as={HeavyCheck} className="h-4 w-4 text-primary" />}
+        </Pressable>
+      ))}
+    </>
   );
 }

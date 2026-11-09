@@ -8,6 +8,8 @@ type NavigationState = {
   screen: Screen;
   // The card whose choice sheet is open, if any.
   choiceSheetFor: CardId | null;
+  // For a choice that includes a suit, the card picked on the sheet, whose suit the player is now choosing.
+  choiceSheetPickedCard: CardId | null;
   // A card the grid should scroll to, until it has.
   cardToReveal: CardId | null;
 };
@@ -15,6 +17,7 @@ type NavigationState = {
 const initialState: NavigationState = {
   screen: "home",
   choiceSheetFor: null,
+  choiceSheetPickedCard: null,
   cardToReveal: null,
 };
 
@@ -27,9 +30,19 @@ const navigationSlice = createSlice({
     },
     choiceSheetOpened(state, action: PayloadAction<CardId>) {
       state.choiceSheetFor = action.payload;
+      state.choiceSheetPickedCard = null;
     },
     choiceSheetClosed(state) {
       state.choiceSheetFor = null;
+      state.choiceSheetPickedCard = null;
+    },
+    // The player picked a card on the sheet, and now chooses its suit.
+    choiceSheetCardPicked(state, action: PayloadAction<CardId>) {
+      state.choiceSheetPickedCard = action.payload;
+    },
+    // Back from choosing a suit to choosing a card.
+    choiceSheetCardUnpicked(state) {
+      state.choiceSheetPickedCard = null;
     },
     // The card is on the grid, so this returns to it from any screen.
     cardRevealRequested(state, action: PayloadAction<CardId>) {
@@ -50,13 +63,16 @@ const navigationSlice = createSlice({
 
         if (state.choiceSheetFor === action.meta.arg) {
           state.choiceSheetFor = null;
+          state.choiceSheetPickedCard = null;
         }
       })
       .addCase(chooseCard.fulfilled, (state) => {
         state.choiceSheetFor = null;
+        state.choiceSheetPickedCard = null;
       })
       .addCase(clearHand.fulfilled, (state) => {
         state.choiceSheetFor = null;
+        state.choiceSheetPickedCard = null;
         state.cardToReveal = null;
       });
   },
@@ -66,6 +82,8 @@ export const {
   screenOpened,
   choiceSheetOpened,
   choiceSheetClosed,
+  choiceSheetCardPicked,
+  choiceSheetCardUnpicked,
   cardRevealRequested,
   cardRevealed,
 } = navigationSlice.actions;

@@ -1,4 +1,4 @@
-import { CardId } from "./card";
+import { CardId, Suit } from "./card";
 import { Choices } from "./choices";
 
 export type Hand = {
@@ -40,13 +40,20 @@ export function removeCardFromHand(hand: Hand, cardId: CardId): Hand {
     : hand;
 }
 
-// Records a choice, replacing any earlier one for the same card. Checking that the choice is valid needs the cards themselves, so it's up to the caller.
+// Records a choice, with a suit for a choice that includes one, replacing any earlier one for the same card. Checking that the choice is valid needs the cards themselves, so it's up to the caller.
 export function chooseCard(
   hand: Hand,
   chooserId: CardId,
   targetId: CardId,
+  suit?: Suit,
 ): Hand {
-  return { ...hand, choices: { ...hand.choices, [chooserId]: targetId } };
+  return {
+    ...hand,
+    choices: {
+      ...hand.choices,
+      [chooserId]: { cardId: targetId, ...(suit !== undefined && { suit }) },
+    },
+  };
 }
 
 export function emptyHand(): Hand {

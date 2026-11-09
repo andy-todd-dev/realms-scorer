@@ -5,6 +5,7 @@ import type {
   CardIdMatcher,
   CardMatcher,
   ChosenCardMatcher,
+  ChosenSuitMatcher,
   EffectCondition,
   PreScoringEffect,
   Suit,
@@ -24,23 +25,29 @@ export const except = (
   except: [...(matcher.except ?? []), ...cards.map(({ cardId }) => cardId)],
 });
 
-// Every card has exactly one suit, so this reaches every card. Add any new suit here.
-export const allSuits: readonly CardMatcher[] = [
-  suit("army"),
-  suit("leader"),
-  suit("wizard"),
-  suit("weapon"),
-  suit("artifact"),
-  suit("beast"),
-  suit("land"),
-  suit("weather"),
-  suit("flood"),
-  suit("flame"),
-  suit("wild"),
+// Every suit, Wild included. Add any new suit here.
+export const allSuitNames: readonly Suit[] = [
+  "army",
+  "leader",
+  "wizard",
+  "weapon",
+  "artifact",
+  "beast",
+  "land",
+  "weather",
+  "flood",
+  "flame",
+  "wild",
 ];
+
+// Every card has exactly one suit, so this reaches every card.
+export const allSuits: readonly CardMatcher[] = allSuitNames.map(suit);
 
 // The card the player chose for the card with this effect. The card needs a choice, made with chooseCard.
 export const chosenCard: ChosenCardMatcher = { chosen: true };
+
+// The suit the player chose for the card with this effect. The card needs a choice that includes a suit, made with andSuit.
+export const chosenSuit: ChosenSuitMatcher = { chosenSuit: true };
 
 // Where a choice takes its card from, for chooseCard.
 type ChoiceSource = CardChoice["kind"];
@@ -60,6 +67,12 @@ export const chooseCard = (
   ...from: CardMatcher[]
 ): CardChoice => ({ kind: source, from });
 
+// A choice that also has the player choose one of these suits for the chosen card, less the suit it already has.
+export const andSuit = (choice: CardChoice, ...suits: Suit[]): CardChoice => ({
+  ...choice,
+  suits,
+});
+
 // A pre-scoring effect that adds the chosen card to the hand. The card needs a choice, made with chooseCard, and the variant must list it for pre-scoring, or it never fires.
 export const addToHand = (card: ChosenCardMatcher): PreScoringEffect => ({
   kind: "addToHand",
@@ -71,6 +84,12 @@ export const take = (
   from: ChosenCardMatcher,
   ...attributes: TakenAttribute[]
 ): PreScoringEffect => ({ kind: "take", from, attributes });
+
+// A pre-scoring effect that gives the chosen card the chosen suit, keeping everything else its own. The card needs a choice made with chooseCard and andSuit, and the variant must list it for pre-scoring, or it never fires.
+export const give = (
+  to: ChosenCardMatcher,
+  suit: ChosenSuitMatcher,
+): PreScoringEffect => ({ kind: "give", to, suit });
 
 export const present = (matcher: CardMatcher): EffectCondition => ({
   present: matcher,

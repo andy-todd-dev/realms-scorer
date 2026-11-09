@@ -1,5 +1,5 @@
 import { createSlice } from "@reduxjs/toolkit";
-import type { CardId } from "../../../domain/card";
+import type { CardId, Suit } from "../../../domain/card";
 import type { Hand } from "../../../domain/hand";
 import { createAppAsyncThunk } from "./create-app-async-thunk";
 
@@ -32,7 +32,11 @@ export const clearHand = createAppAsyncThunk(
 export const chooseCard = createAppAsyncThunk(
   "hand/chooseCard",
   (
-    { chooserId, targetId }: { chooserId: CardId; targetId: CardId },
+    {
+      chooserId,
+      targetId,
+      suit,
+    }: { chooserId: CardId; targetId: CardId; suit?: Suit },
     { extra, getState },
   ) =>
     extra.chooseCard.execute(
@@ -40,6 +44,7 @@ export const chooseCard = createAppAsyncThunk(
       getState().hand,
       chooserId,
       targetId,
+      suit,
     ),
 );
 

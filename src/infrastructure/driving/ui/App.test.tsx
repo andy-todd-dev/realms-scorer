@@ -12,7 +12,7 @@ import { ClearHandUseCase } from "../../../application/clear-hand.usecase";
 import { LoadVariantUseCase } from "../../../application/load-variant.usecase";
 import { RemoveCardFromHandUseCase } from "../../../application/remove-card-from-hand.usecase";
 import { ScoreHandUseCase } from "../../../application/score-hand.usecase";
-import type { Card, CardId } from "../../../domain/card";
+import type { Card, CardId, Suit } from "../../../domain/card";
 import type { DeckId } from "../../../domain/deck";
 import type { Hand } from "../../../domain/hand";
 import type { CardScore, HandScore } from "../../../domain/score";
@@ -125,7 +125,7 @@ const sumStrengths = async ({ cardIds, choices }: Hand) => {
       total: baseStrength,
       ...(choice && {
         choice: {
-          chosenId: choices[id] ?? null,
+          chosenId: choices[id]?.cardId ?? null,
           optionIds: handCards
             .filter((other) => other.id !== id && other.suit === "flood")
             .map((other) => other.id),
@@ -181,6 +181,7 @@ async function renderApp({
     hand: Hand,
     chooserId: CardId,
     targetId: CardId,
+    suit?: Suit,
   ) => Promise<Hand>;
 } = {}) {
   const catalogs = catalogsFor(loadCards, preScoring);
@@ -189,8 +190,8 @@ async function renderApp({
     // Checks choices against the same cards that loading serves, unless faked.
     chooseCard: chooseCard
       ? {
-          execute: (_, hand, chooserId, targetId) =>
-            chooseCard(hand, chooserId, targetId),
+          execute: (_, hand, chooserId, targetId, suit) =>
+            chooseCard(hand, chooserId, targetId, suit),
         }
       : new ChooseCardUseCase(catalogs),
     clearHand: new ClearHandUseCase(),
@@ -742,7 +743,7 @@ describe("choosing a card", () => {
     await waitFor(() =>
       expect(scoreHand).toHaveBeenLastCalledWith({
         cardIds: ["island", "swamp"],
-        choices: { island: "swamp" },
+        choices: { island: { cardId: "swamp" } },
       }),
     );
 
@@ -897,5 +898,99 @@ describe("choosing a card from the discard area", () => {
     expect(screen.getByTestId("chosen-card-necromancer")).toHaveTextContent(
       "→ Knights",
     );
+  });
+});
+
+describe("choosing a card and a suit", () => {
+  // Before scoring, gives one other card in the hand a new suit: Army, Leader or Wild.
+  const book: Card = {
+    id: "book",
+    name: "Book",
+    suit: "artifact",
+    baseStrength: 3,
+    preScoring: [
+      { kind: "give", to: { chosen: true }, suit: { chosenSuit: true } },
+    ],
+    choice: {
+      kind: "cardInHand",
+      from: [{ suit: "leader" }, { suit: "army" }],
+      suits: ["army", "leader", "wild"],
+    },
+  };
+  // +5 for each Army.
+  const captain: Card = {
+    id: "captain",
+    name: "Captain",
+    suit: "wizard",
+    baseStrength: 1,
+    bonus: {
+      text: "",
+      effects: [{ kind: "points", points: 5, per: { suit: "army" } }],
+    },
+  };
+
+  const renderWithBook = () =>
+    renderApp({
+      loadCards: async () => [...cards, book, captain],
+      scoreByTheRules: true,
+      preScoring: ["book"],
+    });
+
+  it("asks for a suit once a card is picked, and goes back to the cards", async () => {
+    const { press, tapCard } = await renderWithBook();
+
+    await tapCard("book");
+    await tapCard("king");
+    await expectScore("11");
+    await press("choice-strip-book");
+    await press("choice-option-king");
+
+    expect(
+      await screen.findByTestId("choice-sheet-instruction"),
+    ).toHaveTextContent("Choose a new suit for King.");
+    expect(screen.getByTestId("choice-suit-army")).toBeOnTheScreen();
+    expect(screen.getByTestId("choice-suit-wild")).toBeOnTheScreen();
+    expect(screen.queryByTestId("choice-suit-leader")).toBeNull();
+    expect(screen.getByTestId("choice-strip-book")).toHaveTextContent(
+      "Choose…",
+    );
+
+    await press("choice-sheet-back");
+
+    expect(await screen.findByTestId("choice-option-king")).toBeOnTheScreen();
+    expect(screen.queryByTestId("choice-suit-army")).toBeNull();
+  });
+
+  it("gives the card the suit, showing it on the strip and the breakdown, and rescoring", async () => {
+    const { press, showBreakdown, tapCard } = await renderWithBook();
+
+    await tapCard("book");
+    await tapCard("king");
+    await tapCard("captain");
+    // 3 + 8 + 1
+    await expectScore("12");
+    await press("choice-strip-book");
+    await press("choice-option-king");
+    await press("choice-suit-army");
+
+    await waitFor(() =>
+      expect(screen.queryByTestId("choice-sheet-title")).toBeNull(),
+    );
+    // 3 + 8 + (1 + 5 for the King as an Army)
+    await expectScore("17");
+    expect(screen.getByTestId("choice-strip-book")).toHaveTextContent(
+      "King as Army",
+    );
+    expect(screen.getByTestId("choice-strip-book")).toHaveProp(
+      "accessibilityLabel",
+      "Book: King as Army. Change",
+    );
+
+    await showBreakdown();
+
+    expect(screen.getByTestId("chosen-card-book")).toHaveTextContent(
+      "→ King as Army",
+    );
+    expect(screen.getByTestId("breakdown-card-king")).toHaveTextContent(/Army/);
   });
 });
