@@ -1,4 +1,4 @@
-import { withoutBlankedCards } from "./blanking";
+import { blankReasons, withoutBlankedCards } from "./blanking";
 import { Card, CardEffect } from "./card";
 
 const card = (
@@ -208,6 +208,138 @@ describe("withoutBlankedCards", () => {
         [blankedWithoutArmy, blankedWithoutWeapon, anArmy],
         ["blanked-without-army", "blanked-without-weapon", "army-1"],
       );
+    });
+  });
+});
+
+describe("blankReasons", () => {
+  const blanksArmies = card("blanks-armies", "wizard", [
+    { kind: "blank", targets: [{ suit: "army" }] },
+  ]);
+  const alsoBlanksArmies = card("also-blanks-armies", "flood", [
+    { kind: "blank", targets: [{ suit: "army" }] },
+  ]);
+  const blankedWithoutLand = card("blanked-without-land", "army", [
+    { kind: "blankSelf", when: { absent: { suit: "land" } } },
+  ]);
+  const blankedWithFlood = card("blanked-with-flood", "weapon", [
+    { kind: "blankSelf", when: { present: { suit: "flood" } } },
+  ]);
+  const NONE = { byCardIds: [], self: [], loopCardIds: [] };
+
+  // Checks the reasons are the same whatever order the hand is in.
+  const expectReasons = (
+    cards: readonly Card[],
+    expected: ReturnType<typeof blankReasons>,
+  ) => {
+    orderings(cards).forEach((ordering) => {
+      expect(blankReasons(ordering)).toEqual(expected);
+    });
+  };
+
+  it("gives cards in play no reason", () => {
+    expectReasons([anArmy, aLand], {});
+  });
+
+  it("names the card that blanked a card", () => {
+    expectReasons([anArmy, blanksArmies], {
+      "army-1": { ...NONE, byCardIds: ["blanks-armies"] },
+    });
+  });
+
+  it("names every card that blanked a card", () => {
+    expect(blankReasons([anArmy, blanksArmies, alsoBlanksArmies])).toEqual({
+      "army-1": {
+        ...NONE,
+        byCardIds: ["blanks-armies", "also-blanks-armies"],
+      },
+    });
+  });
+
+  it("reports a self-blank for a missing suit", () => {
+    expectReasons([blankedWithoutLand], {
+      "blanked-without-land": {
+        ...NONE,
+        self: [
+          {
+            withCardIds: [],
+            without: [{ suit: "land" }],
+            allSuitsDifferent: false,
+          },
+        ],
+      },
+    });
+  });
+
+  it("names the cards that triggered a self-blank", () => {
+    expectReasons([blankedWithFlood, alsoBlanksArmies], {
+      "blanked-with-flood": {
+        ...NONE,
+        self: [
+          {
+            withCardIds: ["also-blanks-armies"],
+            without: [],
+            allSuitsDifferent: false,
+          },
+        ],
+      },
+    });
+  });
+
+  it("reports both a blanking card and a self-blank", () => {
+    expectReasons([blankedWithoutLand, blanksArmies], {
+      "blanked-without-land": {
+        byCardIds: ["blanks-armies"],
+        self: [
+          {
+            withCardIds: [],
+            without: [{ suit: "land" }],
+            allSuitsDifferent: false,
+          },
+        ],
+        loopCardIds: [],
+      },
+    });
+  });
+
+  it("names the other card in a loop of blanks", () => {
+    const blanksLeaders = card("land-blanks-leaders", "land", [
+      { kind: "blank", targets: [{ suit: "leader" }] },
+    ]);
+    const blanksLands = card("leader-blanks-lands", "leader", [
+      { kind: "blank", targets: [{ suit: "land" }] },
+    ]);
+
+    expectReasons([blanksLeaders, blanksLands, anArmy], {
+      "land-blanks-leaders": { ...NONE, loopCardIds: ["leader-blanks-lands"] },
+      "leader-blanks-lands": { ...NONE, loopCardIds: ["land-blanks-leaders"] },
+    });
+  });
+
+  it("names the loop card that a card blanked only by a loop depends on", () => {
+    const blanksLeadersAndArmies = card("land-blanks", "land", [
+      { kind: "blank", targets: [{ suit: "leader" }, { suit: "army" }] },
+    ]);
+    const blanksLands = card("leader-blanks-lands", "leader", [
+      { kind: "blank", targets: [{ suit: "land" }] },
+    ]);
+
+    expect(
+      blankReasons([blanksLeadersAndArmies, blanksLands, anArmy])["army-1"],
+    ).toEqual({ ...NONE, loopCardIds: ["land-blanks"] });
+  });
+
+  it("names the other card in a loop of self-blanks", () => {
+    const blankedWithWizard = card("blanked-with-wizard", "weapon", [
+      { kind: "blankSelf", when: { present: { suit: "wizard" } } },
+    ]);
+    const blankedWithWeapon = card("blanked-with-weapon", "wizard", [
+      { kind: "blankSelf", when: { present: { suit: "weapon" } } },
+    ]);
+
+    expectReasons([blankedWithWizard, blankedWithWeapon], {
+      "blanked-with-wizard": { ...NONE, loopCardIds: ["blanked-with-weapon"] },
+      "blanked-with-weapon": { ...NONE, loopCardIds: ["blanked-with-wizard"] },
     });
   });
 });

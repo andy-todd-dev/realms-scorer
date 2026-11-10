@@ -23,7 +23,7 @@ import { Text } from "./gluestack/text";
 import { VStack } from "./gluestack/vstack";
 import { CardChip } from "./CardChip";
 import { RowBadge } from "./RowBadge";
-import { describeScoreLine } from "./score-wording";
+import { describeBlankReason, describeScoreLine } from "./score-wording";
 import { Screen } from "./Screen";
 import { StripedFill } from "./StripedFill";
 import { SuitDot } from "./SuitDot";
@@ -71,13 +71,13 @@ function FigureLine({
 }
 
 function CardFigures({ row }: { row: BreakdownRow }) {
-  const { blanked, figures } = row;
+  const { blanked, blankReason, figures } = row;
 
   if (!figures) {
     return null;
   }
 
-  // A blanked card's text doesn't apply, so only its base strength is shown, struck through.
+  // A blanked card's text doesn't apply, so only its base strength is shown, struck through, with why it was blanked.
   return (
     <>
       <FigureLine
@@ -86,6 +86,15 @@ function CardFigures({ row }: { row: BreakdownRow }) {
         valueClassName="text-subtle-foreground"
         struck={blanked}
       />
+      {blanked && blankReason && (
+        <Text
+          testID={`blank-reason-${row.id}`}
+          size="sm"
+          className="pr-13.5 pl-5 text-foreground"
+        >
+          {describeBlankReason(blankReason)}
+        </Text>
+      )}
       {!blanked &&
         figures.lines.map((line, index) => (
           <FigureLine

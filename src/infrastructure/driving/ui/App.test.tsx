@@ -590,7 +590,7 @@ describe("the breakdown screen", () => {
     await expectScore("0");
   });
 
-  it("shows each card's base, then each bonus and penalty with its reason, with blanked cards last", async () => {
+  it("shows each card's base, then each bonus and penalty with its reason, with blanked cards last and why", async () => {
     const { showBreakdown, tapCard } = await renderApp({
       scoreHand: async () =>
         handScoreOf([
@@ -642,6 +642,7 @@ describe("the breakdown screen", () => {
             penalty: 0,
             total: 0,
             lines: [],
+            blankReason: { byCardIds: ["king"], self: [], loopCardIds: [] },
           },
         ]),
     });
@@ -674,6 +675,10 @@ describe("the breakdown screen", () => {
       "Blanked",
     );
     expect(screen.queryByTestId("row-badge-king")).toBeNull();
+    expect(screen.getByTestId("blank-reason-knights")).toHaveTextContent(
+      "Blanked by King.",
+    );
+    expect(screen.queryByTestId("blank-reason-king")).toBeNull();
   });
 
   it("shows a placeholder total when scoring fails", async () => {

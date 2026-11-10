@@ -1,5 +1,7 @@
 import { createSelector } from "@reduxjs/toolkit";
 import type { CardId, Suit } from "../../../domain/card";
+import type { BlankReason } from "../../../domain/blanking";
+import type { ConditionFacts } from "../../../domain/conditions";
 import type { ScoreLine, ScoreReason } from "../../../domain/score";
 import type { RootState } from "./store";
 
@@ -285,6 +287,56 @@ const signed = (points: number) =>
 export type ScoreTargetView =
   { readonly suit: Suit } | { readonly cardName: string };
 
+// What made a condition hold, with card names: the cards it needed, what it needed missing, and whether every suit had to differ.
+export type ConditionView = {
+  readonly withNames: readonly string[];
+  readonly without: readonly ScoreTargetView[];
+  readonly allSuitsDifferent: boolean;
+};
+
+// Why a card was blanked, with card names for the UI to put into words.
+export type BlankReasonView = {
+  readonly byNames: readonly string[];
+  readonly self: readonly ConditionView[];
+  readonly loopNames: readonly string[];
+};
+
+const targetView = (
+  target: { suit?: Suit; cardId?: CardId },
+  nameOf: (cardId: CardId) => string,
+): ScoreTargetView | null =>
+  target.suit !== undefined
+    ? { suit: target.suit }
+    : target.cardId !== undefined
+      ? { cardName: nameOf(target.cardId) }
+      : null;
+
+function conditionView(
+  facts: ConditionFacts,
+  nameOf: (cardId: CardId) => string,
+): ConditionView {
+  return {
+    withNames: facts.withCardIds.map(nameOf),
+    without: facts.without.flatMap((target) => {
+      const view = targetView(target, nameOf);
+
+      return view ? [view] : [];
+    }),
+    allSuitsDifferent: facts.allSuitsDifferent,
+  };
+}
+
+function toBlankReasonView(
+  reason: BlankReason,
+  nameOf: (cardId: CardId) => string,
+): BlankReasonView {
+  return {
+    byNames: reason.byCardIds.map(nameOf),
+    self: reason.self.map((facts) => conditionView(facts, nameOf)),
+    loopNames: reason.loopCardIds.map(nameOf),
+  };
+}
+
 // Why a bonus or penalty scored, with card names for the UI to put into words.
 export type ScoreReasonView =
   | {
@@ -295,12 +347,9 @@ export type ScoreReasonView =
       readonly names: readonly string[];
       readonly withNames: readonly string[];
     }
-  | {
+  | ({
       readonly kind: "condition";
-      readonly withNames: readonly string[];
-      readonly without: readonly ScoreTargetView[];
-      readonly allSuitsDifferent: boolean;
-    }
+    } & ConditionView)
   | { readonly kind: "flat" }
   | {
       readonly kind: "sum";
@@ -328,42 +377,23 @@ function toReasonView(
   reason: ScoreReason,
   nameOf: (cardId: CardId) => string,
 ): ScoreReasonView {
-  const targetView = (target: {
-    suit?: Suit;
-    cardId?: CardId;
-  }): ScoreTargetView | null =>
-    target.suit !== undefined
-      ? { suit: target.suit }
-      : target.cardId !== undefined
-        ? { cardName: nameOf(target.cardId) }
-        : null;
-
   switch (reason.kind) {
     case "each":
       return {
         kind: "each",
         each: reason.each,
-        counts: targetView(reason),
+        counts: targetView(reason, nameOf),
         names: reason.cardIds.map(nameOf),
         withNames: reason.withCardIds.map(nameOf),
       };
     case "condition":
-      return {
-        kind: "condition",
-        withNames: reason.withCardIds.map(nameOf),
-        without: reason.without.flatMap((target) => {
-          const view = targetView(target);
-
-          return view ? [view] : [];
-        }),
-        allSuitsDifferent: reason.allSuitsDifferent,
-      };
+      return { kind: "condition", ...conditionView(reason, nameOf) };
     case "flat":
       return { kind: "flat" };
     case "sum":
       return {
         kind: "sum",
-        counts: targetView(reason),
+        counts: targetView(reason, nameOf),
         names: reason.cardIds.map(nameOf),
       };
     case "run":
@@ -438,6 +468,13 @@ export const selectBreakdown = createSelector(
           // For a card taken from the discard area, the name of the card that took it. It isn't in the hand, so it can't be removed from it.
           addedByName: addedBy === null ? null : nameOf(addedBy),
           blanked: cardScore?.blanked ?? false,
+          // Why it was blanked, for a blanked card.
+          blankReason: cardScore?.blankReason
+            ? toBlankReasonView(
+                cardScore.blankReason,
+                (cardId) => nameOf(cardId) ?? cardId,
+              )
+            : null,
           points: cardScore?.total ?? null,
           figures: cardScore && {
             total: String(cardScore.total),

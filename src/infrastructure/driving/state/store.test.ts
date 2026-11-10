@@ -489,6 +489,10 @@ describe("breaking down the score", () => {
     bonus,
     penalty,
     total: base + bonus + penalty,
+    // A blanked card is blanked by the Queen.
+    ...(blanked && {
+      blankReason: { byCardIds: ["queen"], self: [], loopCardIds: [] },
+    }),
     // A bonus for each Army, counting the Knights, and a penalty for being with the King.
     lines: [
       ...(bonus === 0
@@ -559,6 +563,7 @@ describe("breaking down the score", () => {
           choicePending: false,
           addedByName: null,
           blanked: false,
+          blankReason: null,
           points: 13,
           figures: {
             total: "13",
@@ -597,6 +602,7 @@ describe("breaking down the score", () => {
           choicePending: false,
           addedByName: null,
           blanked: false,
+          blankReason: null,
           points: 8,
           figures: { total: "8", base: "8", lines: [] },
         },
@@ -609,6 +615,7 @@ describe("breaking down the score", () => {
           choicePending: false,
           addedByName: null,
           blanked: true,
+          blankReason: { byNames: ["Queen"], self: [], loopNames: [] },
           points: 0,
           figures: { total: "0", base: "0", lines: [] },
         },

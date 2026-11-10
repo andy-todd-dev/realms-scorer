@@ -1,5 +1,9 @@
-import type { BreakdownLine, ScoreReasonView } from "../state/selectors";
-import { describeScoreLine } from "./score-wording";
+import type {
+  BlankReasonView,
+  BreakdownLine,
+  ScoreReasonView,
+} from "../state/selectors";
+import { describeBlankReason, describeScoreLine } from "./score-wording";
 
 const bonus = (reason: ScoreReasonView): BreakdownLine => ({
   ability: "bonus",
@@ -210,5 +214,86 @@ describe("describeScoreLine", () => {
         }),
       ),
     ).toBe("3 different Wizards (Collector, Enchantress, Necromancer)");
+  });
+});
+
+describe("describeBlankReason", () => {
+  type Condition = BlankReasonView["self"][number];
+  const NO_REASON: BlankReasonView = { byNames: [], self: [], loopNames: [] };
+  const needs = (...without: Condition["without"]): Condition => ({
+    withNames: [],
+    without,
+    allSuitsDifferent: false,
+  });
+
+  it("names the card that blanked it", () => {
+    expect(
+      describeBlankReason({ ...NO_REASON, byNames: ["Great Flood"] }),
+    ).toBe("Blanked by Great Flood.");
+  });
+
+  it("names every card that blanked it", () => {
+    expect(
+      describeBlankReason({
+        ...NO_REASON,
+        byNames: ["Great Flood", "Wildfire"],
+      }),
+    ).toBe("Blanked by Great Flood and Wildfire.");
+  });
+
+  it("says which suit a self-blank needed", () => {
+    expect(
+      describeBlankReason({ ...NO_REASON, self: [needs({ suit: "flame" })] }),
+    ).toBe("Blanked: needs at least one Flame card in your hand.");
+  });
+
+  it("says which card a self-blank needed", () => {
+    expect(
+      describeBlankReason({
+        ...NO_REASON,
+        self: [needs({ cardName: "Swamp" })],
+      }),
+    ).toBe("Blanked: needs Swamp in your hand.");
+  });
+
+  it("names the cards that triggered a self-blank", () => {
+    expect(
+      describeBlankReason({
+        ...NO_REASON,
+        self: [{ withNames: ["Smoke"], without: [], allSuitsDifferent: false }],
+      }),
+    ).toBe("Blanked: can't be with Smoke.");
+  });
+
+  it("joins several self-blanks", () => {
+    expect(
+      describeBlankReason({
+        ...NO_REASON,
+        self: [
+          needs({ suit: "army" }),
+          { withNames: ["Smoke"], without: [], allSuitsDifferent: false },
+        ],
+      }),
+    ).toBe(
+      "Blanked: needs at least one Army card in your hand and can't be with Smoke.",
+    );
+  });
+
+  it("puts the cards that blanked it before a self-blank", () => {
+    expect(
+      describeBlankReason({
+        byNames: ["Rangers"],
+        self: [needs({ suit: "army" })],
+        loopNames: [],
+      }),
+    ).toBe(
+      "Blanked by Rangers, and needs at least one Army card in your hand.",
+    );
+  });
+
+  it("names the cards in a loop", () => {
+    expect(describeBlankReason({ ...NO_REASON, loopNames: ["Basilisk"] })).toBe(
+      "Blanked: caught in a loop of blanks with Basilisk.",
+    );
   });
 });

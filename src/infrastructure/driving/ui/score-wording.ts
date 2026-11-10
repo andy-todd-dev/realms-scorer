@@ -1,5 +1,7 @@
 import type {
+  BlankReasonView,
   BreakdownLine,
+  ConditionView,
   ScoreReasonView,
   ScoreTargetView,
 } from "../state/selectors";
@@ -95,4 +97,48 @@ export function describeScoreLine({ ability, reason }: BreakdownLine): string {
       return `${count} different ${targetText({ suit: reason.suit }, count)}${namesText(reason.names)}`;
     }
   }
+}
+
+// What a card would need to be in the hand, in words: "at least one Flame card", "Swamp".
+function neededText(target: ScoreTargetView): string {
+  return "cardName" in target
+    ? target.cardName
+    : `at least one ${SUITS[target.suit].label} card`;
+}
+
+// One of a card's own blank conditions that held, in words.
+function selfBlankText(condition: ConditionView): readonly string[] {
+  return [
+    condition.without.length === 0
+      ? ""
+      : `needs ${joinWith(condition.without.map(neededText), "or")} in your hand`,
+    condition.withNames.length === 0
+      ? ""
+      : `can't be with ${joinWith(condition.withNames, "and")}`,
+    condition.allSuitsDifferent ? "can't have every card a different suit" : "",
+  ].filter((part) => part !== "");
+}
+
+// Why a card was blanked, as a sentence: "Blanked by Great Flood.", "Blanked: needs at least one Flame card in your hand."
+export function describeBlankReason(reason: BlankReasonView): string {
+  const selfParts = reason.self.flatMap(selfBlankText);
+  const loopParts =
+    reason.loopNames.length === 0
+      ? []
+      : [
+          `caught in a loop of blanks with ${joinWith(reason.loopNames, "and")}`,
+        ];
+  const parts = [...selfParts, ...loopParts];
+
+  if (reason.byNames.length > 0) {
+    const by = `Blanked by ${joinWith(reason.byNames, "and")}`;
+
+    return parts.length === 0
+      ? `${by}.`
+      : `${by}, and ${joinWith(parts, "and")}.`;
+  }
+
+  return parts.length === 0
+    ? "Blanked."
+    : `Blanked: ${joinWith(parts, "and")}.`;
 }

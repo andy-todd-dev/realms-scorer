@@ -99,6 +99,25 @@ export function conditionNamesSuit(
   );
 }
 
+// Returns every matcher a condition, or any part of it, names. Walks the same kinds of condition as conditionTruth, so a new kind needs handling in both.
+export function conditionMatchers(
+  condition: EffectCondition,
+): readonly CardMatcher[] {
+  if ("allOf" in condition) {
+    return condition.allOf.flatMap(conditionMatchers);
+  }
+
+  if ("anyOf" in condition) {
+    return condition.anyOf.flatMap(conditionMatchers);
+  }
+
+  if ("allSuitsDifferent" in condition) {
+    return [];
+  }
+
+  return ["present" in condition ? condition.present : condition.absent];
+}
+
 // Checks if the specified effect condition holds for the card that owns the effect, once every other card is settled.
 export function conditionHolds(
   condition: EffectCondition,

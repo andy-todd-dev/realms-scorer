@@ -1,5 +1,5 @@
 import { Card, CardEffect, CardId, Suit } from "./card";
-import { withoutBlankedCards } from "./blanking";
+import { BlankReason, blankReasons, withoutBlankedCards } from "./blanking";
 import { matches, othersIn, targetOf } from "./card-matching";
 import {
   bindChoices,
@@ -296,6 +296,8 @@ export type CardScore = {
   readonly total: number;
   // The points each bonus and penalty effect scored, with the reason, bonuses first. Effects that scored nothing, and a blanked card's, have none.
   readonly lines: readonly ScoreLine[];
+  // Only for a blanked card: why it was blanked.
+  readonly blankReason?: BlankReason;
   // Only for a card that an effect added to the hand: the card whose effect added it.
   readonly addedBy?: CardId;
   // Only for a card whose suit changed before scoring: the suit it was scored as.
@@ -329,13 +331,14 @@ function scoreBoundHand(cards: readonly Card[]): readonly CardScore[] {
 
   // Filter out blanked cards
   const remaining = withoutBlankedCards(cleared);
+  const reasons = blankReasons(cleared);
 
   // Score each card based on what is left
   return cards.map(({ id }): CardScore => {
     const card = remaining.find((other) => other.id === id);
 
     if (!card) {
-      return { cardId: id, ...BLANKED };
+      return { cardId: id, ...BLANKED, blankReason: reasons[id] };
     }
 
     const others = othersIn(remaining, card);

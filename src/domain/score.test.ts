@@ -479,6 +479,7 @@ describe("calculateScore", () => {
         penalty: 0,
         total: 0,
         lines: [],
+        blankReason: { byCardIds: ["blanker"], self: [], loopCardIds: [] },
         choice: { chosenId: "flood-1", optionIds: ["flood-1"] },
       });
     });
@@ -2257,6 +2258,7 @@ describe("scoreHand", () => {
           penalty: 0,
           total: 0,
           lines: [],
+          blankReason: { byCardIds: ["blanker"], self: [], loopCardIds: [] },
         },
         {
           cardId: "blanker",
