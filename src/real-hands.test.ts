@@ -216,6 +216,85 @@ describe("scoring real hands", () => {
     });
   });
 
+  describe("blank reasons", () => {
+    const reasonsOf = async (
+      cardIds: readonly string[],
+      choices: Choices = {},
+    ) =>
+      Object.fromEntries(
+        (await scoreHand.execute("base", { cardIds, choices })).cards.flatMap(
+          ({ cardId, blankReason }) =>
+            blankReason ? [[cardId, blankReason]] : [],
+        ),
+      );
+    const NONE = { byCardIds: [], self: [], loopCardIds: [] };
+
+    it("names the Great Flood as blanking the Wildfire and Cavern in the rulebook example", async () => {
+      await expect(
+        reasonsOf(["blizzard", "great-flood", "wildfire", "cavern"]),
+      ).resolves.toEqual({
+        wildfire: { ...NONE, byCardIds: ["great-flood"] },
+        cavern: { ...NONE, byCardIds: ["great-flood"] },
+      });
+    });
+
+    it("reports that the Smoke needs a Flame", async () => {
+      await expect(reasonsOf(["smoke"])).resolves.toEqual({
+        smoke: {
+          ...NONE,
+          self: [
+            {
+              withCardIds: [],
+              without: [{ suit: "flame" }],
+              allSuitsDifferent: false,
+            },
+          ],
+        },
+      });
+    });
+
+    it("reports both of the War Dirigible's self-blanks, with no Army and with the Smoke kept in play by the Candle", async () => {
+      await expect(
+        reasonsOf(["war-dirigible", "smoke", "candle"]),
+      ).resolves.toEqual({
+        "war-dirigible": {
+          ...NONE,
+          self: [
+            {
+              withCardIds: [],
+              without: [{ suit: "army" }],
+              allSuitsDifferent: false,
+            },
+            {
+              withCardIds: ["smoke"],
+              without: [],
+              allSuitsDifferent: false,
+            },
+          ],
+        },
+      });
+    });
+
+    it("reports the Doppelgänger and Basilisk as caught in a loop", async () => {
+      await expect(
+        reasonsOf(["doppelganger", "basilisk"], {
+          doppelganger: { cardId: "basilisk" },
+        }),
+      ).resolves.toEqual({
+        doppelganger: { ...NONE, loopCardIds: ["basilisk"] },
+        basilisk: { ...NONE, loopCardIds: ["doppelganger"] },
+      });
+    });
+
+    it("gives no reason once the Island clears the Great Flood's blank", async () => {
+      await expect(
+        reasonsOf(["island", "great-flood", "candle"], {
+          island: { cardId: "great-flood" },
+        }),
+      ).resolves.toEqual({});
+    });
+  });
+
   // Designer ruling (BGG thread 1827436): the Rangers don't blank the War Dirigible, and it no longer needs an Army.
   it("keeps the War Dirigible with the Rangers and no other Army", async () => {
     // Rangers 5 + War Dirigible 35.
