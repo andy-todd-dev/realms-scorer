@@ -9,6 +9,10 @@ import {
 } from "./application/choose-card.usecase";
 import { ClearHand, ClearHandUseCase } from "./application/clear-hand.usecase";
 import {
+  LoadAppInfo,
+  LoadAppInfoUseCase,
+} from "./application/load-app-info.usecase";
+import {
   LoadVariant,
   LoadVariantUseCase,
 } from "./application/load-variant.usecase";
@@ -26,16 +30,19 @@ import {
 } from "./application/replace-hand.usecase";
 import { ScoreHand, ScoreHandUseCase } from "./application/score-hand.usecase";
 import { UseCases } from "./application/use-cases";
+import { ExpoApplicationAppInfo } from "./infrastructure/driven/expo-application-app-info";
 import { InMemoryCardCatalog } from "./infrastructure/driven/in-memory-card-catalog";
 import { InMemoryVariantCatalog } from "./infrastructure/driven/in-memory-variant-catalog";
 import { MlKitCardRecognizer } from "./infrastructure/driven/ml-kit-card-recognizer/ml-kit-card-recognizer";
 
 type Cradle = {
   addCardToHand: AddCardToHand;
+  appInfo: ExpoApplicationAppInfo;
   cardCatalog: InMemoryCardCatalog;
   cardRecognizer: MlKitCardRecognizer;
   chooseCard: ChooseCard;
   clearHand: ClearHand;
+  loadAppInfo: LoadAppInfo;
   loadVariant: LoadVariant;
   recogniseHand: RecogniseHand;
   removeCardFromHand: RemoveCardFromHand;
@@ -54,12 +61,16 @@ export function createUseCases(): UseCases {
     addCardToHand: asFunction(
       (deps: Cradle) => new AddCardToHandUseCase(deps),
     ).singleton(),
+    appInfo: asFunction(() => new ExpoApplicationAppInfo()).singleton(),
     cardCatalog: asFunction(() => new InMemoryCardCatalog()).singleton(),
     cardRecognizer: asFunction(() => new MlKitCardRecognizer()).singleton(),
     chooseCard: asFunction(
       (deps: Cradle) => new ChooseCardUseCase(deps),
     ).singleton(),
     clearHand: asFunction(() => new ClearHandUseCase()).singleton(),
+    loadAppInfo: asFunction(
+      (deps: Cradle) => new LoadAppInfoUseCase(deps),
+    ).singleton(),
     loadVariant: asFunction(
       (deps: Cradle) => new LoadVariantUseCase(deps),
     ).singleton(),
@@ -82,6 +93,7 @@ export function createUseCases(): UseCases {
     addCardToHand,
     chooseCard,
     clearHand,
+    loadAppInfo,
     loadVariant,
     recogniseHand,
     removeCardFromHand,
@@ -93,6 +105,7 @@ export function createUseCases(): UseCases {
     addCardToHand,
     chooseCard,
     clearHand,
+    loadAppInfo,
     loadVariant,
     recogniseHand,
     removeCardFromHand,

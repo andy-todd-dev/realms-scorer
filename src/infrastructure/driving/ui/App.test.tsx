@@ -9,6 +9,7 @@ import {
 import { AddCardToHandUseCase } from "../../../application/add-card-to-hand.usecase";
 import { ChooseCardUseCase } from "../../../application/choose-card.usecase";
 import { ClearHandUseCase } from "../../../application/clear-hand.usecase";
+import type { AppInfoView } from "../../../application/load-app-info.usecase";
 import { LoadVariantUseCase } from "../../../application/load-variant.usecase";
 import type { ScanResult } from "../../../application/recognise-hand.usecase";
 import { RemoveCardFromHandUseCase } from "../../../application/remove-card-from-hand.usecase";
@@ -189,6 +190,7 @@ async function renderApp({
   chooseCard,
   recogniseHand = () => Promise.reject(new Error("No scan expected")),
   replaceHand,
+  loadAppInfo = async () => ({ version: null, buildNumber: null }),
 }: {
   scoreHand?: (hand: Hand) => Promise<number | HandScore>;
   // Scores with the real use case, so the options and any added cards come from the rules.
@@ -203,6 +205,7 @@ async function renderApp({
   ) => Promise<Hand>;
   recogniseHand?: (imageUri: string) => Promise<ScanResult>;
   replaceHand?: (cardIds: readonly CardId[]) => Promise<Hand>;
+  loadAppInfo?: () => Promise<AppInfoView>;
 } = {}) {
   const catalogs = catalogsFor(loadCards, preScoring);
   const store = createAppStore({
@@ -215,6 +218,7 @@ async function renderApp({
         }
       : new ChooseCardUseCase(catalogs),
     clearHand: new ClearHandUseCase(),
+    loadAppInfo: { execute: loadAppInfo },
     // The real use case, so card views and choice descriptions are built as in the app.
     loadVariant: new LoadVariantUseCase(catalogs),
     recogniseHand: { execute: (_, imageUri) => recogniseHand(imageUri) },
@@ -448,6 +452,35 @@ describe("the home screen", () => {
     });
 
     expect(screen.getByText("Loading cards...")).toBeOnTheScreen();
+  });
+});
+
+describe("the app version", () => {
+  it("shows the version and build number at the end of the grid", async () => {
+    await renderApp({
+      loadAppInfo: async () => ({ version: "0.3.0", buildNumber: "42" }),
+    });
+
+    expect(await screen.findByTestId("app-version")).toHaveTextContent(
+      "Version 0.3.0 (42)",
+    );
+  });
+
+  it("shows nothing when the version is unknown", async () => {
+    await renderApp();
+
+    expect(screen.queryByTestId("app-version")).toBeNull();
+  });
+
+  it("shows nothing and keeps working when the version can't be read", async () => {
+    const { tapCard } = await renderApp({
+      loadAppInfo: () => Promise.reject(new Error("Unavailable")),
+    });
+
+    await tapCard("king");
+
+    await expectScore("8");
+    expect(screen.queryByTestId("app-version")).toBeNull();
   });
 });
 

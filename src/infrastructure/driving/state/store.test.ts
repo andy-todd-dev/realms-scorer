@@ -1,6 +1,7 @@
 import { AddCardToHandUseCase } from "../../../application/add-card-to-hand.usecase";
 import { ChooseCardUseCase } from "../../../application/choose-card.usecase";
 import { ClearHandUseCase } from "../../../application/clear-hand.usecase";
+import type { AppInfoView } from "../../../application/load-app-info.usecase";
 import { LoadVariantUseCase } from "../../../application/load-variant.usecase";
 import { RemoveCardFromHandUseCase } from "../../../application/remove-card-from-hand.usecase";
 import { ReplaceHandUseCase } from "../../../application/replace-hand.usecase";
@@ -37,7 +38,9 @@ import {
   selectHandProgress,
   selectScore,
   selectScreen,
+  selectVersionLabel,
 } from "./selectors";
+import { loadAppInfo } from "./app-info-slice";
 import { createAppStore } from "./store";
 import { BASE_VARIANT_ID, loadVariant } from "./variant-slice";
 
@@ -107,12 +110,14 @@ function createStore(
     scoreByTheRules = false,
     preScoring = [],
     handSize = 7,
+    loadAppInfoExecute = async () => ({ version: null, buildNumber: null }),
   }: {
     scoreHandExecute?: (hand: Hand) => Promise<number | HandScore>;
     // Scores with the real use case, so the options and any added cards come from the rules.
     scoreByTheRules?: boolean;
     preScoring?: readonly CardId[];
     handSize?: number;
+    loadAppInfoExecute?: () => Promise<AppInfoView>;
   } = {},
 ) {
   const catalogs = catalogsFor(loadCardsExecute, preScoring, handSize);
@@ -122,6 +127,7 @@ function createStore(
     // Checks choices against the same cards that loading serves.
     chooseCard: new ChooseCardUseCase(catalogs),
     clearHand: new ClearHandUseCase(),
+    loadAppInfo: { execute: loadAppInfoExecute },
     // The real use case, so card views and choice descriptions are built as in the app.
     loadVariant: new LoadVariantUseCase(catalogs),
     // Scanning is covered by the component tests.
@@ -200,6 +206,50 @@ describe("loading cards", () => {
     await store.dispatch(loadVariant());
 
     expect(selectCardsStatus(store.getState())).toBe("failed");
+  });
+});
+
+describe("loading the app info", () => {
+  const versionLabelAfterLoading = async (appInfo: AppInfoView) => {
+    const store = createStore(async () => [], {
+      loadAppInfoExecute: async () => appInfo,
+    });
+    await store.dispatch(loadAppInfo());
+    return selectVersionLabel(store.getState());
+  };
+
+  it("has no version label before loading", () => {
+    const store = createStore(async () => []);
+
+    expect(selectVersionLabel(store.getState())).toBeNull();
+  });
+
+  it("labels the version with the build number in brackets", async () => {
+    expect(
+      await versionLabelAfterLoading({ version: "0.3.0", buildNumber: "42" }),
+    ).toBe("Version 0.3.0 (42)");
+  });
+
+  it("labels the version alone when there is no build number", async () => {
+    expect(
+      await versionLabelAfterLoading({ version: "0.3.0", buildNumber: null }),
+    ).toBe("Version 0.3.0");
+  });
+
+  it("has no version label when the platform reports no version", async () => {
+    expect(
+      await versionLabelAfterLoading({ version: null, buildNumber: "42" }),
+    ).toBeNull();
+  });
+
+  it("has no version label when loading fails", async () => {
+    const store = createStore(async () => [], {
+      loadAppInfoExecute: () => Promise.reject(new Error("Unavailable")),
+    });
+
+    await store.dispatch(loadAppInfo());
+
+    expect(selectVersionLabel(store.getState())).toBeNull();
   });
 });
 

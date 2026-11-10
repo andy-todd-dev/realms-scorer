@@ -1,5 +1,6 @@
 import { useEffect } from "react";
 import { StatusBar, View } from "react-native";
+import { loadAppInfo } from "../state/app-info-slice";
 import { loadVariant } from "../state/variant-slice";
 import { useAppDispatch, useAppSelector } from "../state/hooks";
 import { scoreHand } from "../state/score-slice";
@@ -18,6 +19,7 @@ export function Screens() {
 
   useEffect(() => {
     dispatch(loadVariant());
+    dispatch(loadAppInfo());
   }, [dispatch]);
 
   // Lives above the screens so it follows the hand, not which screen is showing.

@@ -1,0 +1,31 @@
+# Runs when a GitHub release is published, as publishing creates the release's tag (e.g. 0.3.0).
+name: Release to Play internal testing
+
+on:
+  push:
+    tags:
+      - "*.*.*"
+      - "v*.*.*"
+      # Pre-releases such as 0.3.0-rc.1 are not shipped.
+      - "!*-*"
+
+jobs:
+  build_android:
+    name: Build Android
+    type: build
+    if: ${{ github.ref_type == 'tag' }}
+    env:
+      # The tag becomes the app version, without any leading v.
+      APP_VERSION: ${{ replaceAll(github.ref_name, 'v', '') }}
+    params:
+      platform: android
+      profile: production
+      message: Release ${{ github.ref_name }}
+
+  submit_android:
+    name: Submit to Play internal testing
+    type: submit
+    needs: [build_android]
+    params:
+      build_id: ${{ needs.build_android.outputs.build_id }}
+      profile: production

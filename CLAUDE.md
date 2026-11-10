@@ -26,6 +26,15 @@ Do not install the app on the phone or run Maestro flows unless explicitly told 
 
 Component tests use React Native Testing Library: render the real components and store with fake use cases, as in `App.test.tsx`. Use them for UI behaviour, including failure and in-flight states, and keep Maestro for flows through the real wiring. Jest doesn't run the CSS, so passing tests say nothing about styling: check that on a device.
 
+## Releasing
+
+Publish a GitHub release whose tag is the version, such as `0.3.0` (a leading `v` is dropped, and tags with a `-`, such as `0.3.0-rc.1`, are ignored). Publishing creates the tag, which starts `.eas/workflows/release.yml`: EAS builds the `production` profile with the tag as `version`, through `APP_VERSION` in `app.config.ts`, and submits it to Google Play's internal testing track. Promote it to production in Play Console.
+
+- Don't bump `version` in `app.config.ts` for a release. Its value is only the fallback for local builds.
+- A `production` build fails without `APP_VERSION`, so `eas build --profile production` by hand needs it set.
+- EAS sets the versionCode from its remote counter (`appVersionSource: "remote"`).
+- The home screen shows the installed versionName and versionCode at the end of the grid, through the `LoadAppInfo` use case.
+
 ## Formatting
 
 Prettier formats files on save in VS Code, after each Claude Code edit (a hook in `.claude/settings.json`), and on commit (husky and lint-staged), so don't format by hand. It also sorts Tailwind classes. `.prettierignore` leaves out the copied Gluestack components and the design mockups.

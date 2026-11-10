@@ -14,6 +14,19 @@ const selectHandScore = (state: RootState) => state.score.value;
 export const selectScore = (state: RootState) =>
   state.score.value?.total ?? null;
 export const selectScreen = (state: RootState) => state.navigation.screen;
+// The line at the end of the home grid, "Version 0.3.0 (42)", or null until the version is known.
+export const selectVersionLabel = createSelector(
+  [
+    (state: RootState) => state.appInfo.version,
+    (state: RootState) => state.appInfo.buildNumber,
+  ],
+  (version, buildNumber) =>
+    version === null
+      ? null
+      : buildNumber === null
+        ? `Version ${version}`
+        : `Version ${version} (${buildNumber})`,
+);
 export const selectCardToReveal = (state: RootState) =>
   state.navigation.cardToReveal;
 const selectChoiceSheetFor = (state: RootState) =>

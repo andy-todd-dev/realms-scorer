@@ -55,6 +55,7 @@ body{margin:0}
         </div>
       </section>
     </sc-for>
+    <p style="margin: 12px 0 4px; text-align: center; font-size: 12px; color: #A9B0BD">Version 0.3.0 (42)</p>
   </div>
 
   <section aria-label="Score" style="padding: 12px 16px 28px; background: #1A1F2A; border-top: 1px solid #2C3343; display: flex; align-items: center; justify-content: space-between; gap: 16px">
@@ -131,7 +132,7 @@ body{margin:0}
   </sc-if>
 </div>
 </x-dc>
-<script type="text/x-dc" data-dc-script data-props='{"accent":{"editor":"color","default":"#E3B75B","options":["#E3B75B","#7FC4E8","#9DD49A"]},"openSheetFor":{"editor":null,"default":""},"gem":{"editor":"enum","options":["Diamond","Aquamarine","Cyan","Gold"],"default":"Diamond","section":"Gems"},"goldSetting":{"editor":"boolean","default":true,"section":"Gems"},"glow":{"editor":"boolean","default":true,"section":"Gems"},"darkTray":{"editor":"boolean","default":true,"section":"Gems"},"$preview":{"width":390,"height":844}}'>
+<script type="text/x-dc" data-dc-script data-props='{"accent":{"editor":"color","default":"#E3B75B","options":["#E3B75B","#7FC4E8","#9DD49A"]},"openSheetFor":{"editor":null,"default":""},"startAtSection":{"editor":"int","default":0,"min":0,"max":10},"gem":{"editor":"enum","options":["Diamond","Aquamarine","Cyan","Gold"],"default":"Diamond","section":"Gems"},"goldSetting":{"editor":"boolean","default":true,"section":"Gems"},"glow":{"editor":"boolean","default":true,"section":"Gems"},"darkTray":{"editor":"boolean","default":true,"section":"Gems"},"$preview":{"width":390,"height":844}}'>
 const SUITS = [
   { label: 'Army', color: '#000000', cards: ['Dwarvish Infantry', 'Elven Archers', 'Knights', 'Light Cavalry', 'Rangers'] },
   { label: 'Artifact', color: '#E67E22', cards: ['Book of Changes', 'Gem of Order', 'Protection Rune', 'Shield of Keth', 'World Tree'] },
@@ -261,7 +262,8 @@ class Component extends DCLogic {
       clear: () => this.setState({ hand: [], choices: {}, sheet: null }),
       closeSheet: () => this.setState({ sheet: null }),
       sheetBack: () => this.setState({ sheet: { card: this.state.sheet.card, step: 1 } }),
-      sections: SUITS.map((s) => ({
+      // startAtSection simulates the grid scrolled down (used by the "scrolled" artboard).
+      sections: SUITS.slice(Number(this.props.startAtSection ?? 0)).map((s) => ({
         label: s.label,
         color: s.color,
         cards: s.cards.map((n) => {

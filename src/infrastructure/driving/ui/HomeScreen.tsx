@@ -24,6 +24,7 @@ import {
   selectCardsStatus,
   selectCardToReveal,
   selectHandProgress,
+  selectVersionLabel,
 } from "../state/selectors";
 import { ChoiceSheet } from "./ChoiceSheet";
 import { chosenText } from "./choice-wording";
@@ -116,6 +117,7 @@ function Grid({
   const status = useAppSelector(selectCardsStatus);
   const sections = useAppSelector(selectCardSections);
   const cardToReveal = useAppSelector(selectCardToReveal);
+  const versionLabel = useAppSelector(selectVersionLabel);
   const scrollRef = useRef<Animated.ScrollView>(null);
   const contentRef = useRef<HostView>(null);
   const tileRefs = useRef(new Map<string, HostView>());
@@ -183,6 +185,16 @@ function Grid({
             registerTile={registerTile}
           />
         ))}
+        {/* At the very end, where it takes no space while picking and is easy to find for bug reports. */}
+        {versionLabel !== null && (
+          <Text
+            testID="app-version"
+            size="xs"
+            className="text-center text-muted-foreground"
+          >
+            {versionLabel}
+          </Text>
+        )}
       </View>
     </Animated.ScrollView>
   );
