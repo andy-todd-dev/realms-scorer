@@ -29,3 +29,8 @@ jobs:
     params:
       build_id: ${{ needs.build_android.outputs.build_id }}
       profile: production
+    hooks:
+      # Submit profiles can't pin Node as build profiles do, and the image's older npm rejects the lock file.
+      # Keep this in step with the npm that comes with the Node version in eas.json and the devcontainer.
+      before_install_node_modules:
+        - run: npm install -g npm@11.20.0
