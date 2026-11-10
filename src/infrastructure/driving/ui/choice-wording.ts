@@ -5,7 +5,10 @@ import { SUITS } from "./theme";
 type ChoiceFrom = ChoiceSheet["from"];
 
 // "A", "A or B", "A, B or C". The design lists suits without a comma before "or".
-function joinWith(parts: readonly string[], conjunction: string): string {
+export function joinWith(
+  parts: readonly string[],
+  conjunction: string,
+): string {
   return parts.length <= 1
     ? parts.join("")
     : `${parts.slice(0, -1).join(", ")} ${conjunction} ${parts.slice(-1).join("")}`;

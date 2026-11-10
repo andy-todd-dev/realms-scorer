@@ -140,6 +140,7 @@ const sumStrengths = async ({ cardIds, choices }: Hand) => {
       bonus: 0,
       penalty: 0,
       total: baseStrength,
+      lines: [],
       ...(choice && {
         choice: {
           chosenId: choices[id]?.cardId ?? null,
@@ -589,7 +590,7 @@ describe("the breakdown screen", () => {
     await expectScore("0");
   });
 
-  it("shows each card's base, bonuses and penalties, with blanked cards last", async () => {
+  it("shows each card's base, then each bonus and penalty with its reason, with blanked cards last", async () => {
     const { showBreakdown, tapCard } = await renderApp({
       scoreHand: async () =>
         handScoreOf([
@@ -600,6 +601,29 @@ describe("the breakdown screen", () => {
             bonus: 10,
             penalty: -3,
             total: 15,
+            lines: [
+              {
+                ability: "bonus",
+                points: 10,
+                reason: {
+                  kind: "each",
+                  each: 10,
+                  suit: "army",
+                  cardIds: ["knights"],
+                  withCardIds: [],
+                },
+              },
+              {
+                ability: "penalty",
+                points: -3,
+                reason: {
+                  kind: "condition",
+                  withCardIds: [],
+                  without: [{ suit: "wizard" }],
+                  allSuitsDifferent: false,
+                },
+              },
+            ],
           },
           {
             cardId: "queen",
@@ -608,6 +632,7 @@ describe("the breakdown screen", () => {
             bonus: 0,
             penalty: 0,
             total: 6,
+            lines: [],
           },
           {
             cardId: "knights",
@@ -616,6 +641,7 @@ describe("the breakdown screen", () => {
             bonus: 0,
             penalty: 0,
             total: 0,
+            lines: [],
           },
         ]),
     });
@@ -638,10 +664,10 @@ describe("the breakdown screen", () => {
     ]);
     expect(screen.getByTestId("card-total-king")).toHaveTextContent("15");
     expect(screen.getByTestId("breakdown-card-king")).toHaveTextContent(
-      /Base strength8.*Bonuses\+10.*Penalties\u22123/,
+      /Base strength8\+10 × 1 Army \(Knights\)\+10With no Wizard\u22123/,
     );
-    expect(screen.getByTestId("breakdown-card-queen")).not.toHaveTextContent(
-      /Bonuses|Penalties/,
+    expect(screen.getByTestId("breakdown-card-queen")).toHaveTextContent(
+      /^Queen.*Base strength6$/,
     );
     expect(screen.getByTestId("card-total-knights")).toHaveTextContent("0");
     expect(screen.getByTestId("row-badge-knights")).toHaveTextContent(

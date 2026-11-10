@@ -1,5 +1,5 @@
-import { Card, CardMatcher, EffectCondition, Suit } from "./card";
-import { matches, namesSuit } from "./card-matching";
+import { Card, CardId, CardMatcher, EffectCondition, Suit } from "./card";
+import { CardTarget, matches, namesSuit, targetOf } from "./card-matching";
 
 // Whether a condition holds while some cards are unsettled: true or false when it holds or fails however they turn out, and undefined until then.
 export type Truth = boolean | undefined;
@@ -106,4 +106,64 @@ export function conditionHolds(
   others: readonly Card[],
 ): boolean {
   return conditionTruth(condition, card, others, []) === true;
+}
+
+// What made a condition hold, for explaining the points it gave: the other cards it needed, the cards or suits it needed to be missing, and whether it needed every suit to differ.
+export type ConditionFacts = {
+  readonly withCardIds: readonly CardId[];
+  readonly without: readonly CardTarget[];
+  readonly allSuitsDifferent: boolean;
+};
+
+const NO_FACTS: ConditionFacts = {
+  withCardIds: [],
+  without: [],
+  allSuitsDifferent: false,
+};
+
+function combinedFacts(parts: readonly ConditionFacts[]): ConditionFacts {
+  return {
+    withCardIds: [...new Set(parts.flatMap((part) => part.withCardIds))],
+    without: parts.flatMap((part) => part.without),
+    allSuitsDifferent: parts.some((part) => part.allSuitsDifferent),
+  };
+}
+
+// Reports what made a condition hold once every other card is settled, for a condition that holds. Of the parts of an anyOf, only those that hold are reported. Walks the same kinds of condition as conditionTruth, so a new kind needs handling in both.
+export function conditionFacts(
+  condition: EffectCondition,
+  card: Card,
+  others: readonly Card[],
+): ConditionFacts {
+  if ("allOf" in condition) {
+    return combinedFacts(
+      condition.allOf.map((part) => conditionFacts(part, card, others)),
+    );
+  }
+
+  if ("anyOf" in condition) {
+    return combinedFacts(
+      condition.anyOf
+        .filter((part) => conditionHolds(part, card, others))
+        .map((part) => conditionFacts(part, card, others)),
+    );
+  }
+
+  if ("allSuitsDifferent" in condition) {
+    return { ...NO_FACTS, allSuitsDifferent: true };
+  }
+
+  return "present" in condition
+    ? {
+        ...NO_FACTS,
+        withCardIds: others
+          .filter((other) => matches(other, condition.present))
+          .map(({ id }) => id),
+      }
+    : {
+        ...NO_FACTS,
+        without: [targetOf(condition.absent)].flatMap((target) =>
+          target ? [target] : [],
+        ),
+      };
 }

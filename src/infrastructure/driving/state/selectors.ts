@@ -1,5 +1,6 @@
 import { createSelector } from "@reduxjs/toolkit";
 import type { CardId, Suit } from "../../../domain/card";
+import type { ScoreLine, ScoreReason } from "../../../domain/score";
 import type { RootState } from "./store";
 
 const selectCards = (state: RootState) => state.cards.items;
@@ -280,8 +281,105 @@ const MINUS = "\u2212";
 const signed = (points: number) =>
   points > 0 ? `+${points}` : points < 0 ? `${MINUS}${-points}` : "0";
 
-// Bonus or penalty points for a card row, left out when there are none.
-const signedIfAny = (points: number) => (points === 0 ? null : signed(points));
+// A suit, or a card by name, that a score line counted or needed.
+export type ScoreTargetView =
+  { readonly suit: Suit } | { readonly cardName: string };
+
+// Why a bonus or penalty scored, with card names for the UI to put into words.
+export type ScoreReasonView =
+  | {
+      readonly kind: "each";
+      readonly each: number;
+      // What it counts, or null for a chosen card that can't be named.
+      readonly counts: ScoreTargetView | null;
+      readonly names: readonly string[];
+      readonly withNames: readonly string[];
+    }
+  | {
+      readonly kind: "condition";
+      readonly withNames: readonly string[];
+      readonly without: readonly ScoreTargetView[];
+      readonly allSuitsDifferent: boolean;
+    }
+  | { readonly kind: "flat" }
+  | {
+      readonly kind: "sum";
+      readonly counts: ScoreTargetView | null;
+      readonly names: readonly string[];
+    }
+  | {
+      readonly kind: "run";
+      readonly length: number;
+      readonly names: readonly string[];
+    }
+  | {
+      readonly kind: "set";
+      readonly suit: Suit;
+      readonly names: readonly string[];
+    };
+
+export type BreakdownLine = {
+  readonly ability: ScoreLine["ability"];
+  readonly value: string;
+  readonly reason: ScoreReasonView;
+};
+
+function toReasonView(
+  reason: ScoreReason,
+  nameOf: (cardId: CardId) => string,
+): ScoreReasonView {
+  const targetView = (target: {
+    suit?: Suit;
+    cardId?: CardId;
+  }): ScoreTargetView | null =>
+    target.suit !== undefined
+      ? { suit: target.suit }
+      : target.cardId !== undefined
+        ? { cardName: nameOf(target.cardId) }
+        : null;
+
+  switch (reason.kind) {
+    case "each":
+      return {
+        kind: "each",
+        each: reason.each,
+        counts: targetView(reason),
+        names: reason.cardIds.map(nameOf),
+        withNames: reason.withCardIds.map(nameOf),
+      };
+    case "condition":
+      return {
+        kind: "condition",
+        withNames: reason.withCardIds.map(nameOf),
+        without: reason.without.flatMap((target) => {
+          const view = targetView(target);
+
+          return view ? [view] : [];
+        }),
+        allSuitsDifferent: reason.allSuitsDifferent,
+      };
+    case "flat":
+      return { kind: "flat" };
+    case "sum":
+      return {
+        kind: "sum",
+        counts: targetView(reason),
+        names: reason.cardIds.map(nameOf),
+      };
+    case "run":
+      return {
+        kind: "run",
+        length: reason.length,
+        names: reason.cardIds.map(nameOf),
+      };
+    case "set":
+      return {
+        kind: "set",
+        suit: reason.suit,
+        names: reason.cardIds.map(nameOf),
+      };
+  }
+}
 
 // The hand score split up for display. Cards are listed highest-scoring first; a card not yet scored, while a new score is in flight, comes last with no figures.
 export const selectBreakdown = createSelector(
@@ -344,8 +442,17 @@ export const selectBreakdown = createSelector(
           figures: cardScore && {
             total: String(cardScore.total),
             base: String(cardScore.base),
-            bonus: signedIfAny(cardScore.bonus),
-            penalty: signedIfAny(cardScore.penalty),
+            // One line for each bonus and penalty that scored, bonuses first.
+            lines: cardScore.lines.map(
+              ({ ability, points, reason }): BreakdownLine => ({
+                ability,
+                value: signed(points),
+                reason: toReasonView(
+                  reason,
+                  (cardId) => nameOf(cardId) ?? cardId,
+                ),
+              }),
+            ),
           },
         };
       })

@@ -478,6 +478,7 @@ describe("calculateScore", () => {
         bonus: 0,
         penalty: 0,
         total: 0,
+        lines: [],
         choice: { chosenId: "flood-1", optionIds: ["flood-1"] },
       });
     });
@@ -774,6 +775,7 @@ describe("calculateScore", () => {
           bonus: 0,
           penalty: 0,
           total: 3,
+          lines: [],
           // Matching cards in the discard area, leaving out those in the hand
           choice: { chosenId: "army-1", optionIds: ["beast-1", "army-1"] },
         },
@@ -784,6 +786,7 @@ describe("calculateScore", () => {
           bonus: 0,
           penalty: 0,
           total: 20,
+          lines: [],
         },
         {
           cardId: "army-1",
@@ -792,6 +795,7 @@ describe("calculateScore", () => {
           bonus: 0,
           penalty: 0,
           total: 10,
+          lines: [],
           addedBy: "adder",
         },
       ]);
@@ -865,6 +869,7 @@ describe("calculateScore", () => {
         bonus: 0,
         penalty: 0,
         total: 0,
+        lines: [],
         suit: "beast",
         choice: { chosenId: "beast-9", optionIds: ["beast-9", "leader-1"] },
       });
@@ -1001,6 +1006,19 @@ describe("calculateScore", () => {
         bonus: 0,
         penalty: -2,
         total: 13,
+        lines: [
+          {
+            ability: "penalty",
+            points: -2,
+            reason: {
+              kind: "each",
+              each: -2,
+              suit: "army",
+              cardIds: ["grunt"],
+              withCardIds: [],
+            },
+          },
+        ],
         suit: "army",
         choice: { chosenId: "grunt", optionIds: ["grunt"] },
       });
@@ -1128,6 +1146,10 @@ describe("calculateScore", () => {
         bonus: 2,
         penalty: -1,
         total: 7,
+        lines: [
+          { ability: "bonus", points: 2, reason: { kind: "flat" } },
+          { ability: "penalty", points: -1, reason: { kind: "flat" } },
+        ],
         suit: "flame",
       });
       // 1 + 10, as the name still matches
@@ -2175,6 +2197,20 @@ describe("scoreHand", () => {
           bonus: 10,
           penalty: -3,
           total: 17,
+          lines: [
+            {
+              ability: "bonus",
+              points: 10,
+              reason: {
+                kind: "each",
+                each: 5,
+                suit: "army",
+                cardIds: ["army-1", "army-2"],
+                withCardIds: [],
+              },
+            },
+            { ability: "penalty", points: -3, reason: { kind: "flat" } },
+          ],
         },
         {
           cardId: "army-1",
@@ -2183,6 +2219,7 @@ describe("scoreHand", () => {
           bonus: 0,
           penalty: 0,
           total: 10,
+          lines: [],
         },
         {
           cardId: "army-2",
@@ -2191,6 +2228,7 @@ describe("scoreHand", () => {
           bonus: 0,
           penalty: 0,
           total: 20,
+          lines: [],
         },
       ],
       base: 40,
@@ -2218,6 +2256,7 @@ describe("scoreHand", () => {
           bonus: 0,
           penalty: 0,
           total: 0,
+          lines: [],
         },
         {
           cardId: "blanker",
@@ -2226,6 +2265,7 @@ describe("scoreHand", () => {
           bonus: 0,
           penalty: 0,
           total: 7,
+          lines: [],
         },
       ],
       base: 7,
@@ -2247,6 +2287,255 @@ describe("scoreHand", () => {
       bonus: 0,
       penalty: 0,
       total: 10,
+      lines: [],
     });
+  });
+});
+
+describe("score lines", () => {
+  const linesOf = (cards: readonly Card[], cardId = "subject") =>
+    scoreHand(cards).cards.find((scored) => scored.cardId === cardId)?.lines;
+
+  it("gives a card with no effects no lines", () => {
+    expect(linesOf([anArmy], "army-1")).toEqual([]);
+  });
+
+  it("names the cards counted for points per suit", () => {
+    const subject = card("subject", "wizard", 1, [pointsPerArmy]);
+
+    expect(linesOf([subject, anArmy, aLeader, anotherArmy])).toEqual([
+      {
+        ability: "bonus",
+        points: 10,
+        reason: {
+          kind: "each",
+          each: 5,
+          suit: "army",
+          cardIds: ["army-1", "army-2"],
+          withCardIds: [],
+        },
+      },
+    ]);
+  });
+
+  it("names the card that points per a specific card count", () => {
+    const subject = card("subject", "wizard", 1, [
+      { kind: "points", points: 12, per: { cardId: "leader-1" } },
+    ]);
+
+    expect(linesOf([subject, aLeader])?.[0].reason).toEqual({
+      kind: "each",
+      each: 12,
+      cardId: "leader-1",
+      cardIds: ["leader-1"],
+      withCardIds: [],
+    });
+  });
+
+  it("names the cards a condition on points per card needed", () => {
+    const subject = card("subject", "leader", 1, [
+      {
+        kind: "points",
+        points: 20,
+        per: { suit: "army" },
+        when: { present: { cardId: "leader-1" } },
+      },
+    ]);
+
+    expect(linesOf([subject, anArmy, aLeader])?.[0].reason).toMatchObject({
+      cardIds: ["army-1"],
+      withCardIds: ["leader-1"],
+    });
+  });
+
+  it("leaves out an effect that scores nothing", () => {
+    const subject = card("subject", "wizard", 1, [
+      pointsPerArmy,
+      { kind: "points", points: 3, when: { present: { suit: "land" } } },
+    ]);
+
+    expect(linesOf([subject, aLeader])).toEqual([]);
+  });
+
+  it("lists bonus lines before penalty lines, each in effect order", () => {
+    const subject: Card = {
+      ...card("subject", "wizard", 1),
+      penalty: { text: "", effects: [{ kind: "points", points: -1 }] },
+      bonus: {
+        text: "",
+        effects: [
+          { kind: "points", points: 2 },
+          { kind: "points", points: 3 },
+        ],
+      },
+    };
+
+    expect(
+      linesOf([subject])?.map(({ ability, points }) => [ability, points]),
+    ).toEqual([
+      ["bonus", 2],
+      ["bonus", 3],
+      ["penalty", -1],
+    ]);
+  });
+
+  describe("conditions", () => {
+    const reasonFor = (when: EffectCondition, others: readonly Card[]) =>
+      linesOf([
+        card("subject", "wizard", 1, [{ kind: "points", points: 5, when }]),
+        ...others,
+      ])?.[0]?.reason;
+
+    it("names the cards a present condition found", () => {
+      expect(
+        reasonFor({ present: { suit: "army" } }, [anArmy, anotherArmy]),
+      ).toEqual({
+        kind: "condition",
+        withCardIds: ["army-1", "army-2"],
+        without: [],
+        allSuitsDifferent: false,
+      });
+    });
+
+    it("reports what an absent condition needed missing", () => {
+      expect(
+        reasonFor({ absent: { suit: "weather" } }, [anArmy]),
+      ).toMatchObject({ withCardIds: [], without: [{ suit: "weather" }] });
+      expect(
+        reasonFor({ absent: { cardId: "queen" } }, [anArmy]),
+      ).toMatchObject({ without: [{ cardId: "queen" }] });
+    });
+
+    it("names only the parts of an anyOf that held", () => {
+      expect(
+        reasonFor(
+          {
+            anyOf: [
+              { present: { cardId: "leader-1" } },
+              { present: { cardId: "land-1" } },
+            ],
+          },
+          [aLand],
+        ),
+      ).toMatchObject({ withCardIds: ["land-1"] });
+    });
+
+    it("names the cards of every part of an allOf, once each", () => {
+      expect(
+        reasonFor(
+          {
+            allOf: [
+              { present: { cardId: "land-1" } },
+              { present: { suit: "land" } },
+              { present: { suit: "army" } },
+            ],
+          },
+          [aLand, anArmy],
+        ),
+      ).toMatchObject({ withCardIds: ["land-1", "army-1"] });
+    });
+
+    it("reports a condition that every suit differs", () => {
+      expect(reasonFor({ allSuitsDifferent: true }, [anArmy])).toMatchObject({
+        allSuitsDifferent: true,
+      });
+    });
+  });
+
+  it("names the cards whose base strengths are summed", () => {
+    const subject = card("subject", "leader", 1, [
+      { kind: "sum", of: { suit: "army" }, attribute: "baseStrength" },
+    ]);
+
+    expect(linesOf([subject, anArmy, aLand, anotherArmy])).toEqual([
+      {
+        ability: "bonus",
+        points: 30,
+        reason: { kind: "sum", suit: "army", cardIds: ["army-1", "army-2"] },
+      },
+    ]);
+  });
+
+  it("names the cards in a run in order of strength, including the owner", () => {
+    const subject = card("subject", "artifact", 5, [
+      {
+        kind: "baseStrengthRun",
+        tiers: [
+          { length: 3, points: 10 },
+          { length: 4, points: 30 },
+        ],
+      },
+    ]);
+
+    expect(
+      linesOf([
+        subject,
+        card("seven", "land", 7),
+        card("six", "land", 6),
+        card("twelve", "land", 12),
+      ]),
+    ).toEqual([
+      {
+        ability: "bonus",
+        points: 10,
+        reason: {
+          kind: "run",
+          length: 3,
+          cardIds: ["subject", "six", "seven"],
+        },
+      },
+    ]);
+  });
+
+  it("gives a line for each suit whose set pays, naming each name once", () => {
+    const subject = card("subject", "land", 1, [
+      {
+        kind: "sameSuitSet",
+        tiers: [
+          { count: 2, points: 10 },
+          { count: 3, points: 40 },
+        ],
+      },
+    ]);
+    const takesArmyName: Card = {
+      ...card("copy", "army", 0),
+      namedAs: "army-1",
+    };
+
+    expect(
+      linesOf([subject, anArmy, takesArmyName, anotherArmy, aLand, aLeader]),
+    ).toEqual([
+      {
+        ability: "bonus",
+        points: 10,
+        reason: { kind: "set", suit: "land", cardIds: ["subject", "land-1"] },
+      },
+      {
+        ability: "bonus",
+        points: 10,
+        reason: { kind: "set", suit: "army", cardIds: ["army-1", "army-2"] },
+      },
+    ]);
+  });
+
+  it("gives a blanked card no lines", () => {
+    const subject = card("subject", "army", 1, [{ kind: "points", points: 2 }]);
+    const blanksArmies = card("blanker", "flood", 1, [
+      { kind: "blank", targets: [{ suit: "army" }] },
+    ]);
+
+    expect(linesOf([subject, blanksArmies])).toEqual([]);
+  });
+
+  it("gives a cleared penalty no lines", () => {
+    const subject: Card = {
+      ...card("subject", "wizard", 1),
+      penalty: { text: "", effects: [{ kind: "points", points: -4 }] },
+    };
+    const clearsWizards = card("clearer", "land", 1, [
+      { kind: "clearPenalty", targets: [{ suit: "wizard" }] },
+    ]);
+
+    expect(linesOf([subject, clearsWizards])).toEqual([]);
   });
 });
