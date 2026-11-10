@@ -26,11 +26,30 @@ describe("scoring real hands", () => {
     choices: Choices = {},
   ) => {
     for (const ordering of orderings(cardIds)) {
-      await expect(
-        scoreHand.execute("base", { cardIds: ordering, choices }),
-      ).resolves.toMatchObject({ total: expected });
+      const handScore = await scoreHand.execute("base", {
+        cardIds: ordering,
+        choices,
+      });
+
+      expect(handScore).toMatchObject({ total: expected });
+
+      // Each card's lines explain all of its bonus and penalty, so a player can check the maths card by card.
+      handScore.cards.forEach(({ base, total, lines }) =>
+        expect(lines.reduce((sum, { points }) => sum + points, base)).toBe(
+          total,
+        ),
+      );
     }
   };
+
+  const linesOf = async (
+    cardIds: readonly string[],
+    cardId: string,
+    choices: Choices = {},
+  ) =>
+    (await scoreHand.execute("base", { cardIds, choices })).cards.find(
+      (scored) => scored.cardId === cardId,
+    )?.lines;
 
   /*
     Rulebook Q&A: "You have a Blizzard (blanks Floods), a Great Flood (blanks Flames and Lands), a Wildfire (blanks
@@ -122,6 +141,78 @@ describe("scoring real hands", () => {
     it("is itself until a card is chosen", async () => {
       // Unicorn 9, with no Princess. Shapeshifter 0.
       await expectScore(["shapeshifter", "unicorn"], 9);
+    });
+  });
+
+  describe("score lines", () => {
+    it("names the Beasts the Beast Master counts", async () => {
+      await expect(
+        linesOf(["beast-master", "unicorn", "dragon"], "beast-master"),
+      ).resolves.toEqual([
+        {
+          ability: "bonus",
+          points: 18,
+          reason: {
+            kind: "each",
+            each: 9,
+            suit: "beast",
+            cardIds: ["unicorn", "dragon"],
+            withCardIds: [],
+          },
+        },
+      ]);
+    });
+
+    it("names the card that took the name a condition needed", async () => {
+      await expect(
+        linesOf(["shapeshifter", "unicorn"], "unicorn", {
+          shapeshifter: { cardId: "princess" },
+        }),
+      ).resolves.toEqual([
+        {
+          ability: "bonus",
+          points: 30,
+          reason: {
+            kind: "condition",
+            withCardIds: ["shapeshifter"],
+            without: [],
+            allSuitsDifferent: false,
+          },
+        },
+      ]);
+    });
+
+    it("names the card the Fountain of Life chose", async () => {
+      await expect(
+        linesOf(["fountain-of-life", "sword-of-keth"], "fountain-of-life", {
+          "fountain-of-life": { cardId: "sword-of-keth" },
+        }),
+      ).resolves.toEqual([
+        {
+          ability: "bonus",
+          points: 7,
+          reason: {
+            kind: "sum",
+            cardId: "sword-of-keth",
+            cardIds: ["sword-of-keth"],
+          },
+        },
+      ]);
+    });
+
+    it("reports the suit a penalty needed and didn't find", async () => {
+      await expect(linesOf(["dragon"], "dragon")).resolves.toEqual([
+        {
+          ability: "penalty",
+          points: -40,
+          reason: {
+            kind: "condition",
+            withCardIds: [],
+            without: [{ suit: "wizard" }],
+            allSuitsDifferent: false,
+          },
+        },
+      ]);
     });
   });
 

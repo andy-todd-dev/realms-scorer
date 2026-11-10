@@ -35,3 +35,18 @@ export function namesSuit(matcher: CardMatcher, suit: Suit): boolean {
 export function othersIn(cards: readonly Card[], card: Card): readonly Card[] {
   return cards.filter((other) => other.id !== card.id);
 }
+
+// The suit or card that a matcher names, for reporting what an effect looked for. A chosen card is reported as the card chosen, and as nothing while pending.
+export type CardTarget = { readonly suit: Suit } | { readonly cardId: CardId };
+
+export function targetOf(matcher: CardMatcher): CardTarget | null {
+  if ("suit" in matcher) {
+    return { suit: matcher.suit };
+  }
+
+  if ("chosen" in matcher) {
+    return matcher.id === undefined ? null : { cardId: matcher.id };
+  }
+
+  return { cardId: matcher.cardId };
+}

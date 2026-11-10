@@ -9,7 +9,7 @@ import { ScoreHandUseCase } from "../../../application/score-hand.usecase";
 import type { Card, CardId } from "../../../domain/card";
 import type { DeckId } from "../../../domain/deck";
 import type { Hand } from "../../../domain/hand";
-import type { HandScore } from "../../../domain/score";
+import type { CardScore, HandScore } from "../../../domain/score";
 import type { Variant, VariantId } from "../../../domain/variant";
 import {
   addCardToHand,
@@ -482,13 +482,45 @@ describe("breaking down the score", () => {
     bonus = 0,
     penalty = 0,
     blanked = false,
-  ) => ({
+  ): CardScore => ({
     cardId,
     blanked,
     base,
     bonus,
     penalty,
     total: base + bonus + penalty,
+    // A bonus for each Army, counting the Knights, and a penalty for being with the King.
+    lines: [
+      ...(bonus === 0
+        ? []
+        : [
+            {
+              ability: "bonus" as const,
+              points: bonus,
+              reason: {
+                kind: "each" as const,
+                each: bonus,
+                suit: "army" as const,
+                cardIds: ["knights"],
+                withCardIds: [],
+              },
+            },
+          ]),
+      ...(penalty === 0
+        ? []
+        : [
+            {
+              ability: "penalty" as const,
+              points: penalty,
+              reason: {
+                kind: "condition" as const,
+                withCardIds: ["king"],
+                without: [],
+                allSuitsDifferent: false,
+              },
+            },
+          ]),
+    ],
   });
 
   async function createScoredStore(handScore: HandScore) {
@@ -528,7 +560,33 @@ describe("breaking down the score", () => {
           addedByName: null,
           blanked: false,
           points: 13,
-          figures: { total: "13", base: "6", bonus: "+10", penalty: "\u22123" },
+          figures: {
+            total: "13",
+            base: "6",
+            lines: [
+              {
+                ability: "bonus",
+                value: "+10",
+                reason: {
+                  kind: "each",
+                  each: 10,
+                  counts: { suit: "army" },
+                  names: ["Knights"],
+                  withNames: [],
+                },
+              },
+              {
+                ability: "penalty",
+                value: "\u22123",
+                reason: {
+                  kind: "condition",
+                  withNames: ["King"],
+                  without: [],
+                  allSuitsDifferent: false,
+                },
+              },
+            ],
+          },
         },
         {
           id: "king",
@@ -540,7 +598,7 @@ describe("breaking down the score", () => {
           addedByName: null,
           blanked: false,
           points: 8,
-          figures: { total: "8", base: "8", bonus: null, penalty: null },
+          figures: { total: "8", base: "8", lines: [] },
         },
         {
           id: "knights",
@@ -552,7 +610,7 @@ describe("breaking down the score", () => {
           addedByName: null,
           blanked: true,
           points: 0,
-          figures: { total: "0", base: "0", bonus: null, penalty: null },
+          figures: { total: "0", base: "0", lines: [] },
         },
       ],
     });
@@ -800,6 +858,7 @@ describe("choosing a card", () => {
         bonus: 0,
         penalty: 0,
         total: 14,
+        lines: [],
         choice: { chosenId: null, optionIds },
       },
     ],

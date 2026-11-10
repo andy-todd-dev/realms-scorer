@@ -23,6 +23,7 @@ import { Text } from "./gluestack/text";
 import { VStack } from "./gluestack/vstack";
 import { CardChip } from "./CardChip";
 import { RowBadge } from "./RowBadge";
+import { describeScoreLine } from "./score-wording";
 import { Screen } from "./Screen";
 import { StripedFill } from "./StripedFill";
 import { SuitDot } from "./SuitDot";
@@ -31,7 +32,7 @@ import { NO_VALUE, SUITS } from "./theme";
 // NativeWind has no class for this on native, so it has to be a style.
 const TABULAR_NUMBERS = { fontVariant: ["tabular-nums" as const] };
 
-// One line under a card's name, such as its base strength or bonus points. Struck through for a figure that doesn't count.
+// One line under a card's name, such as its base strength or a bonus and its reason. Struck through for a figure that doesn't count.
 function FigureLine({
   label,
   value,
@@ -47,10 +48,11 @@ function FigureLine({
     <HStack className="justify-between gap-3 pr-13.5 pl-5">
       <Text
         size="sm"
+        // Long reasons wrap rather than push the value off the row.
         className={
           struck
-            ? "text-muted-foreground line-through"
-            : "text-subtle-foreground"
+            ? "flex-1 text-muted-foreground line-through"
+            : "flex-1 text-subtle-foreground"
         }
       >
         {label}
@@ -84,20 +86,17 @@ function CardFigures({ row }: { row: BreakdownRow }) {
         valueClassName="text-subtle-foreground"
         struck={blanked}
       />
-      {!blanked && figures.bonus && (
-        <FigureLine
-          label="Bonuses"
-          value={figures.bonus}
-          valueClassName="text-success"
-        />
-      )}
-      {!blanked && figures.penalty && (
-        <FigureLine
-          label="Penalties"
-          value={figures.penalty}
-          valueClassName="text-destructive"
-        />
-      )}
+      {!blanked &&
+        figures.lines.map((line, index) => (
+          <FigureLine
+            key={index}
+            label={describeScoreLine(line)}
+            value={line.value}
+            valueClassName={
+              line.ability === "bonus" ? "text-success" : "text-destructive"
+            }
+          />
+        ))}
     </>
   );
 }

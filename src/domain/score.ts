@@ -1,6 +1,6 @@
 import { Card, CardEffect, CardId, Suit } from "./card";
 import { withoutBlankedCards } from "./blanking";
-import { matches, othersIn } from "./card-matching";
+import { matches, othersIn, targetOf } from "./card-matching";
 import {
   bindChoices,
   ChoiceReport,
@@ -10,7 +10,7 @@ import {
   NO_CHOICE_RULES,
 } from "./choices";
 import { withPenaltiesCleared } from "./clearing";
-import { conditionHolds } from "./conditions";
+import { conditionFacts, ConditionFacts, conditionHolds } from "./conditions";
 
 /*
   Rulebook Q&A: "Follow any instructions which call for the clearing of a penalty or part of a penalty. Finally, apply
@@ -67,107 +67,224 @@ import { conditionHolds } from "./conditions";
   Steps 3 to 5 know nothing of choices (scoreBoundHand).
 */
 
-// Returns the length of the longest run of consecutive base strengths. Duplicate strengths neither break nor extend a run.
-function longestBaseStrengthRun(cards: readonly Card[]): number {
+// Returns the longest run of consecutive base strengths, as its lowest strength and its length. Duplicate strengths neither break nor extend a run.
+function longestBaseStrengthRun(cards: readonly Card[]): {
+  start: number;
+  length: number;
+} {
   const strengths = new Set(cards.map(({ baseStrength }) => baseStrength));
 
-  return Math.max(
-    0,
-    ...[...strengths].map((strength) => {
+  return [...strengths].reduce(
+    (best, start) => {
       let length = 1;
 
-      while (strengths.has(strength + length)) {
+      while (strengths.has(start + length)) {
         length += 1;
       }
 
-      return length;
-    }),
+      return length > best.length ? { start, length } : best;
+    },
+    { start: 0, length: 0 },
   );
 }
 
-// Returns the points of the highest tier that the longest run in the hand reaches. Tiers don't add up, only the longest run pays, and a run longer than the top tier pays nothing extra.
-function baseStrengthRunPoints(
+// The line for the highest tier that the longest run in the hand reaches, naming the cards in the run. Tiers don't add up, only the longest run pays, and a run longer than the top tier pays nothing extra.
+function baseStrengthRunLines(
   tiers: Extract<CardEffect, { kind: "baseStrengthRun" }>["tiers"],
   cards: readonly Card[],
-): number {
+): readonly Scored[] {
   const run = longestBaseStrengthRun(cards);
-
-  return tiers
-    .filter(({ length }) => length <= run)
+  const { points } = tiers
+    .filter(({ length }) => length <= run.length)
     .reduce((best, tier) => (tier.length > best.length ? tier : best), {
       length: 0,
       points: 0,
-    }).points;
+    });
+  const inRun = cards
+    .filter(
+      ({ baseStrength }) =>
+        baseStrength >= run.start && baseStrength < run.start + run.length,
+    )
+    .sort((a, b) => a.baseStrength - b.baseStrength);
+
+  return [
+    {
+      points,
+      reason: {
+        kind: "run",
+        length: run.length,
+        cardIds: inRun.map(({ id }) => id),
+      },
+    },
+  ];
 }
 
-// For each suit, the number of differently named cards of it. A card that took another's name counts as that card.
+// For each suit, one card of each different name in it. A card that took another's name counts as that card.
 function differentlyNamedCardsPerSuit(
   cards: readonly Card[],
-): ReadonlyMap<Suit, number> {
-  const namesPerSuit = new Map<Suit, Set<CardId>>();
+): ReadonlyMap<Suit, readonly Card[]> {
+  const namesPerSuit = new Map<Suit, Map<CardId, Card>>();
 
   cards.forEach((card) => {
-    const names = namesPerSuit.get(card.suit) ?? new Set<CardId>();
+    const names = namesPerSuit.get(card.suit) ?? new Map<CardId, Card>();
+    const name = card.namedAs ?? card.id;
 
-    names.add(card.namedAs ?? card.id);
+    if (!names.has(name)) {
+      names.set(name, card);
+    }
+
     namesPerSuit.set(card.suit, names);
   });
 
-  return new Map([...namesPerSuit].map(([suit, names]) => [suit, names.size]));
-}
-
-// Adds up, for each suit, the points of the highest tier its count reaches. Tiers don't add up within a suit.
-function sameSuitSetPoints(
-  tiers: Extract<CardEffect, { kind: "sameSuitSet" }>["tiers"],
-  cards: readonly Card[],
-): number {
-  return [...differentlyNamedCardsPerSuit(cards).values()].reduce(
-    (total, count) =>
-      total +
-      tiers
-        .filter((tier) => tier.count <= count)
-        .reduce((best, tier) => (tier.count > best.count ? tier : best), {
-          count: 0,
-          points: 0,
-        }).points,
-    0,
+  return new Map(
+    [...namesPerSuit].map(([suit, names]) => [suit, [...names.values()]]),
   );
 }
 
-// Calculates the points contributed by a specific effect of the specified card, based on the other cards in the hand.
-function effectPoints(
+// One line for each suit, with the points of the highest tier its count reaches, naming its cards. Tiers don't add up within a suit.
+function sameSuitSetLines(
+  tiers: Extract<CardEffect, { kind: "sameSuitSet" }>["tiers"],
+  cards: readonly Card[],
+): readonly Scored[] {
+  return [...differentlyNamedCardsPerSuit(cards)].map(([suit, named]) => ({
+    points: tiers
+      .filter((tier) => tier.count <= named.length)
+      .reduce((best, tier) => (tier.count > best.count ? tier : best), {
+        count: 0,
+        points: 0,
+      }).points,
+    reason: { kind: "set", suit, cardIds: named.map(({ id }) => id) },
+  }));
+}
+
+// The suit or card an effect counts, or neither for a chosen card while the choice is pending.
+type Counts = Partial<{ readonly suit: Suit; readonly cardId: CardId }>;
+
+// Why an effect scored, for explaining it: what it counted or needed, naming the cards involved. The UI puts it into words.
+export type ScoreReason =
+  // Points for each card counted, such as "+9 for each Beast": the suit or card it counts, the cards counted, and the other cards a condition needed.
+  | ({
+      readonly kind: "each";
+      readonly each: number;
+      readonly cardIds: readonly CardId[];
+      readonly withCardIds: readonly CardId[];
+    } & Counts)
+  // Points for a condition that held, such as "+28 with Swamp" or "-40 unless with at least one Wizard".
+  | ({ readonly kind: "condition" } & ConditionFacts)
+  // Points that need nothing.
+  | { readonly kind: "flat" }
+  // The sum of the base strengths of the cards counted.
+  | ({
+      readonly kind: "sum";
+      readonly cardIds: readonly CardId[];
+    } & Counts)
+  // A run of consecutive base strengths, with the cards in it in order.
+  | {
+      readonly kind: "run";
+      readonly length: number;
+      readonly cardIds: readonly CardId[];
+    }
+  // Differently named cards of one suit.
+  | {
+      readonly kind: "set";
+      readonly suit: Suit;
+      readonly cardIds: readonly CardId[];
+    };
+
+// Points that one effect scored, with the reason. Never zero.
+export type ScoreLine = {
+  readonly ability: "bonus" | "penalty";
+  readonly points: number;
+  readonly reason: ScoreReason;
+};
+
+type Scored = Omit<ScoreLine, "ability">;
+
+// Calculates the points a specific effect of the specified card scored, based on the other cards in the hand, with the reasons. Most effects give at most one line; a same-suit set gives one for each suit.
+function effectLines(
   effect: CardEffect,
   card: Card,
   others: readonly Card[],
-): number {
+): readonly Scored[] {
   if (effect.kind === "baseStrengthRun") {
-    return baseStrengthRunPoints(effect.tiers, [card, ...others]);
+    return baseStrengthRunLines(effect.tiers, [card, ...others]);
   }
 
   if (effect.kind === "sameSuitSet") {
-    return sameSuitSetPoints(effect.tiers, [card, ...others]);
+    return sameSuitSetLines(effect.tiers, [card, ...others]);
   }
 
   if (effect.kind === "sum") {
-    return others
-      .filter((other) => matches(other, effect.of))
-      .reduce((total, other) => total + other[effect.attribute], 0);
+    const counted = others.filter((other) => matches(other, effect.of));
+
+    return [
+      {
+        points: counted.reduce(
+          (total, other) => total + other[effect.attribute],
+          0,
+        ),
+        reason: {
+          kind: "sum",
+          ...targetOf(effect.of),
+          cardIds: counted.map(({ id }) => id),
+        },
+      },
+    ];
   }
 
   if (effect.kind !== "points") {
-    return 0;
+    return [];
   }
 
-  if (effect.when && !conditionHolds(effect.when, card, others)) {
-    return 0;
+  const { per, when } = effect;
+
+  if (when && !conditionHolds(when, card, others)) {
+    return [];
   }
 
-  const { per } = effect;
+  if (per) {
+    const counted = others.filter((other) => matches(other, per));
 
-  return per
-    ? effect.points * others.filter((other) => matches(other, per)).length
-    : effect.points;
+    return [
+      {
+        points: effect.points * counted.length,
+        reason: {
+          kind: "each",
+          each: effect.points,
+          ...targetOf(per),
+          cardIds: counted.map(({ id }) => id),
+          withCardIds: when
+            ? conditionFacts(when, card, others).withCardIds
+            : [],
+        },
+      },
+    ];
+  }
+
+  return [
+    {
+      points: effect.points,
+      reason: when
+        ? { kind: "condition", ...conditionFacts(when, card, others) }
+        : { kind: "flat" },
+    },
+  ];
 }
+
+// The lines that some effects of the specified card scored, leaving out those that scored nothing.
+function abilityLines(
+  ability: ScoreLine["ability"],
+  card: Card,
+  others: readonly Card[],
+): readonly ScoreLine[] {
+  return (card[ability]?.effects ?? [])
+    .flatMap((effect) => effectLines(effect, card, others))
+    .filter(({ points }) => points !== 0)
+    .map((scored) => ({ ability, ...scored }));
+}
+
+const sumOfLines = (lines: readonly ScoreLine[]) =>
+  lines.reduce((total, { points }) => total + points, 0);
 
 export type CardScore = {
   readonly cardId: CardId;
@@ -177,6 +294,8 @@ export type CardScore = {
   // Zero or negative.
   readonly penalty: number;
   readonly total: number;
+  // The points each bonus and penalty effect scored, with the reason, bonuses first. Effects that scored nothing, and a blanked card's, have none.
+  readonly lines: readonly ScoreLine[];
   // Only for a card that an effect added to the hand: the card whose effect added it.
   readonly addedBy?: CardId;
   // Only for a card whose suit changed before scoring: the suit it was scored as.
@@ -194,19 +313,14 @@ export type HandScore = {
   readonly total: number;
 };
 
-// Adds up the points from some effects of the specified card.
-function sumOfEffects(
-  effects: readonly CardEffect[] | undefined,
-  card: Card,
-  others: readonly Card[],
-): number {
-  return (effects ?? []).reduce(
-    (total, effect) => total + effectPoints(effect, card, others),
-    0,
-  );
-}
-
-const BLANKED = { blanked: true, base: 0, bonus: 0, penalty: 0, total: 0 };
+const BLANKED = {
+  blanked: true,
+  base: 0,
+  bonus: 0,
+  penalty: 0,
+  total: 0,
+  lines: [],
+};
 
 // Scores a hand whose choices are already bound (steps 3 to 5), card by card in the order given.
 function scoreBoundHand(cards: readonly Card[]): readonly CardScore[] {
@@ -225,8 +339,10 @@ function scoreBoundHand(cards: readonly Card[]): readonly CardScore[] {
     }
 
     const others = othersIn(remaining, card);
-    const bonus = sumOfEffects(card.bonus?.effects, card, others);
-    const penalty = sumOfEffects(card.penalty?.effects, card, others);
+    const bonusLines = abilityLines("bonus", card, others);
+    const penaltyLines = abilityLines("penalty", card, others);
+    const bonus = sumOfLines(bonusLines);
+    const penalty = sumOfLines(penaltyLines);
 
     return {
       cardId: id,
@@ -235,6 +351,7 @@ function scoreBoundHand(cards: readonly Card[]): readonly CardScore[] {
       bonus,
       penalty,
       total: card.baseStrength + bonus + penalty,
+      lines: [...bonusLines, ...penaltyLines],
     };
   });
 }
