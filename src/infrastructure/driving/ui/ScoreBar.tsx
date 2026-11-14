@@ -1,7 +1,8 @@
 import ChevronRight from "lucide-react-native/icons/chevron-right";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { useAppDispatch, useAppSelector } from "../state/hooks";
-import { cardRevealRequested, screenOpened } from "../state/navigation-slice";
+import { useAppSelector } from "../state/hooks";
+import { cardRevealRequested, screenOpened } from "./navigation";
+import { useNavigation } from "./NavigationProvider";
 import { selectHandProgress, selectScore } from "../state/selectors";
 import { Box } from "./gluestack/box";
 import { Button, ButtonIcon, ButtonText } from "./gluestack/button";
@@ -14,7 +15,7 @@ import { GemPip } from "./GemPip";
 import { NO_VALUE } from "./theme";
 
 export function ScoreBar() {
-  const dispatch = useAppDispatch();
+  const { navigate } = useNavigation();
   const score = useAppSelector(selectScore);
   const {
     isEmpty,
@@ -26,10 +27,10 @@ export function ScoreBar() {
     firstPendingChoiceCardId,
   } = useAppSelector(selectHandProgress);
   const { bottom } = useSafeAreaInsets();
-  const showBreakdown = () => dispatch(screenOpened("breakdown"));
+  const showBreakdown = () => navigate(screenOpened("breakdown"));
   // While a choice is pending, the pips lead to the card that needs it rather than to the breakdown.
   const onPipsPress = () =>
-    dispatch(
+    navigate(
       firstPendingChoiceCardId === null
         ? screenOpened("breakdown")
         : cardRevealRequested(firstPendingChoiceCardId),

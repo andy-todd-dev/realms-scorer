@@ -1,7 +1,8 @@
 import * as ImagePicker from "expo-image-picker";
 import { useCallback } from "react";
 import { useAppDispatch } from "../state/hooks";
-import { scanSheetClosed } from "../state/navigation-slice";
+import { scanSheetClosed } from "./navigation";
+import { useNavigation } from "./NavigationProvider";
 import { scanFailed, scanHand } from "../state/scan-slice";
 
 export type PhotoSource = "camera" | "library";
@@ -17,10 +18,11 @@ const OPTIONS: ImagePicker.ImagePickerOptions = {
 */
 export function usePickImage() {
   const dispatch = useAppDispatch();
+  const { navigate } = useNavigation();
 
   return useCallback(
     async (source: PhotoSource) => {
-      dispatch(scanSheetClosed());
+      navigate(scanSheetClosed());
 
       try {
         if (source === "camera") {
@@ -45,6 +47,6 @@ export function usePickImage() {
         dispatch(scanFailed("unreadable"));
       }
     },
-    [dispatch],
+    [dispatch, navigate],
   );
 }

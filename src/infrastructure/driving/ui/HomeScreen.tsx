@@ -12,17 +12,13 @@ import {
   removeCardFromHand,
 } from "../state/hand-slice";
 import { useAppDispatch, useAppSelector } from "../state/hooks";
-import {
-  cardRevealed,
-  choiceSheetOpened,
-  scanSheetOpened,
-} from "../state/navigation-slice";
+import { cardRevealed, choiceSheetOpened, scanSheetOpened } from "./navigation";
+import { useNavigation } from "./NavigationProvider";
 import {
   CardSection,
   CardTile as CardTileData,
   selectCardSections,
   selectCardsStatus,
-  selectCardToReveal,
   selectHandProgress,
   selectVersionLabel,
 } from "../state/selectors";
@@ -76,6 +72,7 @@ export function HomeScreen() {
 
 function Header() {
   const dispatch = useAppDispatch();
+  const { navigate } = useNavigation();
   const { isEmpty } = useAppSelector(selectHandProgress);
 
   return (
@@ -97,7 +94,7 @@ function Header() {
         testID="scan-hand"
         size="sm"
         className="px-4"
-        onPress={() => dispatch(scanSheetOpened())}
+        onPress={() => navigate(scanSheetOpened())}
       >
         <ButtonIcon as={Camera} className="h-4.5 w-4.5" />
         <ButtonText className="font-body-semibold">Scan</ButtonText>
@@ -113,10 +110,10 @@ function Grid({
   headerHeight: number;
   onScroll: ReturnType<typeof useHideOnScroll>["onScroll"];
 }) {
-  const dispatch = useAppDispatch();
+  const { navigation, navigate } = useNavigation();
   const status = useAppSelector(selectCardsStatus);
   const sections = useAppSelector(selectCardSections);
-  const cardToReveal = useAppSelector(selectCardToReveal);
+  const { cardToReveal } = navigation;
   const versionLabel = useAppSelector(selectVersionLabel);
   const scrollRef = useRef<Animated.ScrollView>(null);
   const contentRef = useRef<HostView>(null);
@@ -137,8 +134,8 @@ function Grid({
       );
     }
 
-    dispatch(cardRevealed());
-  }, [cardToReveal, dispatch]);
+    navigate(cardRevealed());
+  }, [cardToReveal, navigate]);
 
   const registerTile = (cardId: string, view: HostView | null) => {
     if (view) {
@@ -237,6 +234,7 @@ function Section({
 
 function CardTile({ card }: { card: CardTileData }) {
   const dispatch = useAppDispatch();
+  const { navigate } = useNavigation();
   const { id, name, selected, disabled, choice } = card;
 
   return (
@@ -273,7 +271,7 @@ function CardTile({ card }: { card: CardTileData }) {
           cardId={id}
           cardName={name}
           choice={choice}
-          onPress={() => dispatch(choiceSheetOpened(id))}
+          onPress={() => navigate(choiceSheetOpened(id))}
         />
       )}
     </VStack>

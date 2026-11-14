@@ -7,7 +7,8 @@ import { BackHandler, ScrollView, View } from "react-native";
 import type { CardId } from "../../../domain/card";
 import { replaceHand } from "../state/hand-slice";
 import { useAppDispatch, useAppSelector } from "../state/hooks";
-import { scanSheetOpened } from "../state/navigation-slice";
+import { scanSheetOpened } from "./navigation";
+import { useNavigation } from "./NavigationProvider";
 import { scanCandidatePicked, scanDismissed } from "../state/scan-slice";
 import {
   ScanReview,
@@ -36,6 +37,7 @@ const HeavyCheck = (props: LucideProps) => (
 */
 export function ScanReviewScreen() {
   const dispatch = useAppDispatch();
+  const { navigate } = useNavigation();
   const review = useAppSelector(selectScanReview);
 
   useEffect(() => {
@@ -68,7 +70,7 @@ export function ScanReviewScreen() {
             size="icon"
             onPress={() => {
               dispatch(scanDismissed());
-              dispatch(scanSheetOpened());
+              navigate(scanSheetOpened());
             }}
           >
             <ButtonIcon as={ChevronLeft} className="h-5.5 w-5.5" />

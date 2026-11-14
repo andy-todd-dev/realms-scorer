@@ -4,15 +4,16 @@ import { loadAppInfo } from "../state/app-info-slice";
 import { loadVariant } from "../state/variant-slice";
 import { useAppDispatch, useAppSelector } from "../state/hooks";
 import { scoreHand } from "../state/score-slice";
-import { selectHand, selectScanReview, selectScreen } from "../state/selectors";
+import { selectHand, selectScanReview } from "../state/selectors";
 import { BreakdownScreen } from "./BreakdownScreen";
 import { HomeScreen } from "./HomeScreen";
+import { useNavigation, useNavigationFollowsHand } from "./NavigationProvider";
 import { ScanProgress } from "./ScanProgress";
 import { ScanReviewScreen } from "./ScanReviewScreen";
 
 export function Screens() {
   const dispatch = useAppDispatch();
-  const screen = useAppSelector(selectScreen);
+  const { screen } = useNavigation().navigation;
   const hand = useAppSelector(selectHand);
   // A scan being checked shows over whichever screen it started from, and leaves it as it was.
   const reviewingScan = useAppSelector(selectScanReview) !== null;
@@ -26,6 +27,8 @@ export function Screens() {
   useEffect(() => {
     dispatch(scoreHand());
   }, [dispatch, hand]);
+
+  useNavigationFollowsHand(hand.cardIds);
 
   return (
     <>

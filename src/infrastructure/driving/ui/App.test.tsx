@@ -1053,6 +1053,26 @@ describe("choosing a card and a suit", () => {
     expect(screen.queryByTestId("choice-suit-army")).toBeNull();
   });
 
+  it("starts again from the cards when the sheet is reopened", async () => {
+    const { press, tapCard } = await renderWithBook();
+
+    await tapCard("book");
+    await tapCard("king");
+    await expectScore("11");
+    await press("choice-strip-book");
+    await press("choice-option-king");
+    await screen.findByTestId("choice-suit-army");
+    await press("close-choice-sheet");
+    await waitFor(() =>
+      expect(screen.queryByTestId("choice-sheet-title")).toBeNull(),
+    );
+
+    await press("choice-strip-book");
+
+    expect(await screen.findByTestId("choice-option-king")).toBeOnTheScreen();
+    expect(screen.queryByTestId("choice-suit-army")).toBeNull();
+  });
+
   it("gives the card the suit, showing it on the strip and the breakdown, and rescoring", async () => {
     const { press, showBreakdown, tapCard } = await renderWithBook();
 
