@@ -5,7 +5,8 @@ import { useEffect, useRef } from "react";
 import { BackHandler, ScrollView } from "react-native";
 import { removeCardFromHand } from "../state/hand-slice";
 import { useAppDispatch, useAppSelector } from "../state/hooks";
-import { cardRevealRequested, screenOpened } from "../state/navigation-slice";
+import { cardRevealRequested, screenOpened } from "./navigation";
+import { useNavigation } from "./NavigationProvider";
 import {
   BreakdownRow,
   selectBreakdown,
@@ -162,6 +163,7 @@ function rowClassName({ blanked, choicePending }: BreakdownRow): string {
 
 export function BreakdownScreen() {
   const dispatch = useAppDispatch();
+  const { navigate } = useNavigation();
   const { rows } = useAppSelector(selectBreakdown);
   const { breakdownWarning } = useAppSelector(selectHandProgress);
   const score = useAppSelector(selectScore) ?? NO_VALUE;
@@ -181,13 +183,13 @@ export function BreakdownScreen() {
     const subscription = BackHandler.addEventListener(
       "hardwareBackPress",
       () => {
-        dispatch(screenOpened("home"));
+        navigate(screenOpened("home"));
         return true;
       },
     );
 
     return () => subscription.remove();
-  }, [dispatch]);
+  }, [navigate]);
 
   return (
     <Screen>
@@ -197,7 +199,7 @@ export function BreakdownScreen() {
           accessibilityLabel="Back to cards"
           variant="ghost"
           size="icon"
-          onPress={() => dispatch(screenOpened("home"))}
+          onPress={() => navigate(screenOpened("home"))}
         >
           <ButtonIcon as={ChevronLeft} className="h-5.5 w-5.5" />
         </Button>
@@ -286,7 +288,7 @@ export function BreakdownScreen() {
               <Pressable
                 testID={`choice-needed-${row.id}`}
                 accessibilityRole="button"
-                onPress={() => dispatch(cardRevealRequested(row.id))}
+                onPress={() => navigate(cardRevealRequested(row.id))}
                 className="ml-5 min-h-11 flex-row items-center gap-1 self-start"
               >
                 <Text

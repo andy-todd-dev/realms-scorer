@@ -2,7 +2,8 @@ import { styled } from "nativewind";
 import { useEffect } from "react";
 import { ActivityIndicator, BackHandler, View } from "react-native";
 import { useAppDispatch, useAppSelector } from "../state/hooks";
-import { scanSheetOpened } from "../state/navigation-slice";
+import { scanSheetOpened } from "./navigation";
+import { useNavigation } from "./NavigationProvider";
 import { scanDismissed } from "../state/scan-slice";
 import { selectScanProgress } from "../state/selectors";
 import { Button, ButtonText } from "./gluestack/button";
@@ -18,6 +19,7 @@ const Spinner = styled(ActivityIndicator, {
 // Covers the home screen while a photo is read, and explains when reading it failed.
 export function ScanProgress() {
   const dispatch = useAppDispatch();
+  const { navigate } = useNavigation();
   const progress = useAppSelector(selectScanProgress);
   const failed = progress !== null && !progress.reading;
 
@@ -74,7 +76,7 @@ export function ScanProgress() {
             size="lg"
             onPress={() => {
               dispatch(scanDismissed());
-              dispatch(scanSheetOpened());
+              navigate(scanSheetOpened());
             }}
           >
             <ButtonText>Try again</ButtonText>

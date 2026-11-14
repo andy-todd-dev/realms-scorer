@@ -2,9 +2,8 @@ import Camera from "lucide-react-native/icons/camera";
 import Images from "lucide-react-native/icons/images";
 import X from "lucide-react-native/icons/x";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { useAppDispatch, useAppSelector } from "../state/hooks";
-import { scanSheetClosed } from "../state/navigation-slice";
-import { selectScanSheetOpen } from "../state/selectors";
+import { scanSheetClosed } from "./navigation";
+import { useNavigation } from "./NavigationProvider";
 import {
   Actionsheet,
   ActionsheetBackdrop,
@@ -26,11 +25,11 @@ const BOTTOM_PADDING = 28;
 
 // Asks whether to take a photo of the hand or use a saved one.
 export function ScanSheet() {
-  const dispatch = useAppDispatch();
-  const isOpen = useAppSelector(selectScanSheetOpen);
+  const { navigation, navigate } = useNavigation();
+  const isOpen = navigation.scanSheetOpen;
   const pickImage = usePickImage();
   const { bottom } = useSafeAreaInsets();
-  const close = () => dispatch(scanSheetClosed());
+  const close = () => navigate(scanSheetClosed());
 
   return (
     <Actionsheet isOpen={isOpen} onClose={close}>

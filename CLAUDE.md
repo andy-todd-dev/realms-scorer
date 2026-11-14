@@ -26,6 +26,8 @@ Do not install the app on the phone or run Maestro flows unless explicitly told 
 
 Component tests use React Native Testing Library: render the real components and store with fake use cases, as in `App.test.tsx`. Use them for UI behaviour, including failure and in-flight states, and keep Maestro for flows through the real wiring. Jest doesn't run the CSS, so passing tests say nothing about styling: check that on a device.
 
+Test UI code through what the player sees: component tests and Maestro flows, not unit tests of UI state such as the navigation reducer or a hook. Isolated tests of UI internals repeat what those already cover and break when the implementation changes. Unit-test UI code only where the detail would make component tests unwieldy, such as wording rules with many cases (`choice-wording.test.ts`, `score-wording.test.ts`).
+
 ## Releasing
 
 Publish a GitHub release whose tag is the version, such as `0.3.0` (a leading `v` is dropped, and tags with a `-`, such as `0.3.0-rc.1`, are ignored). Publishing creates the tag, which starts `.eas/workflows/release.yml`: EAS builds the `production` profile with the tag as `version`, through `APP_VERSION` in `app.config.ts`, and submits it to Google Play's internal testing track. Promote it to production in Play Console.

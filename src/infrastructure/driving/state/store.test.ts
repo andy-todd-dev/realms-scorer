@@ -17,27 +17,16 @@ import {
   clearHand,
   removeCardFromHand,
 } from "./hand-slice";
-import {
-  cardRevealed,
-  cardRevealRequested,
-  choiceSheetCardPicked,
-  choiceSheetCardUnpicked,
-  choiceSheetClosed,
-  choiceSheetOpened,
-  screenOpened,
-} from "./navigation-slice";
 import { scoreHand } from "./score-slice";
 import {
   selectBreakdown,
   selectCardSections,
   selectCardsStatus,
-  selectCardToReveal,
   selectChoiceSheet,
   selectHand,
   selectHandCards,
   selectHandProgress,
   selectScore,
-  selectScreen,
   selectVersionLabel,
 } from "./selectors";
 import { loadAppInfo } from "./app-info-slice";
@@ -150,9 +139,14 @@ function createStore(
 const handCardIds = (store: ReturnType<typeof createStore>) =>
   selectHandCards(store.getState()).map(({ id }) => id);
 
-// The choice sheet's options, across its groups.
-const sheetOptions = (store: ReturnType<typeof createStore>) =>
-  selectChoiceSheet(store.getState())?.groups.flatMap(({ options }) => options);
+// The choice sheet's options for a card, across its groups.
+const sheetOptions = (
+  store: ReturnType<typeof createStore>,
+  chooserId: CardId,
+) =>
+  selectChoiceSheet(store.getState(), chooserId, null)?.groups.flatMap(
+    ({ options }) => options,
+  );
 
 async function createLoadedStore() {
   const store = createStore(async () => [king, queen, knights]);
@@ -359,28 +353,6 @@ describe("removing a card from the hand", () => {
         choice: null,
       },
     ]);
-  });
-
-  it("returns to the home screen when the last card is removed from the breakdown", async () => {
-    const store = await createLoadedStore();
-    await store.dispatch(addCardToHand("king"));
-    store.dispatch(screenOpened("breakdown"));
-
-    await store.dispatch(removeCardFromHand("king"));
-
-    expect(handCardIds(store)).toEqual([]);
-    expect(selectScreen(store.getState())).toBe("home");
-  });
-
-  it("stays on the breakdown while cards remain", async () => {
-    const store = await createLoadedStore();
-    await store.dispatch(addCardToHand("king"));
-    await store.dispatch(addCardToHand("queen"));
-    store.dispatch(screenOpened("breakdown"));
-
-    await store.dispatch(removeCardFromHand("king"));
-
-    expect(selectScreen(store.getState())).toBe("breakdown");
   });
 });
 
@@ -675,22 +647,6 @@ describe("breaking down the score", () => {
       ["queen", "6"],
       ["knights", undefined],
     ]);
-  });
-});
-
-describe("navigation", () => {
-  it("starts on the home screen and moves between screens", async () => {
-    const store = await createLoadedStore();
-
-    expect(selectScreen(store.getState())).toBe("home");
-
-    store.dispatch(screenOpened("breakdown"));
-
-    expect(selectScreen(store.getState())).toBe("breakdown");
-
-    store.dispatch(screenOpened("home"));
-
-    expect(selectScreen(store.getState())).toBe("home");
   });
 });
 
@@ -1027,7 +983,7 @@ describe("choosing a card", () => {
     it("is closed until opened", async () => {
       const store = await createStoreWithHand(["island"]);
 
-      expect(selectChoiceSheet(store.getState())).toBeNull();
+      expect(selectChoiceSheet(store.getState(), null, null)).toBeNull();
     });
 
     it("lists the options the score reports, with none current", async () => {
@@ -1037,9 +993,7 @@ describe("choosing a card", () => {
       );
       await store.dispatch(scoreHand());
 
-      store.dispatch(choiceSheetOpened("island"));
-
-      expect(selectChoiceSheet(store.getState())).toEqual({
+      expect(selectChoiceSheet(store.getState(), "island", null)).toEqual({
         chooserId: "island",
         title: "Island",
         from: "hand",
@@ -1076,9 +1030,9 @@ describe("choosing a card", () => {
       await store.dispatch(loadVariant());
       await store.dispatch(addCardToHand("picky"));
 
-      store.dispatch(choiceSheetOpened("picky"));
-
-      expect(selectChoiceSheet(store.getState())?.targets).toEqual([
+      expect(
+        selectChoiceSheet(store.getState(), "picky", null)?.targets,
+      ).toEqual([
         { suit: "flood", exceptNames: ["Swamp"] },
         { cardName: "Candle" },
       ]);
@@ -1087,9 +1041,7 @@ describe("choosing a card", () => {
     it("has no options before the score covers the card", async () => {
       const store = await createStoreWithHand(["island", "swamp"]);
 
-      store.dispatch(choiceSheetOpened("island"));
-
-      expect(sheetOptions(store)).toEqual([]);
+      expect(sheetOptions(store, "island")).toEqual([]);
     });
 
     it("leaves out options no longer in the hand", async () => {
@@ -1100,85 +1052,29 @@ describe("choosing a card", () => {
       await store.dispatch(scoreHand());
       await store.dispatch(removeCardFromHand("candle"));
 
-      store.dispatch(choiceSheetOpened("island"));
-
-      expect(sheetOptions(store)?.map(({ id }) => id)).toEqual(["swamp"]);
+      expect(sheetOptions(store, "island")?.map(({ id }) => id)).toEqual([
+        "swamp",
+      ]);
     });
 
-    it("closes once a choice is made, and marks it current when reopened", async () => {
+    it("marks the choice made as current", async () => {
       const store = await createStoreWithHand(
         ["island", "swamp", "candle"],
         async () => scoreWithOptions(["swamp", "candle"]),
       );
       await store.dispatch(scoreHand());
-      store.dispatch(choiceSheetOpened("island"));
 
       await store.dispatch(
         chooseCard({ chooserId: "island", targetId: "candle" }),
       );
 
-      expect(selectChoiceSheet(store.getState())).toBeNull();
-
-      store.dispatch(choiceSheetOpened("island"));
-
       expect(
-        sheetOptions(store)?.map(({ id, current }) => [id, current]),
+        sheetOptions(store, "island")?.map(({ id, current }) => [id, current]),
       ).toEqual([
         ["swamp", false],
         ["candle", true],
       ]);
     });
-
-    it("stays open when a choice is rejected", async () => {
-      const store = await createStoreWithHand(["island", "knights"]);
-      store.dispatch(choiceSheetOpened("island"));
-
-      await store.dispatch(
-        chooseCard({ chooserId: "island", targetId: "knights" }),
-      );
-
-      expect(selectChoiceSheet(store.getState())?.chooserId).toBe("island");
-    });
-
-    it("closes when asked, when its card is removed, and when the hand is cleared", async () => {
-      const store = await createStoreWithHand(["island", "swamp"]);
-
-      store.dispatch(choiceSheetOpened("island"));
-      store.dispatch(choiceSheetClosed());
-
-      expect(selectChoiceSheet(store.getState())).toBeNull();
-
-      store.dispatch(choiceSheetOpened("island"));
-      await store.dispatch(removeCardFromHand("swamp"));
-
-      expect(selectChoiceSheet(store.getState())).not.toBeNull();
-
-      await store.dispatch(removeCardFromHand("island"));
-
-      expect(selectChoiceSheet(store.getState())).toBeNull();
-
-      await store.dispatch(addCardToHand("island"));
-      store.dispatch(choiceSheetOpened("island"));
-      await store.dispatch(clearHand());
-
-      expect(selectChoiceSheet(store.getState())).toBeNull();
-    });
-  });
-});
-
-describe("revealing a card on the grid", () => {
-  it("returns to the grid with the card to scroll to, until it has been revealed", async () => {
-    const store = await createLoadedStore();
-    store.dispatch(screenOpened("breakdown"));
-
-    store.dispatch(cardRevealRequested("king"));
-
-    expect(selectScreen(store.getState())).toBe("home");
-    expect(selectCardToReveal(store.getState())).toBe("king");
-
-    store.dispatch(cardRevealed());
-
-    expect(selectCardToReveal(store.getState())).toBeNull();
   });
 });
 
@@ -1230,9 +1126,9 @@ describe("choosing a card from the discard area", () => {
   it("offers matching cards not in the hand, grouped by suit and sorted by name", async () => {
     const store = await createStoreWithHand(["necromancer", "king", "knights"]);
 
-    store.dispatch(choiceSheetOpened("necromancer"));
-
-    expect(selectChoiceSheet(store.getState())).toMatchObject({
+    expect(
+      selectChoiceSheet(store.getState(), "necromancer", null),
+    ).toMatchObject({
       from: "discardArea",
       groups: [
         { suit: "beast", options: [{ id: "basilisk" }, { id: "dragon" }] },
@@ -1334,9 +1230,9 @@ describe("choosing a card from the game", () => {
   it("offers matching cards in the hand and out of it, grouped by suit", async () => {
     const store = await createStoreWithHand(["shapeshifter", "king"]);
 
-    store.dispatch(choiceSheetOpened("shapeshifter"));
-
-    expect(selectChoiceSheet(store.getState())).toMatchObject({
+    expect(
+      selectChoiceSheet(store.getState(), "shapeshifter", null),
+    ).toMatchObject({
       from: "game",
       groups: [
         { suit: "beast", options: [{ id: "dragon" }] },
@@ -1402,9 +1298,7 @@ describe("choosing a card and a suit", () => {
   it("lists cards first, with no suit step until one is picked", async () => {
     const store = await createStoreWithHand(["book", "king", "knights"]);
 
-    store.dispatch(choiceSheetOpened("book"));
-
-    expect(selectChoiceSheet(store.getState())).toMatchObject({
+    expect(selectChoiceSheet(store.getState(), "book", null)).toMatchObject({
       choosesSuit: true,
       suitStep: null,
       groups: [{ options: [{ id: "king" }, { id: "knights" }] }],
@@ -1414,10 +1308,9 @@ describe("choosing a card and a suit", () => {
   it("offers the picked card's suits, leaving out its own, in grid order", async () => {
     const store = await createStoreWithHand(["book", "king"]);
 
-    store.dispatch(choiceSheetOpened("book"));
-    store.dispatch(choiceSheetCardPicked("king"));
-
-    expect(selectChoiceSheet(store.getState())?.suitStep).toEqual({
+    expect(
+      selectChoiceSheet(store.getState(), "book", "king")?.suitStep,
+    ).toEqual({
       cardId: "king",
       cardName: "King",
       options: [
@@ -1427,16 +1320,14 @@ describe("choosing a card and a suit", () => {
     });
     expect(selectHand(store.getState()).choices).toEqual({});
 
-    store.dispatch(choiceSheetCardUnpicked());
-
-    expect(selectChoiceSheet(store.getState())?.suitStep).toBeNull();
+    expect(
+      selectChoiceSheet(store.getState(), "book", null)?.suitStep,
+    ).toBeNull();
   });
 
-  it("records the card and suit, closes the sheet, and shows both", async () => {
+  it("records the card and suit, and shows both", async () => {
     const store = await createStoreWithHand(["book", "king"]);
 
-    store.dispatch(choiceSheetOpened("book"));
-    store.dispatch(choiceSheetCardPicked("king"));
     await store.dispatch(
       chooseCard({ chooserId: "book", targetId: "king", suit: "army" }),
     );
@@ -1445,7 +1336,6 @@ describe("choosing a card and a suit", () => {
     expect(selectHand(store.getState()).choices).toEqual({
       book: { cardId: "king", suit: "army" },
     });
-    expect(selectChoiceSheet(store.getState())).toBeNull();
     expect(tileFor(store, "book")?.choice).toMatchObject({
       pending: false,
       text: "King",
@@ -1469,23 +1359,12 @@ describe("choosing a card and a suit", () => {
       chooseCard({ chooserId: "book", targetId: "king", suit: "wild" }),
     );
     await store.dispatch(scoreHand());
-    store.dispatch(choiceSheetOpened("book"));
-    store.dispatch(choiceSheetCardPicked("king"));
 
-    expect(selectChoiceSheet(store.getState())?.suitStep?.options).toEqual([
+    expect(
+      selectChoiceSheet(store.getState(), "book", "king")?.suitStep?.options,
+    ).toEqual([
       { suit: "army", current: false },
       { suit: "wild", current: true },
     ]);
-  });
-
-  it("starts again from the cards when the sheet is reopened", async () => {
-    const store = await createStoreWithHand(["book", "king"]);
-
-    store.dispatch(choiceSheetOpened("book"));
-    store.dispatch(choiceSheetCardPicked("king"));
-    store.dispatch(choiceSheetClosed());
-    store.dispatch(choiceSheetOpened("book"));
-
-    expect(selectChoiceSheet(store.getState())?.suitStep).toBeNull();
   });
 });

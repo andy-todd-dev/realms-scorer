@@ -1,6 +1,6 @@
 import Check from "lucide-react-native/icons/check";
 import ChevronLeft from "lucide-react-native/icons/chevron-left";
-import type { Suit } from "../../../domain/card";
+import type { CardId, Suit } from "../../../domain/card";
 import X from "lucide-react-native/icons/x";
 import type { LucideProps } from "lucide-react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -10,7 +10,8 @@ import {
   choiceSheetCardPicked,
   choiceSheetCardUnpicked,
   choiceSheetClosed,
-} from "../state/navigation-slice";
+} from "./navigation";
+import { useNavigation } from "./NavigationProvider";
 import {
   ChoiceOption,
   ChoiceOptionGroup,
@@ -54,10 +55,15 @@ const BOTTOM_PADDING = 28;
   has a tick. For a choice that includes a suit, picking a card then lists the suits it may be given.
 */
 export function ChoiceSheet() {
-  const dispatch = useAppDispatch();
-  const sheet = useAppSelector(selectChoiceSheet);
+  const {
+    navigation: { choiceSheetFor, choiceSheetPickedCard },
+    navigate,
+  } = useNavigation();
+  const sheet = useAppSelector((state) =>
+    selectChoiceSheet(state, choiceSheetFor, choiceSheetPickedCard),
+  );
   const { bottom } = useSafeAreaInsets();
-  const close = () => dispatch(choiceSheetClosed());
+  const close = () => navigate(choiceSheetClosed());
 
   return (
     <Actionsheet isOpen={sheet !== null} onClose={close}>
@@ -84,6 +90,14 @@ function SheetBody({
   onClose: () => void;
 }) {
   const dispatch = useAppDispatch();
+  const { navigate } = useNavigation();
+  // Closes the sheet once the choice is made. A rejected choice leaves it open, still pending.
+  const choose = async (targetId: CardId, suit?: Suit) => {
+    try {
+      await dispatch(chooseCard({ chooserId, targetId, suit })).unwrap();
+      navigate(choiceSheetClosed());
+    } catch {}
+  };
 
   return (
     <>
@@ -100,7 +114,7 @@ function SheetBody({
             accessibilityLabel="Back to cards"
             variant="ghost"
             size="icon"
-            onPress={() => dispatch(choiceSheetCardUnpicked())}
+            onPress={() => navigate(choiceSheetCardUnpicked())}
           >
             <ButtonIcon as={ChevronLeft} className="h-5 w-5 text-foreground" />
           </Button>
@@ -136,11 +150,7 @@ function SheetBody({
         <ActionsheetScrollView contentContainerClassName="gap-1 px-4">
           <SuitOptions
             step={suitStep}
-            onChoose={(suit) =>
-              dispatch(
-                chooseCard({ chooserId, targetId: suitStep.cardId, suit }),
-              )
-            }
+            onChoose={(suit) => choose(suitStep.cardId, suit)}
           />
         </ActionsheetScrollView>
       ) : groups.length === 0 ? (
@@ -156,11 +166,9 @@ function SheetBody({
               key={group.suit ?? "hand"}
               group={group}
               onChoose={(targetId) =>
-                dispatch(
-                  choosesSuit
-                    ? choiceSheetCardPicked(targetId)
-                    : chooseCard({ chooserId, targetId }),
-                )
+                choosesSuit
+                  ? navigate(choiceSheetCardPicked(targetId))
+                  : choose(targetId)
               }
             />
           ))}

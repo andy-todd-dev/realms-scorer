@@ -16,7 +16,6 @@ const selectChoices = (state: RootState) => state.hand.choices;
 const selectHandScore = (state: RootState) => state.score.value;
 export const selectScore = (state: RootState) =>
   state.score.value?.total ?? null;
-export const selectScreen = (state: RootState) => state.navigation.screen;
 // The line at the end of the home grid, "Version 0.3.0 (42)", or null until the version is known.
 export const selectVersionLabel = createSelector(
   [
@@ -30,12 +29,6 @@ export const selectVersionLabel = createSelector(
         ? `Version ${version}`
         : `Version ${version} (${buildNumber})`,
 );
-export const selectCardToReveal = (state: RootState) =>
-  state.navigation.cardToReveal;
-const selectChoiceSheetFor = (state: RootState) =>
-  state.navigation.choiceSheetFor;
-const selectChoiceSheetPickedCard = (state: RootState) =>
-  state.navigation.choiceSheetPickedCard;
 
 const choicesNeededText = (count: number) =>
   count === 1 ? "1 choice needed" : `${count} choices needed`;
@@ -163,12 +156,14 @@ export const selectHandProgress = createSelector(
 /*
   The choice sheet for the card it was opened for. Its options come from the latest score, as the rules decide them, and
   are limited to cards still in the hand. For a choice that includes a suit, picking a card leads to a second step,
-  choosing its suit from those the score allows.
+  choosing its suit from those the score allows. Which card the sheet is for, and the card picked on it, are UI state,
+  so they're passed in.
 */
 export const selectChoiceSheet = createSelector(
   [
-    selectChoiceSheetFor,
-    selectChoiceSheetPickedCard,
+    (_: RootState, chooserId: CardId | null) => chooserId,
+    (_: RootState, _chooserId: CardId | null, pickedCardId: CardId | null) =>
+      pickedCardId,
     selectCards,
     selectHand,
     selectHandScore,
@@ -508,8 +503,6 @@ export const selectBreakdown = createSelector(
 export type BreakdownRow = ReturnType<typeof selectBreakdown>["rows"][number];
 
 const selectScan = (state: RootState) => state.scan;
-export const selectScanSheetOpen = (state: RootState) =>
-  state.navigation.scanSheetOpen;
 
 const cardsText = (count: number) =>
   count === 1 ? "1 card" : `${count} cards`;
