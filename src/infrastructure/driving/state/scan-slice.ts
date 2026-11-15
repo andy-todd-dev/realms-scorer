@@ -2,7 +2,6 @@ import { createSlice, PayloadAction } from "@reduxjs/toolkit";
 import type { ScanResult } from "../../../application/recognise-hand.usecase";
 import type { CardId } from "../../../domain/card";
 import { createAppAsyncThunk } from "./create-app-async-thunk";
-import { replaceHand } from "./hand-slice";
 
 // Why a scan didn't get to the check screen.
 export type ScanFailure = "unreadable" | "noCards" | "cameraDenied";
@@ -14,9 +13,6 @@ type ScanState = {
   result: ScanResult | null;
   // For each match, the card the player has settled on: the best candidate until they pick another.
   picks: CardId[];
-  // Set while the checked cards are being added to the hand, and when that fails.
-  confirming: boolean;
-  confirmFailed: boolean;
   latestRequestId: string | null;
 };
 
@@ -25,8 +21,6 @@ const initialState: ScanState = {
   failure: null,
   result: null,
   picks: [],
-  confirming: false,
-  confirmFailed: false,
   latestRequestId: null,
 };
 
@@ -86,15 +80,6 @@ const scanSlice = createSlice({
           state.status = "failed";
           state.failure = "unreadable";
         }
-      })
-      .addCase(replaceHand.pending, (state) => {
-        state.confirming = true;
-        state.confirmFailed = false;
-      })
-      .addCase(replaceHand.fulfilled, () => initialState)
-      .addCase(replaceHand.rejected, (state) => {
-        state.confirming = false;
-        state.confirmFailed = true;
       });
   },
 });

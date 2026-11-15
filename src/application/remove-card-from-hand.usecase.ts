@@ -1,30 +1,46 @@
 import { CardId } from "../domain/card";
-import { Hand, removeCardFromHand } from "../domain/hand";
-import { VariantId } from "../domain/variant";
+import { removeCardFromHand } from "../domain/hand";
 import { withValidChoices } from "./hand-rules";
 import { RemoveCardFromHandPorts } from "./remove-card-from-hand.ports";
 
 export interface RemoveCardFromHand {
-  execute(variantId: VariantId, hand: Hand, cardId: CardId): Promise<Hand>;
+  execute(cardId: CardId): Promise<void>;
 }
 
 export class RemoveCardFromHandUseCase implements RemoveCardFromHand {
   private readonly ports: RemoveCardFromHandPorts;
 
-  constructor({ cardCatalog, variantCatalog }: RemoveCardFromHandPorts) {
-    this.ports = { cardCatalog, variantCatalog };
+  constructor({
+    hands,
+    variant,
+    handLock,
+    rescore,
+    cardCatalog,
+    variantCatalog,
+  }: RemoveCardFromHandPorts) {
+    this.ports = {
+      hands,
+      variant,
+      handLock,
+      rescore,
+      cardCatalog,
+      variantCatalog,
+    };
   }
 
-  // Drops the choices the card leaves invalid: its own, any of it, and any that depended on what it chose.
-  async execute(
-    variantId: VariantId,
-    hand: Hand,
-    cardId: CardId,
-  ): Promise<Hand> {
-    return withValidChoices(
-      this.ports,
-      variantId,
-      removeCardFromHand(hand, cardId),
-    );
+  // Removes the card and rescores the hand. Drops the choices the card leaves invalid: its own, any of it, and any that depended on what it chose.
+  async execute(cardId: CardId): Promise<void> {
+    const { hands, variant, handLock, rescore } = this.ports;
+
+    await handLock.runExclusive(async () => {
+      hands.save(
+        await withValidChoices(
+          this.ports,
+          variant.get(),
+          removeCardFromHand(hands.get(), cardId),
+        ),
+      );
+    });
+    await rescore.execute();
   }
 }

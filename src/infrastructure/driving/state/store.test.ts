@@ -1,13 +1,9 @@
-import { ChooseCardUseCase } from "../../../application/choose-card.usecase";
-import { ClearHandUseCase } from "../../../application/clear-hand.usecase";
 import { LoadVariantUseCase } from "../../../application/load-variant.usecase";
-import { RemoveCardFromHandUseCase } from "../../../application/remove-card-from-hand.usecase";
-import { ReplaceHandUseCase } from "../../../application/replace-hand.usecase";
 import type { Card, CardId } from "../../../domain/card";
 import type { DeckId } from "../../../domain/deck";
 import type { CardScore, HandScore } from "../../../domain/score";
 import type { Variant, VariantId } from "../../../domain/variant";
-import { handSaved, removeCardFromHand } from "./hand-slice";
+import { handSaved } from "./hand-slice";
 import { scoreSaved } from "./score-slice";
 import { selectBreakdown, selectChoiceSheet } from "./selectors";
 import { createAppStore } from "./store";
@@ -80,9 +76,6 @@ function createStore(loadCardsExecute: () => Promise<Card[]>) {
   const catalogs = catalogsFor(loadCardsExecute);
 
   return createAppStore({
-    // Checks choices against the same cards that loading serves.
-    chooseCard: new ChooseCardUseCase(catalogs),
-    clearHand: new ClearHandUseCase(),
     loadAppInfo: {
       execute: async () => ({ version: null, buildNumber: null }),
     },
@@ -92,8 +85,6 @@ function createStore(loadCardsExecute: () => Promise<Card[]>) {
     recogniseHand: {
       execute: () => Promise.reject(new Error("Not used in these tests")),
     },
-    removeCardFromHand: new RemoveCardFromHandUseCase(catalogs),
-    replaceHand: new ReplaceHandUseCase(catalogs),
   });
 }
 
@@ -289,7 +280,8 @@ describe("choosing a card", () => {
     it("leaves out options no longer in the hand", async () => {
       const store = await createStoreWithHand(["island", "swamp", "candle"]);
       store.dispatch(scoreSaved(scoreWithOptions(["swamp", "candle"])));
-      await store.dispatch(removeCardFromHand("candle"));
+      // Candle leaves the hand after the score that offered it.
+      store.dispatch(handOf("island", "swamp"));
 
       expect(sheetOptions(store, "island")?.map(({ id }) => id)).toEqual([
         "swamp",

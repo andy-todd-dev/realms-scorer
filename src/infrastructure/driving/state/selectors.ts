@@ -539,7 +539,7 @@ export const selectScanProgress = createSelector([selectScan], (scan) =>
 export const selectScanReview = createSelector(
   [selectScan, selectCards, selectHandCardIds],
   (scan, cards, handCardIds) => {
-    const { status, result, picks, confirming, confirmFailed } = scan;
+    const { status, result, picks } = scan;
 
     if (status !== "review" || result === null) {
       return null;
@@ -597,8 +597,6 @@ export const selectScanReview = createSelector(
         .filter(isDefined),
       // The card settled on for each match, in match order, for adding to the hand.
       picks,
-      confirming,
-      confirmFailed,
     };
   },
 );

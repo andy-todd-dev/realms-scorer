@@ -3,8 +3,7 @@ import ChevronRight from "lucide-react-native/icons/chevron-right";
 import X from "lucide-react-native/icons/x";
 import { useEffect, useRef } from "react";
 import { BackHandler, ScrollView } from "react-native";
-import { removeCardFromHand } from "../state/hand-slice";
-import { useAppDispatch, useAppSelector } from "../state/hooks";
+import { useAppSelector } from "../state/hooks";
 import { cardRevealRequested, screenOpened } from "./navigation";
 import { useNavigation } from "./NavigationProvider";
 import {
@@ -26,6 +25,7 @@ import { CardChip } from "./CardChip";
 import { RowBadge } from "./RowBadge";
 import { describeBlankReason, describeScoreLine } from "./score-wording";
 import { Screen } from "./Screen";
+import { useUseCases } from "./UseCasesProvider";
 import { StripedFill } from "./StripedFill";
 import { SuitDot } from "./SuitDot";
 import { NO_VALUE, SUITS } from "./theme";
@@ -162,7 +162,7 @@ function rowClassName({ blanked, choicePending }: BreakdownRow): string {
 }
 
 export function BreakdownScreen() {
-  const dispatch = useAppDispatch();
+  const { removeCardFromHand } = useUseCases();
   const { navigate } = useNavigation();
   const { rows } = useAppSelector(selectBreakdown);
   const { breakdownWarning } = useAppSelector(selectHandProgress);
@@ -273,7 +273,10 @@ export function BreakdownScreen() {
                   accessibilityLabel={`Remove ${row.name} from hand`}
                   variant="ghost"
                   size="icon"
-                  onPress={() => dispatch(removeCardFromHand(row.id))}
+                  // A failed removal leaves the hand as it was.
+                  onPress={() =>
+                    removeCardFromHand.execute(row.id).catch(() => undefined)
+                  }
                 >
                   <ButtonIcon as={X} className="h-4.5 w-4.5 text-icon" />
                 </Button>

@@ -67,10 +67,6 @@ export function createApp(): { store: AppStore; useCases: AppUseCases } {
     appInfo: asFunction(() => new ExpoApplicationAppInfo()).singleton(),
     cardCatalog: asFunction(() => new InMemoryCardCatalog()).singleton(),
     cardRecognizer: asFunction(() => new MlKitCardRecognizer()).singleton(),
-    chooseCard: asFunction(
-      (deps: Cradle) => new ChooseCardUseCase(deps),
-    ).singleton(),
-    clearHand: asFunction(() => new ClearHandUseCase()).singleton(),
     loadAppInfo: asFunction(
       (deps: Cradle) => new LoadAppInfoUseCase(deps),
     ).singleton(),
@@ -80,33 +76,11 @@ export function createApp(): { store: AppStore; useCases: AppUseCases } {
     recogniseHand: asFunction(
       (deps: Cradle) => new RecogniseHandUseCase(deps),
     ).singleton(),
-    removeCardFromHand: asFunction(
-      (deps: Cradle) => new RemoveCardFromHandUseCase(deps),
-    ).singleton(),
-    replaceHand: asFunction(
-      (deps: Cradle) => new ReplaceHandUseCase(deps),
-    ).singleton(),
     variantCatalog: asFunction(() => new InMemoryVariantCatalog()).singleton(),
   });
 
-  const {
-    chooseCard,
-    clearHand,
-    loadAppInfo,
-    loadVariant,
-    recogniseHand,
-    removeCardFromHand,
-    replaceHand,
-  } = container.cradle;
-  const thunkUseCases: UseCases = {
-    chooseCard,
-    clearHand,
-    loadAppInfo,
-    loadVariant,
-    recogniseHand,
-    removeCardFromHand,
-    replaceHand,
-  };
+  const { loadAppInfo, loadVariant, recogniseHand } = container.cradle;
+  const thunkUseCases: UseCases = { loadAppInfo, loadVariant, recogniseHand };
   const store = createAppStore(thunkUseCases);
   const { hands, scores, variant } = reduxStores(store);
 
@@ -119,10 +93,39 @@ export function createApp(): { store: AppStore; useCases: AppUseCases } {
     addCardToHand: asFunction(
       (deps: Cradle) => new AddCardToHandUseCase(deps),
     ).singleton(),
+    chooseCard: asFunction(
+      (deps: Cradle) => new ChooseCardUseCase(deps),
+    ).singleton(),
+    clearHand: asFunction(
+      (deps: Cradle) => new ClearHandUseCase(deps),
+    ).singleton(),
+    removeCardFromHand: asFunction(
+      (deps: Cradle) => new RemoveCardFromHandUseCase(deps),
+    ).singleton(),
+    replaceHand: asFunction(
+      (deps: Cradle) => new ReplaceHandUseCase(deps),
+    ).singleton(),
     rescore: asFunction((deps: Cradle) => new RescoreUseCase(deps)).singleton(),
   });
 
-  const { addCardToHand, rescore } = container.cradle;
+  const {
+    addCardToHand,
+    chooseCard,
+    clearHand,
+    removeCardFromHand,
+    replaceHand,
+    rescore,
+  } = container.cradle;
 
-  return { store, useCases: { addCardToHand, rescore } };
+  return {
+    store,
+    useCases: {
+      addCardToHand,
+      chooseCard,
+      clearHand,
+      removeCardFromHand,
+      replaceHand,
+      rescore,
+    },
+  };
 }

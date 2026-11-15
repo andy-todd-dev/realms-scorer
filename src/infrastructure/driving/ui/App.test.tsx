@@ -8,15 +8,22 @@ import {
   within,
 } from "@testing-library/react-native";
 import { AddCardToHandUseCase } from "../../../application/add-card-to-hand.usecase";
-import { ChooseCardUseCase } from "../../../application/choose-card.usecase";
+import type { AppUseCases } from "../../../application/app-use-cases";
+import {
+  ChooseCard,
+  ChooseCardUseCase,
+} from "../../../application/choose-card.usecase";
 import { ClearHandUseCase } from "../../../application/clear-hand.usecase";
 import type { AppInfoView } from "../../../application/load-app-info.usecase";
 import { LoadVariantUseCase } from "../../../application/load-variant.usecase";
 import type { ScanResult } from "../../../application/recognise-hand.usecase";
 import { RemoveCardFromHandUseCase } from "../../../application/remove-card-from-hand.usecase";
-import { ReplaceHandUseCase } from "../../../application/replace-hand.usecase";
+import {
+  ReplaceHand,
+  ReplaceHandUseCase,
+} from "../../../application/replace-hand.usecase";
 import { Rescore, RescoreUseCase } from "../../../application/rescore.usecase";
-import type { Card, CardId, Suit } from "../../../domain/card";
+import type { Card, CardId } from "../../../domain/card";
 import type { DeckId } from "../../../domain/deck";
 import type { Hand } from "../../../domain/hand";
 import type { CardScore, HandScore } from "../../../domain/score";
@@ -203,35 +210,18 @@ async function renderApp({
   preScoring?: readonly CardId[];
   handSize?: number;
   loadCards?: () => Promise<Card[]>;
-  chooseCard?: (
-    hand: Hand,
-    chooserId: CardId,
-    targetId: CardId,
-    suit?: Suit,
-  ) => Promise<Hand>;
+  // In place of the real use cases, for holding a change in flight or failing it.
+  chooseCard?: ChooseCard["execute"];
   recogniseHand?: (imageUri: string) => Promise<ScanResult>;
-  replaceHand?: (cardIds: readonly CardId[]) => Promise<Hand>;
+  replaceHand?: ReplaceHand["execute"];
   loadAppInfo?: () => Promise<AppInfoView>;
 } = {}) {
   const catalogs = catalogsFor(loadCards, preScoring, handSize);
   const store = createAppStore({
-    // Checks choices against the same cards that loading serves, unless faked.
-    chooseCard: chooseCard
-      ? {
-          execute: (_, hand, chooserId, targetId, suit) =>
-            chooseCard(hand, chooserId, targetId, suit),
-        }
-      : new ChooseCardUseCase(catalogs),
-    clearHand: new ClearHandUseCase(),
     loadAppInfo: { execute: loadAppInfo },
     // The real use case, so card views and choice descriptions are built as in the app.
     loadVariant: new LoadVariantUseCase(catalogs),
     recogniseHand: { execute: (_, imageUri) => recogniseHand(imageUri) },
-    removeCardFromHand: new RemoveCardFromHandUseCase(catalogs),
-    // Builds the hand from the same cards that loading serves, unless faked.
-    replaceHand: replaceHand
-      ? { execute: (_, cardIds) => replaceHand(cardIds) }
-      : new ReplaceHandUseCase(catalogs),
   });
   const stores = reduxStores(store);
   /*
@@ -257,16 +247,23 @@ async function renderApp({
           }
         },
       };
+  // The real use cases, which change the hand with the same cards that loading serves.
+  const ports = { ...stores, ...catalogs, handLock: new Mutex(), rescore };
+  const useCases: AppUseCases = {
+    addCardToHand: new AddCardToHandUseCase(ports),
+    chooseCard: chooseCard
+      ? { execute: chooseCard }
+      : new ChooseCardUseCase(ports),
+    clearHand: new ClearHandUseCase(ports),
+    removeCardFromHand: new RemoveCardFromHandUseCase(ports),
+    replaceHand: replaceHand
+      ? { execute: replaceHand }
+      : new ReplaceHandUseCase(ports),
+    rescore,
+  };
   const user = userEvent.setup();
 
-  const addCardToHand = new AddCardToHandUseCase({
-    ...stores,
-    ...catalogs,
-    handLock: new Mutex(),
-    rescore,
-  });
-
-  await render(<App store={store} useCases={{ addCardToHand, rescore }} />);
+  await render(<App store={store} useCases={useCases} />);
   await screen.findByTestId("hand-score");
 
   const press = (testID: string) => user.press(screen.getByTestId(testID));
