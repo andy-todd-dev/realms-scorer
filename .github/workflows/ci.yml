@@ -1,0 +1,41 @@
+# Checks every pull request, and main after each merge (the README badge shows main's status).
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  checks:
+    name: Checks
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # Keep in step with eas.json and the devcontainer.
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 26.13.0
+          cache: npm
+
+      # The npm the lock file was written with, as in .eas/workflows/release.yml.
+      - run: npm install -g npm@11.20.0
+
+      - run: npm ci
+
+      - name: Type check
+        run: npx tsc --noEmit
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Format
+        run: npm run format:check
+
+      - name: Test
+        run: npm test -- --ci

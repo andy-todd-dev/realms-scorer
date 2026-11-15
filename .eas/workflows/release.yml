@@ -1,4 +1,5 @@
 # Runs when a GitHub release is published, as publishing creates the release's tag (e.g. 0.3.0).
+# The type check and tests run first, and a failure stops the build and submit.
 name: Release to Play internal testing
 
 on:
@@ -9,10 +10,29 @@ on:
       # Pre-releases such as 0.3.0-rc.1 are not shipped.
       - "!*-*"
 
+defaults:
+  tools:
+    # Keep in step with the build profile in eas.json, so the tests run on the Node the app is built with.
+    node: 26.13.0
+
 jobs:
+  test:
+    name: Run tests
+    if: ${{ github.ref_type == 'tag' }}
+    steps:
+      - uses: eas/checkout
+      # The image's older npm rejects the lock file, as for submit_android below.
+      - run: npm install -g npm@11.20.0
+      - uses: eas/install_node_modules
+      - name: Type check
+        run: npx tsc --noEmit
+      - name: Test
+        run: npm test -- --ci
+
   build_android:
     name: Build Android
     type: build
+    needs: [test]
     if: ${{ github.ref_type == 'tag' }}
     env:
       # The tag becomes the app version, without any leading v.

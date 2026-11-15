@@ -32,6 +32,7 @@ Test UI code through what the player sees: component tests and Maestro flows, no
 
 Publish a GitHub release whose tag is the version, such as `0.3.0` (a leading `v` is dropped, and tags with a `-`, such as `0.3.0-rc.1`, are ignored). Publishing creates the tag, which starts `.eas/workflows/release.yml`: EAS builds the `production` profile with the tag as `version`, through `APP_VERSION` in `app.config.ts`, and submits it to Google Play's internal testing track. Promote it to production in Play Console.
 
+- The release workflow runs the type check and Jest before building, and a failure stops the release. Pull requests and pushes to `main` run `.github/workflows/ci.yml`: type check, lint, format check and Jest.
 - Don't bump `version` in `app.config.ts` for a release. Its value is only the fallback for local builds.
 - A `production` build fails without `APP_VERSION`, so `eas build --profile production` by hand needs it set.
 - EAS sets the versionCode from its remote counter (`appVersionSource: "remote"`).
