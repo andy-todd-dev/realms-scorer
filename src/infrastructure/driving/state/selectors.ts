@@ -1,15 +1,21 @@
 import { createSelector } from "@reduxjs/toolkit";
+import type { CardView } from "../../../application/load-variant.usecase";
 import type { CardId, Suit } from "../../../domain/card";
 import type { BlankReason } from "../../../domain/blanking";
 import type { ConditionFacts } from "../../../domain/conditions";
 import type { ScoreLine, ScoreReason } from "../../../domain/score";
 import type { RootState } from "./store";
 
-const selectCards = (state: RootState) => state.cards.items;
+// A stable empty list until the variant loads, so selectors built on it don't recompute.
+const NO_CARDS: readonly CardView[] = [];
+const selectCards = (state: RootState) =>
+  state.loadedVariant.view?.cards ?? NO_CARDS;
 
-export const selectCardsStatus = (state: RootState) => state.cards.status;
+export const selectCardsStatus = (state: RootState) =>
+  state.loadedVariant.status;
 // The most cards the player can select, from the variant, or null until it has loaded. A card the Necromancer takes from the discard area doesn't count towards it.
-const selectHandSize = (state: RootState) => state.variant.handSize;
+const selectHandSize = (state: RootState) =>
+  state.loadedVariant.view?.handSize ?? null;
 export const selectHand = (state: RootState) => state.hand;
 export const selectHandCardIds = (state: RootState) => state.hand.cardIds;
 const selectChoices = (state: RootState) => state.hand.choices;

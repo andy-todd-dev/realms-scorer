@@ -1,10 +1,6 @@
 import { Card, CardChoice, CardId, CardMatcher, Suit } from "../domain/card";
 import { Variant, VariantId } from "../domain/variant";
-import {
-  CardCatalog,
-  LoadVariantPorts,
-  VariantCatalog,
-} from "./load-variant.ports";
+import { LoadVariantPorts } from "./load-variant.ports";
 
 // What a choice can take, for describing it to the player: a suit, other than some cards, or a specific card.
 export type ChoiceTargetView =
@@ -58,23 +54,57 @@ export type VariantView = Pick<Variant, "id" | "name" | "handSize"> & {
   readonly cards: readonly CardView[];
 };
 
+// How far loading the current variant has got, with what the UI shows of it once it has loaded.
+export type LoadedVariant =
+  | { readonly status: "idle" | "loading" | "failed"; readonly view: null }
+  | { readonly status: "loaded"; readonly view: VariantView };
+
 export interface LoadVariant {
-  execute(variantId: VariantId): Promise<VariantView>;
+  execute(): Promise<void>;
 }
 
 export class LoadVariantUseCase implements LoadVariant {
-  private readonly cardCatalog: CardCatalog;
-  private readonly variantCatalog: VariantCatalog;
+  private readonly ports: LoadVariantPorts;
 
-  constructor({ cardCatalog, variantCatalog }: LoadVariantPorts) {
-    this.cardCatalog = cardCatalog;
-    this.variantCatalog = variantCatalog;
+  constructor({
+    variant,
+    loadedVariant,
+    rescore,
+    cardCatalog,
+    variantCatalog,
+  }: LoadVariantPorts) {
+    this.ports = {
+      variant,
+      loadedVariant,
+      rescore,
+      cardCatalog,
+      variantCatalog,
+    };
   }
 
-  async execute(variantId: VariantId): Promise<VariantView> {
+  /*
+    Loads what the UI shows of the variant the player is playing, and rescores the hand under it. A variant that fails
+    to load is saved as failed rather than rejected, as the UI shows that.
+  */
+  async execute(): Promise<void> {
+    const { variant, loadedVariant, rescore } = this.ports;
+    const variantId = variant.get();
+
+    loadedVariant.save({ status: "loading", view: null });
+    loadedVariant.save(
+      await this.viewOf(variantId).then(
+        (view): LoadedVariant => ({ status: "loaded", view }),
+        (): LoadedVariant => ({ status: "failed", view: null }),
+      ),
+    );
+    await rescore.execute();
+  }
+
+  private async viewOf(variantId: VariantId): Promise<VariantView> {
+    const { cardCatalog, variantCatalog } = this.ports;
     const { id, name, handSize, deckId } =
-      await this.variantCatalog.getById(variantId);
-    const cards = await this.cardCatalog.getAll(deckId);
+      await variantCatalog.getById(variantId);
+    const cards = await cardCatalog.getAll(deckId);
 
     return { id, name, handSize, cards: cards.map(toCardView) };
   }

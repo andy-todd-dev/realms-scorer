@@ -1,7 +1,11 @@
 import type { Hand } from "../../../domain/hand";
 import type { HandScore } from "../../../domain/score";
 import type { VariantId } from "../../../domain/variant";
+import type { AppInfoView } from "../../../application/load-app-info.usecase";
+import type { LoadedVariant } from "../../../application/load-variant.usecase";
+import { appInfoSaved } from "./app-info-slice";
 import { handSaved } from "./hand-slice";
+import { loadedVariantSaved } from "./loaded-variant-slice";
 import { scoreSaved } from "./score-slice";
 import type { AppStore } from "./store";
 
@@ -22,6 +26,16 @@ export function reduxStores(store: AppStore) {
         store.dispatch(scoreSaved(score));
       },
     },
-    variant: { get: (): VariantId => store.getState().variant.id },
+    variant: { get: (): VariantId => store.getState().variant },
+    loadedVariant: {
+      save: (loaded: LoadedVariant) => {
+        store.dispatch(loadedVariantSaved(loaded));
+      },
+    },
+    appVersion: {
+      save: (info: AppInfoView) => {
+        store.dispatch(appInfoSaved(info));
+      },
+    },
   };
 }

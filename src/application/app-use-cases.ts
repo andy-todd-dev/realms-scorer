@@ -1,6 +1,8 @@
 import { AddCardToHand } from "./add-card-to-hand.usecase";
 import { ChooseCard } from "./choose-card.usecase";
 import { ClearHand } from "./clear-hand.usecase";
+import { LoadAppInfo } from "./load-app-info.usecase";
+import { LoadVariant } from "./load-variant.usecase";
 import { RemoveCardFromHand } from "./remove-card-from-hand.usecase";
 import { ReplaceHand } from "./replace-hand.usecase";
 import { Rescore } from "./rescore.usecase";
@@ -13,6 +15,8 @@ export interface AppUseCases {
   addCardToHand: AddCardToHand;
   chooseCard: ChooseCard;
   clearHand: ClearHand;
+  loadAppInfo: LoadAppInfo;
+  loadVariant: LoadVariant;
   removeCardFromHand: RemoveCardFromHand;
   replaceHand: ReplaceHand;
   rescore: Rescore;

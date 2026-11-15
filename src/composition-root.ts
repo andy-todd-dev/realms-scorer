@@ -35,6 +35,7 @@ import { UseCases } from "./application/use-cases";
 import { ExpoApplicationAppInfo } from "./infrastructure/driven/expo-application-app-info";
 import { InMemoryCardCatalog } from "./infrastructure/driven/in-memory-card-catalog";
 import { InMemoryVariantCatalog } from "./infrastructure/driven/in-memory-variant-catalog";
+import { BASE_VARIANT } from "./infrastructure/driven/variants/base.variant";
 import { MlKitCardRecognizer } from "./infrastructure/driven/ml-kit-card-recognizer/ml-kit-card-recognizer";
 import { reduxStores } from "./infrastructure/driving/state/redux-stores";
 import { AppStore, createAppStore } from "./infrastructure/driving/state/store";
@@ -67,27 +68,25 @@ export function createApp(): { store: AppStore; useCases: AppUseCases } {
     appInfo: asFunction(() => new ExpoApplicationAppInfo()).singleton(),
     cardCatalog: asFunction(() => new InMemoryCardCatalog()).singleton(),
     cardRecognizer: asFunction(() => new MlKitCardRecognizer()).singleton(),
-    loadAppInfo: asFunction(
-      (deps: Cradle) => new LoadAppInfoUseCase(deps),
-    ).singleton(),
-    loadVariant: asFunction(
-      (deps: Cradle) => new LoadVariantUseCase(deps),
-    ).singleton(),
     recogniseHand: asFunction(
       (deps: Cradle) => new RecogniseHandUseCase(deps),
     ).singleton(),
     variantCatalog: asFunction(() => new InMemoryVariantCatalog()).singleton(),
   });
 
-  const { loadAppInfo, loadVariant, recogniseHand } = container.cradle;
-  const thunkUseCases: UseCases = { loadAppInfo, loadVariant, recogniseHand };
-  const store = createAppStore(thunkUseCases);
-  const { hands, scores, variant } = reduxStores(store);
+  const { recogniseHand } = container.cradle;
+  const thunkUseCases: UseCases = { recogniseHand };
+  // The app plays the base game until there is a way to pick another variant.
+  const store = createAppStore(thunkUseCases, BASE_VARIANT.id);
+  const { hands, scores, variant, loadedVariant, appVersion } =
+    reduxStores(store);
 
   container.register({
     hands: asValue(hands),
     scores: asValue(scores),
     variant: asValue(variant),
+    loadedVariant: asValue(loadedVariant),
+    appVersion: asValue(appVersion),
     // One lock for every use case that changes the hand.
     handLock: asValue(new Mutex()),
     addCardToHand: asFunction(
@@ -98,6 +97,12 @@ export function createApp(): { store: AppStore; useCases: AppUseCases } {
     ).singleton(),
     clearHand: asFunction(
       (deps: Cradle) => new ClearHandUseCase(deps),
+    ).singleton(),
+    loadAppInfo: asFunction(
+      (deps: Cradle) => new LoadAppInfoUseCase(deps),
+    ).singleton(),
+    loadVariant: asFunction(
+      (deps: Cradle) => new LoadVariantUseCase(deps),
     ).singleton(),
     removeCardFromHand: asFunction(
       (deps: Cradle) => new RemoveCardFromHandUseCase(deps),
@@ -112,6 +117,8 @@ export function createApp(): { store: AppStore; useCases: AppUseCases } {
     addCardToHand,
     chooseCard,
     clearHand,
+    loadAppInfo,
+    loadVariant,
     removeCardFromHand,
     replaceHand,
     rescore,
@@ -123,6 +130,8 @@ export function createApp(): { store: AppStore; useCases: AppUseCases } {
       addCardToHand,
       chooseCard,
       clearHand,
+      loadAppInfo,
+      loadVariant,
       removeCardFromHand,
       replaceHand,
       rescore,
