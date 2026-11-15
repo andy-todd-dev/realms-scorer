@@ -14,12 +14,13 @@ import { LoadVariantUseCase } from "../../../application/load-variant.usecase";
 import type { ScanResult } from "../../../application/recognise-hand.usecase";
 import { RemoveCardFromHandUseCase } from "../../../application/remove-card-from-hand.usecase";
 import { ReplaceHandUseCase } from "../../../application/replace-hand.usecase";
-import { ScoreHandUseCase } from "../../../application/score-hand.usecase";
+import { Rescore, RescoreUseCase } from "../../../application/rescore.usecase";
 import type { Card, CardId, Suit } from "../../../domain/card";
 import type { DeckId } from "../../../domain/deck";
 import type { Hand } from "../../../domain/hand";
 import type { CardScore, HandScore } from "../../../domain/score";
 import type { Variant, VariantId } from "../../../domain/variant";
+import { reduxStores } from "../state/redux-stores";
 import { createAppStore } from "../state/store";
 import { BASE_VARIANT_ID } from "../state/variant-slice";
 import { App } from "./App";
@@ -231,18 +232,34 @@ async function renderApp({
     replaceHand: replaceHand
       ? { execute: (_, cardIds) => replaceHand(cardIds) }
       : new ReplaceHandUseCase(catalogs),
-    scoreHand: scoreByTheRules
-      ? new ScoreHandUseCase(catalogs)
-      : {
-          execute: async (_, hand) => {
-            const score = await scoreHand(hand);
-            return typeof score === "number" ? totalOnly(score) : score;
-          },
-        },
   });
+  const stores = reduxStores(store);
+  /*
+    Scores with the real use case, or saves the score the test gives in its place, keeping a score only while the hand
+    is still the one it was asked for. RescoreUseCase's own tests cover how it drops those for older hands.
+  */
+  const rescore: Rescore = scoreByTheRules
+    ? new RescoreUseCase({ ...stores, ...catalogs })
+    : {
+        execute: async () => {
+          const hand = stores.hands.get();
+          let handScore: HandScore | null;
+
+          try {
+            const score = await scoreHand(hand);
+            handScore = typeof score === "number" ? totalOnly(score) : score;
+          } catch {
+            handScore = null;
+          }
+
+          if (stores.hands.get() === hand) {
+            stores.scores.save(handScore);
+          }
+        },
+      };
   const user = userEvent.setup();
 
-  await render(<App store={store} />);
+  await render(<App store={store} useCases={{ rescore }} />);
   await screen.findByTestId("hand-score");
 
   const press = (testID: string) => user.press(screen.getByTestId(testID));

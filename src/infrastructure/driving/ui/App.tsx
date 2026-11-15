@@ -2,22 +2,32 @@
 import "./global.css";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { Provider } from "react-redux";
+import type { AppUseCases } from "../../../application/app-use-cases";
 import { AppStore } from "../state/store";
 import { GluestackUIProvider } from "./gluestack/gluestack-ui-provider";
 import { NavigationProvider } from "./NavigationProvider";
 import { Screens } from "./Screens";
+import { UseCasesProvider } from "./UseCasesProvider";
 
 // Gluestack shows sheets in its own overlay host, outside the screens, so any context they read goes above its provider.
-export function App({ store }: { store: AppStore }) {
+export function App({
+  store,
+  useCases,
+}: {
+  store: AppStore;
+  useCases: AppUseCases;
+}) {
   return (
     <Provider store={store}>
-      <NavigationProvider>
-        <SafeAreaProvider>
-          <GluestackUIProvider mode="dark">
-            <Screens />
-          </GluestackUIProvider>
-        </SafeAreaProvider>
-      </NavigationProvider>
+      <UseCasesProvider useCases={useCases}>
+        <NavigationProvider>
+          <SafeAreaProvider>
+            <GluestackUIProvider mode="dark">
+              <Screens />
+            </GluestackUIProvider>
+          </SafeAreaProvider>
+        </NavigationProvider>
+      </UseCasesProvider>
     </Provider>
   );
 }

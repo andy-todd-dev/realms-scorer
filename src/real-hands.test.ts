@@ -1,14 +1,37 @@
+import { RescoreUseCase } from "./application/rescore.usecase";
+import { InMemoryStore } from "./application/testing/in-memory-store";
 import { Choices } from "./domain/choices";
-import { ScoreHandUseCase } from "./application/score-hand.usecase";
+import { Hand } from "./domain/hand";
+import { HandScore } from "./domain/score";
+import { VariantId } from "./domain/variant";
 import { InMemoryCardCatalog } from "./infrastructure/driven/in-memory-card-catalog";
 import { InMemoryVariantCatalog } from "./infrastructure/driven/in-memory-variant-catalog";
 
 // Hands scored with the real cards, so they check the card definitions as well as the rules.
 describe("scoring real hands", () => {
-  const scoreHand = new ScoreHandUseCase({
-    cardCatalog: new InMemoryCardCatalog(),
-    variantCatalog: new InMemoryVariantCatalog(),
-  });
+  const cardCatalog = new InMemoryCardCatalog();
+  const variantCatalog = new InMemoryVariantCatalog();
+
+  // Scores the hand as the app does, failing the test if it can't be scored.
+  const scoreHand = {
+    execute: async (variantId: VariantId, hand: Hand): Promise<HandScore> => {
+      const scores = new InMemoryStore<HandScore | null>(null);
+      await new RescoreUseCase({
+        hands: new InMemoryStore(hand),
+        scores,
+        variant: new InMemoryStore(variantId),
+        cardCatalog,
+        variantCatalog,
+      }).execute();
+      const score = scores.get();
+
+      if (score === null) {
+        throw new Error(`Couldn't score ${hand.cardIds.join(", ")}`);
+      }
+
+      return score;
+    },
+  };
 
   // Every ordering of the hand, as the score must not depend on the order cards were added.
   const orderings = <T>(items: readonly T[]): T[][] =>

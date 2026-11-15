@@ -6,12 +6,11 @@ import { RemoveCardFromHandUseCase } from "../../../application/remove-card-from
 import { ReplaceHandUseCase } from "../../../application/replace-hand.usecase";
 import type { Card, CardId } from "../../../domain/card";
 import type { DeckId } from "../../../domain/deck";
-import type { Hand } from "../../../domain/hand";
 import type { CardScore, HandScore } from "../../../domain/score";
 import type { Variant, VariantId } from "../../../domain/variant";
 import { addCardToHand, removeCardFromHand } from "./hand-slice";
-import { scoreHand } from "./score-slice";
-import { selectBreakdown, selectChoiceSheet, selectScore } from "./selectors";
+import { scoreSaved } from "./score-slice";
+import { selectBreakdown, selectChoiceSheet } from "./selectors";
 import { createAppStore } from "./store";
 
 /*
@@ -75,14 +74,7 @@ function catalogsFor(loadCardsExecute: () => Promise<Card[]>) {
   };
 }
 
-function createStore(
-  loadCardsExecute: () => Promise<Card[]>,
-  {
-    scoreHandExecute = async () => 0,
-  }: {
-    scoreHandExecute?: (hand: Hand) => Promise<number | HandScore>;
-  } = {},
-) {
+function createStore(loadCardsExecute: () => Promise<Card[]>) {
   const catalogs = catalogsFor(loadCardsExecute);
 
   return createAppStore({
@@ -101,12 +93,6 @@ function createStore(
     },
     removeCardFromHand: new RemoveCardFromHandUseCase(catalogs),
     replaceHand: new ReplaceHandUseCase(catalogs),
-    scoreHand: {
-      execute: async (_, hand) => {
-        const score = await scoreHandExecute(hand);
-        return typeof score === "number" ? totalOnly(score) : score;
-      },
-    },
   });
 }
 
@@ -124,24 +110,6 @@ async function createLoadedStore() {
   await store.dispatch(loadVariant());
   return store;
 }
-
-describe("scoring the hand", () => {
-  it("ignores a response that arrives after a newer one", async () => {
-    const responses: ((score: number) => void)[] = [];
-    const store = createStore(async () => [], {
-      scoreHandExecute: () => new Promise((resolve) => responses.push(resolve)),
-    });
-
-    const first = store.dispatch(scoreHand());
-    const second = store.dispatch(scoreHand());
-    responses[1](14);
-    await second;
-    responses[0](8);
-    await first;
-
-    expect(selectScore(store.getState())).toBe(14);
-  });
-});
 
 describe("breaking down the score", () => {
   const scored = (
@@ -196,14 +164,12 @@ describe("breaking down the score", () => {
   });
 
   async function createScoredStore(handScore: HandScore) {
-    const store = createStore(async () => [king, queen, knights], {
-      scoreHandExecute: async () => handScore,
-    });
+    const store = createStore(async () => [king, queen, knights]);
     await store.dispatch(loadVariant());
     await store.dispatch(addCardToHand("queen"));
     await store.dispatch(addCardToHand("king"));
     await store.dispatch(addCardToHand("knights"));
-    await store.dispatch(scoreHand());
+    store.dispatch(scoreSaved(handScore));
     return store;
   }
 
@@ -308,13 +274,8 @@ describe("choosing a card", () => {
     ],
   });
 
-  async function createStoreWithHand(
-    cardIds: readonly CardId[],
-    scoreHandExecute?: (hand: Hand) => Promise<number | HandScore>,
-  ) {
-    const store = createStore(async () => [island, swamp, candle, knights], {
-      scoreHandExecute,
-    });
+  async function createStoreWithHand(cardIds: readonly CardId[]) {
+    const store = createStore(async () => [island, swamp, candle, knights]);
     await store.dispatch(loadVariant());
     for (const cardId of cardIds) {
       await store.dispatch(addCardToHand(cardId));
@@ -330,11 +291,8 @@ describe("choosing a card", () => {
     });
 
     it("leaves out options no longer in the hand", async () => {
-      const store = await createStoreWithHand(
-        ["island", "swamp", "candle"],
-        async () => scoreWithOptions(["swamp", "candle"]),
-      );
-      await store.dispatch(scoreHand());
+      const store = await createStoreWithHand(["island", "swamp", "candle"]);
+      store.dispatch(scoreSaved(scoreWithOptions(["swamp", "candle"])));
       await store.dispatch(removeCardFromHand("candle"));
 
       expect(sheetOptions(store, "island")?.map(({ id }) => id)).toEqual([

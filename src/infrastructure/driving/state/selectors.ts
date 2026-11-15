@@ -13,9 +13,8 @@ const selectHandSize = (state: RootState) => state.variant.handSize;
 export const selectHand = (state: RootState) => state.hand;
 export const selectHandCardIds = (state: RootState) => state.hand.cardIds;
 const selectChoices = (state: RootState) => state.hand.choices;
-const selectHandScore = (state: RootState) => state.score.value;
-export const selectScore = (state: RootState) =>
-  state.score.value?.total ?? null;
+const selectHandScore = (state: RootState) => state.score;
+export const selectScore = (state: RootState) => state.score?.total ?? null;
 // The line at the end of the home grid, "Version 0.3.0 (42)", or null until the version is known.
 export const selectVersionLabel = createSelector(
   [
