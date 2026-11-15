@@ -1,4 +1,5 @@
-import { asFunction, createContainer, InjectionMode } from "awilix";
+import { asFunction, asValue, createContainer, InjectionMode } from "awilix";
+import { AppUseCases } from "./application/app-use-cases";
 import {
   AddCardToHand,
   AddCardToHandUseCase,
@@ -28,12 +29,14 @@ import {
   ReplaceHand,
   ReplaceHandUseCase,
 } from "./application/replace-hand.usecase";
-import { ScoreHand, ScoreHandUseCase } from "./application/score-hand.usecase";
+import { Rescore, RescoreUseCase } from "./application/rescore.usecase";
 import { UseCases } from "./application/use-cases";
 import { ExpoApplicationAppInfo } from "./infrastructure/driven/expo-application-app-info";
 import { InMemoryCardCatalog } from "./infrastructure/driven/in-memory-card-catalog";
 import { InMemoryVariantCatalog } from "./infrastructure/driven/in-memory-variant-catalog";
 import { MlKitCardRecognizer } from "./infrastructure/driven/ml-kit-card-recognizer/ml-kit-card-recognizer";
+import { reduxStores } from "./infrastructure/driving/state/redux-stores";
+import { AppStore, createAppStore } from "./infrastructure/driving/state/store";
 
 type Cradle = {
   addCardToHand: AddCardToHand;
@@ -47,11 +50,12 @@ type Cradle = {
   recogniseHand: RecogniseHand;
   removeCardFromHand: RemoveCardFromHand;
   replaceHand: ReplaceHand;
-  scoreHand: ScoreHand;
+  rescore: Rescore;
   variantCatalog: InMemoryVariantCatalog;
-};
+} & ReturnType<typeof reduxStores>;
 
-export function createUseCases(): UseCases {
+// Builds the store and the use cases. The thunks' use cases come first, as the store needs them, then the store's state is registered for the use cases that orchestrate through it.
+export function createApp(): { store: AppStore; useCases: AppUseCases } {
   const container = createContainer<Cradle>({
     injectionMode: InjectionMode.PROXY,
     strict: true,
@@ -83,9 +87,6 @@ export function createUseCases(): UseCases {
     replaceHand: asFunction(
       (deps: Cradle) => new ReplaceHandUseCase(deps),
     ).singleton(),
-    scoreHand: asFunction(
-      (deps: Cradle) => new ScoreHandUseCase(deps),
-    ).singleton(),
     variantCatalog: asFunction(() => new InMemoryVariantCatalog()).singleton(),
   });
 
@@ -98,10 +99,8 @@ export function createUseCases(): UseCases {
     recogniseHand,
     removeCardFromHand,
     replaceHand,
-    scoreHand,
   } = container.cradle;
-
-  return {
+  const thunkUseCases: UseCases = {
     addCardToHand,
     chooseCard,
     clearHand,
@@ -110,6 +109,16 @@ export function createUseCases(): UseCases {
     recogniseHand,
     removeCardFromHand,
     replaceHand,
-    scoreHand,
   };
+  const store = createAppStore(thunkUseCases);
+  const { hands, scores, variant } = reduxStores(store);
+
+  container.register({
+    hands: asValue(hands),
+    scores: asValue(scores),
+    variant: asValue(variant),
+    rescore: asFunction((deps: Cradle) => new RescoreUseCase(deps)).singleton(),
+  });
+
+  return { store, useCases: { rescore: container.cradle.rescore } };
 }

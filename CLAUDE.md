@@ -70,11 +70,11 @@ Gluestack components are source files copied into `ui/gluestack/`:
 Hexagonal. Dependencies point inwards; ESLint enforces the boundaries.
 
 - `src/domain/`: pure business rules and types. Imports only `domain`.
-- `src/application/`: use cases, as `<name>.usecase.ts` plus `<name>.ports.ts` if it has ports. `use-cases.ts` holds the `UseCases` type. Imports `domain` and `application`; no React, Redux or Expo.
+- `src/application/`: use cases, as `<name>.usecase.ts` plus `<name>.ports.ts` if it has ports. `use-cases.ts` holds the `UseCases` type for those the thunks call, and `app-use-cases.ts` the `AppUseCases` type for those the UI calls directly, which read and save state through ports. `testing/` holds test support, such as `InMemoryStore`. Imports `domain` and `application`; no React, Redux or Expo.
 - `src/infrastructure/driven/`: general-purpose adapter classes that satisfy ports structurally, without `implements`. Imports `domain` types and its own libraries, not `application`.
 - `src/infrastructure/driving/`: `state/` (Redux slices, thunks, selectors) and `ui/` (components, with those copied from Gluestack in `ui/gluestack/`). Imports `domain` types. Must not import `driven`.
-- `src/composition-root.ts`: the only file that imports Awilix. Builds the use cases.
-- `src/main.tsx`: the entry point (`main` in `package.json`). Builds the store, registers the root component, and is the only file with startup side effects, apart from `App.tsx` importing `global.css`, which NativeWind requires to be outside the file that registers the root component.
+- `src/composition-root.ts`: the only file that imports Awilix. Builds the store and the use cases: those the thunks call first, as the store needs them, then those that reach the store's state through `redux-stores.ts`.
+- `src/main.tsx`: the entry point (`main` in `package.json`). Calls the composition root, registers the root component, and is the only file with startup side effects, apart from `App.tsx` importing `global.css`, which NativeWind requires to be outside the file that registers the root component.
 
 Conventions:
 
@@ -83,10 +83,10 @@ Conventions:
 - Dependency injection: use case constructors destructure their ports, so a missing registration fails at startup. Use `InjectionMode.PROXY`, and register explicitly rather than using `loadModules`. Register with `asFunction((deps: Cradle) => new X(deps))` rather than `asClass`, which doesn't type-check constructor arguments.
 - Ports: each `.ports.ts` file belongs to one use case, exports a `<Name>Ports` interface plus named interfaces for each capability, and declares only what that use case calls. Tolerate similar ports, and extract a shared type only if they keep changing together.
 - Commands: anything that changes state goes UI -> thunk -> use case, even with no I/O, so adding I/O later doesn't change the call path. Thunks receive use cases through the `extra` argument and never see ports.
-- Reads: selectors derive display values from store state with their own logic. Use cases are for commands only. The hand score is the exception: the UI requests it through the `ScoreHand` use case whenever the hand changes.
+- Reads: selectors derive display values from store state with their own logic. Use cases are for commands only. The hand score is the exception: the UI calls the `Rescore` use case, from `UseCasesProvider`, whenever the hand changes, and it saves the score to the store.
 - Components only dispatch thunks and slice actions, and read selectors.
 - Purely visual state, which wouldn't matter if the UI were replaced, can use a plain slice action rather than a thunk and use case.
-- Store state must be serializable. Derive values with selectors rather than storing them. The hand score and the latest scan are the exceptions: their latest result is stored, and responses from older requests are discarded.
+- Store state must be serializable. Derive values with selectors rather than storing them. The hand score and the latest scan are the exceptions: their latest result is stored, and results from older requests are discarded. `Rescore` drops a score whose hand has changed since it started.
 - Scanning: `RecogniseHand` finds cards in a photo through the `CardRecognizer` port, and `ReplaceHand` makes the checked cards the hand. The ML Kit adapter does the OCR and the name matching, which are reading input, not game rules. Picking the photo (`usePickImage`) is player input, so it stays in the UI. When a real photo is misread, save ML Kit's output as a fixture in `ml-kit-card-recognizer/__fixtures__/` and change the matching until it passes, rather than tuning thresholds by eye.
 - Driven adapters: treat every adapter as if it were remote and could be swapped out, even an in-memory one. Ports stay async where a real implementation would do I/O, calls may fail or be slow, and nothing outside an adapter relies on how it stores its data.
 - Add a driven port when a use case needs something it doesn't own or determine itself: outside state, I/O, time, randomness. Logic we own goes in the domain. Cards and variants are the exception: they are always served through the `CardCatalog` and `VariantCatalog` ports, even as constants. The UI always passes the base game's variant ID (`BASE_VARIANT_ID` in `variant-slice.ts`) until there is a way to pick another, and the application never assumes there is only one.

@@ -6,7 +6,6 @@ import { LoadVariant } from "./load-variant.usecase";
 import { RecogniseHand } from "./recognise-hand.usecase";
 import { RemoveCardFromHand } from "./remove-card-from-hand.usecase";
 import { ReplaceHand } from "./replace-hand.usecase";
-import { ScoreHand } from "./score-hand.usecase";
 
 export interface UseCases {
   addCardToHand: AddCardToHand;
@@ -17,5 +16,4 @@ export interface UseCases {
   recogniseHand: RecogniseHand;
   removeCardFromHand: RemoveCardFromHand;
   replaceHand: ReplaceHand;
-  scoreHand: ScoreHand;
 }

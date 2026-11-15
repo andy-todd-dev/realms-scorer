@@ -3,16 +3,17 @@ import { StatusBar, View } from "react-native";
 import { loadAppInfo } from "../state/app-info-slice";
 import { loadVariant } from "../state/variant-slice";
 import { useAppDispatch, useAppSelector } from "../state/hooks";
-import { scoreHand } from "../state/score-slice";
 import { selectHand, selectScanReview } from "../state/selectors";
 import { BreakdownScreen } from "./BreakdownScreen";
 import { HomeScreen } from "./HomeScreen";
 import { useNavigation, useNavigationFollowsHand } from "./NavigationProvider";
 import { ScanProgress } from "./ScanProgress";
 import { ScanReviewScreen } from "./ScanReviewScreen";
+import { useUseCases } from "./UseCasesProvider";
 
 export function Screens() {
   const dispatch = useAppDispatch();
+  const { rescore } = useUseCases();
   const { screen } = useNavigation().navigation;
   const hand = useAppSelector(selectHand);
   // A scan being checked shows over whichever screen it started from, and leaves it as it was.
@@ -25,8 +26,8 @@ export function Screens() {
 
   // Lives above the screens so it follows the hand, not which screen is showing.
   useEffect(() => {
-    dispatch(scoreHand());
-  }, [dispatch, hand]);
+    rescore.execute();
+  }, [rescore, hand]);
 
   useNavigationFollowsHand(hand.cardIds);
 

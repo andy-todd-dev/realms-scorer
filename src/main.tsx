@@ -1,12 +1,11 @@
 import { registerRootComponent } from "expo";
-import { createUseCases } from "./composition-root";
-import { createAppStore } from "./infrastructure/driving/state/store";
+import { createApp } from "./composition-root";
 import { App } from "./infrastructure/driving/ui/App";
 
-const store = createAppStore(createUseCases());
+const { store, useCases } = createApp();
 
 function Root() {
-  return <App store={store} />;
+  return <App store={store} useCases={useCases} />;
 }
 
 registerRootComponent(Root);
