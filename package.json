@@ -79,6 +79,9 @@
     "setupFiles": [
       "<rootDir>/jest/setup.js"
     ],
+    "setupFilesAfterEnv": [
+      "<rootDir>/jest/setup-after-env.js"
+    ],
     "moduleNameMapper": {
       "\\.css$": "<rootDir>/jest/style-stub.js",
       "^lucide-react-native/icons/(.*)$": "<rootDir>/node_modules/lucide-react-native/dist/cjs/icons/$1.js",
