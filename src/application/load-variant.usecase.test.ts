@@ -1,6 +1,8 @@
 import { Card } from "../domain/card";
-import { Variant } from "../domain/variant";
-import { LoadVariantUseCase } from "./load-variant.usecase";
+import { Variant, VariantId } from "../domain/variant";
+import { CardCatalog } from "./load-variant.ports";
+import { LoadedVariant, LoadVariantUseCase } from "./load-variant.usecase";
+import { InMemoryStore } from "./testing/in-memory-store";
 
 const plainCard: Card = {
   id: "plain",
@@ -44,41 +46,82 @@ const variant: Variant = {
 };
 
 // Serves the given cards as the variant's deck, and none for any other deck.
-const createUseCase = (cards: readonly Card[]) =>
-  new LoadVariantUseCase({
-    cardCatalog: {
-      getAll: async (deckId) => (deckId === "deck" ? [...cards] : []),
-    },
+const deckOf = (cards: readonly Card[]): CardCatalog => ({
+  getAll: async (deckId) => (deckId === "deck" ? [...cards] : []),
+});
+
+// Loads the current variant, holding what it saves in memory.
+async function load(
+  cardCatalog: CardCatalog,
+  variantId: VariantId = "variant",
+) {
+  const loadedVariant = new InMemoryStore<LoadedVariant>({
+    status: "idle",
+    view: null,
+  });
+  const rescore = { execute: jest.fn(async () => {}) };
+
+  await new LoadVariantUseCase({
+    variant: new InMemoryStore(variantId),
+    loadedVariant,
+    rescore,
+    cardCatalog,
     variantCatalog: {
-      getById: async (variantId) => {
-        if (variantId !== variant.id) {
-          throw new Error(`Unknown variant: ${variantId}`);
+      getById: async (id) => {
+        if (id !== variant.id) {
+          throw new Error(`Unknown variant: ${id}`);
         }
         return variant;
       },
     },
-  });
+  }).execute();
+
+  return { loadedVariant: loadedVariant.get(), rescore };
+}
 
 // The card views of a loaded variant.
 const cardViewsOf = async (cards: readonly Card[]) =>
-  (await createUseCase(cards).execute("variant")).cards;
+  (await load(deckOf(cards))).loadedVariant.view?.cards ?? [];
 
 describe("LoadVariantUseCase", () => {
-  it("serves the variant's name and hand size with its deck's cards", async () => {
-    await expect(
-      createUseCase([plainCard]).execute("variant"),
-    ).resolves.toEqual({
-      id: "variant",
-      name: "Variant",
-      handSize: 5,
-      cards: [{ id: "plain", name: "Plain", suit: "land", choice: null }],
+  it("saves the current variant's name and hand size with its deck's cards, and rescores", async () => {
+    const { loadedVariant, rescore } = await load(deckOf([plainCard]));
+
+    expect(loadedVariant).toEqual({
+      status: "loaded",
+      view: {
+        id: "variant",
+        name: "Variant",
+        handSize: 5,
+        cards: [{ id: "plain", name: "Plain", suit: "land", choice: null }],
+      },
     });
+    expect(rescore.execute).toHaveBeenCalledTimes(1);
   });
 
-  it("fails for an unknown variant", async () => {
-    await expect(createUseCase([]).execute("unknown")).rejects.toThrow(
-      "Unknown variant: unknown",
-    );
+  it("saves the variant as loading until it has loaded", async () => {
+    const statuses: string[] = [];
+    const loadedVariant = new InMemoryStore<LoadedVariant>({
+      status: "idle",
+      view: null,
+    });
+    loadedVariant.subscribe(() => statuses.push(loadedVariant.get().status));
+
+    await new LoadVariantUseCase({
+      variant: new InMemoryStore("variant"),
+      loadedVariant,
+      rescore: { execute: async () => {} },
+      cardCatalog: deckOf([plainCard]),
+      variantCatalog: { getById: async () => variant },
+    }).execute();
+
+    expect(statuses).toEqual(["loading", "loaded"]);
+  });
+
+  it("saves an unknown variant as failed", async () => {
+    const { loadedVariant } = await load(deckOf([]), "unknown");
+
+    expect(loadedVariant).toEqual({ status: "failed", view: null });
   });
 
   it("serves only what the UI shows of the deck's cards", async () => {
@@ -170,12 +213,11 @@ describe("LoadVariantUseCase", () => {
     });
   });
 
-  it("fails when the catalog can't serve the cards", async () => {
-    const useCase = new LoadVariantUseCase({
-      cardCatalog: { getAll: () => Promise.reject(new Error("no cards")) },
-      variantCatalog: { getById: async () => variant },
+  it("saves the variant as failed when the catalog can't serve the cards", async () => {
+    const { loadedVariant } = await load({
+      getAll: () => Promise.reject(new Error("no cards")),
     });
 
-    await expect(useCase.execute("variant")).rejects.toThrow("no cards");
+    expect(loadedVariant).toEqual({ status: "failed", view: null });
   });
 });

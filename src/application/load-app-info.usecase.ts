@@ -3,19 +3,20 @@ import { AppInfo, LoadAppInfoPorts } from "./load-app-info.ports";
 export type AppInfoView = Awaited<ReturnType<AppInfo["get"]>>;
 
 export interface LoadAppInfo {
-  execute(): Promise<AppInfoView>;
+  execute(): Promise<void>;
 }
 
 export class LoadAppInfoUseCase implements LoadAppInfo {
-  private readonly appInfo: AppInfo;
+  private readonly ports: LoadAppInfoPorts;
 
-  constructor({ appInfo }: LoadAppInfoPorts) {
-    this.appInfo = appInfo;
+  constructor({ appInfo, appVersion }: LoadAppInfoPorts) {
+    this.ports = { appInfo, appVersion };
   }
 
-  async execute(): Promise<AppInfoView> {
-    const { version, buildNumber } = await this.appInfo.get();
+  // Reads the installed app's version and build number and saves them. Rejects if they can't be read, saving nothing.
+  async execute(): Promise<void> {
+    const { version, buildNumber } = await this.ports.appInfo.get();
 
-    return { version, buildNumber };
+    this.ports.appVersion.save({ version, buildNumber });
   }
 }

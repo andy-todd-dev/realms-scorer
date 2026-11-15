@@ -1,8 +1,6 @@
 import { useEffect } from "react";
 import { StatusBar, View } from "react-native";
-import { loadAppInfo } from "../state/app-info-slice";
-import { loadVariant } from "../state/variant-slice";
-import { useAppDispatch, useAppSelector } from "../state/hooks";
+import { useAppSelector } from "../state/hooks";
 import { selectHand, selectScanReview } from "../state/selectors";
 import { BreakdownScreen } from "./BreakdownScreen";
 import { HomeScreen } from "./HomeScreen";
@@ -12,19 +10,17 @@ import { ScanReviewScreen } from "./ScanReviewScreen";
 import { useUseCases } from "./UseCasesProvider";
 
 export function Screens() {
-  const dispatch = useAppDispatch();
-  const { rescore } = useUseCases();
+  const { loadAppInfo, loadVariant } = useUseCases();
   const { screen } = useNavigation().navigation;
   const hand = useAppSelector(selectHand);
   // A scan being checked shows over whichever screen it started from, and leaves it as it was.
   const reviewingScan = useAppSelector(selectScanReview) !== null;
 
-  // Each change to the hand rescores it, so only the starting hand needs scoring here.
+  // Loading the variant scores the starting hand under it. Without app info, the version just isn't shown.
   useEffect(() => {
-    dispatch(loadVariant());
-    dispatch(loadAppInfo());
-    rescore.execute();
-  }, [dispatch, rescore]);
+    loadVariant.execute();
+    loadAppInfo.execute().catch(() => undefined);
+  }, [loadAppInfo, loadVariant]);
 
   useNavigationFollowsHand(hand.cardIds);
 

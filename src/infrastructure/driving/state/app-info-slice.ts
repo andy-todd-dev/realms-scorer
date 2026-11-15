@@ -1,26 +1,16 @@
-import { createSlice } from "@reduxjs/toolkit";
-import { createAppAsyncThunk } from "./create-app-async-thunk";
+import { createSlice, PayloadAction } from "@reduxjs/toolkit";
+import type { AppInfoView } from "../../../application/load-app-info.usecase";
 
 // The installed app's version and build number, for bug reports. Null until loaded, or if the platform has none.
-type AppInfoState = {
-  readonly version: string | null;
-  readonly buildNumber: string | null;
-};
-
-const initialState: AppInfoState = { version: null, buildNumber: null };
-
-export const loadAppInfo = createAppAsyncThunk(
-  "appInfo/load",
-  (_: void, { extra }) => extra.loadAppInfo.execute(),
-);
+const initialState: AppInfoView = { version: null, buildNumber: null };
 
 const appInfoSlice = createSlice({
   name: "appInfo",
   initialState,
-  reducers: {},
-  extraReducers: (builder) => {
-    builder.addCase(loadAppInfo.fulfilled, (_, action) => action.payload);
+  reducers: {
+    appInfoSaved: (_, action: PayloadAction<AppInfoView>) => action.payload,
   },
 });
 
+export const { appInfoSaved } = appInfoSlice.actions;
 export const appInfoReducer = appInfoSlice.reducer;

@@ -27,7 +27,7 @@ const initialState: ScanState = {
 export const scanHand = createAppAsyncThunk(
   "scan/scanHand",
   (imageUri: string, { extra, getState }) =>
-    extra.recogniseHand.execute(getState().variant.id, imageUri),
+    extra.recogniseHand.execute(getState().variant, imageUri),
 );
 
 const scanSlice = createSlice({

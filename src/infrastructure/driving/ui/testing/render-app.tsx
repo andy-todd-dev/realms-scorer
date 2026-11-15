@@ -12,7 +12,10 @@ import {
   ChooseCardUseCase,
 } from "../../../../application/choose-card.usecase";
 import { ClearHandUseCase } from "../../../../application/clear-hand.usecase";
-import type { AppInfoView } from "../../../../application/load-app-info.usecase";
+import {
+  AppInfoView,
+  LoadAppInfoUseCase,
+} from "../../../../application/load-app-info.usecase";
 import { LoadVariantUseCase } from "../../../../application/load-variant.usecase";
 import type { ScanResult } from "../../../../application/recognise-hand.usecase";
 import { RemoveCardFromHandUseCase } from "../../../../application/remove-card-from-hand.usecase";
@@ -31,7 +34,6 @@ import type { HandScore } from "../../../../domain/score";
 import type { Variant, VariantId } from "../../../../domain/variant";
 import { reduxStores } from "../../state/redux-stores";
 import { createAppStore } from "../../state/store";
-import { BASE_VARIANT_ID } from "../../state/variant-slice";
 import { App } from "../App";
 import { cards, sumStrengths, totalOnly } from "./fixtures";
 
@@ -40,6 +42,9 @@ import { cards, sumStrengths, totalOnly } from "./fixtures";
   as the component tests need. Returns helpers for pressing what the player would.
 */
 
+// The variant the app starts with, which the fake catalogs serve.
+const TEST_VARIANT_ID = "base";
+
 // Fakes for the catalogs, serving the given cards as the deck of a variant with the store's default ID.
 function catalogsFor(
   loadCards: () => Promise<Card[]>,
@@ -47,7 +52,7 @@ function catalogsFor(
   handSize: number,
 ) {
   const variant: Variant = {
-    id: BASE_VARIANT_ID,
+    id: TEST_VARIANT_ID,
     name: "Test variant",
     deckId: "deck",
     handSize,
@@ -95,12 +100,10 @@ export async function renderApp({
   loadAppInfo?: () => Promise<AppInfoView>;
 } = {}) {
   const catalogs = catalogsFor(loadCards, preScoring, handSize);
-  const store = createAppStore({
-    loadAppInfo: { execute: loadAppInfo },
-    // The real use case, so card views and choice descriptions are built as in the app.
-    loadVariant: new LoadVariantUseCase(catalogs),
-    recogniseHand: { execute: (_, imageUri) => recogniseHand(imageUri) },
-  });
+  const store = createAppStore(
+    { recogniseHand: { execute: (_, imageUri) => recogniseHand(imageUri) } },
+    TEST_VARIANT_ID,
+  );
   const stores = reduxStores(store);
   /*
     Scores with the real use case, or saves the score the test gives in its place, keeping a score only while the hand
@@ -133,6 +136,12 @@ export async function renderApp({
       ? { execute: chooseCard }
       : new ChooseCardUseCase(ports),
     clearHand: new ClearHandUseCase(ports),
+    loadAppInfo: new LoadAppInfoUseCase({
+      appInfo: { get: loadAppInfo },
+      appVersion: stores.appVersion,
+    }),
+    // The real use case, so card views and choice descriptions are built as in the app.
+    loadVariant: new LoadVariantUseCase(ports),
     removeCardFromHand: new RemoveCardFromHandUseCase(ports),
     replaceHand: replaceHand
       ? { execute: replaceHand }

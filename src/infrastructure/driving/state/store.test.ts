@@ -6,6 +6,7 @@ import type { Variant, VariantId } from "../../../domain/variant";
 import { handSaved } from "./hand-slice";
 import { scoreSaved } from "./score-slice";
 import { selectBreakdown, selectChoiceSheet } from "./selectors";
+import { reduxStores } from "./redux-stores";
 import { createAppStore } from "./store";
 
 /*
@@ -13,7 +14,6 @@ import { createAppStore } from "./store";
   against a score that hasn't caught up with the hand. Everything the player sees is tested in
   ui/__tests__/.
 */
-import { BASE_VARIANT_ID, loadVariant } from "./variant-slice";
 
 const king: Card = {
   id: "king",
@@ -46,10 +46,13 @@ const totalOnly = (total: number): HandScore => ({
   total,
 });
 
+// The variant the store starts with, which the fake catalogs serve.
+const TEST_VARIANT_ID = "base";
+
 // Fakes for the catalogs, serving the given cards as the deck of a variant with the store's default ID.
 function catalogsFor(loadCardsExecute: () => Promise<Card[]>) {
   const variant: Variant = {
-    id: BASE_VARIANT_ID,
+    id: TEST_VARIANT_ID,
     name: "Test variant",
     deckId: "deck",
     handSize: 7,
@@ -73,36 +76,38 @@ function catalogsFor(loadCardsExecute: () => Promise<Card[]>) {
   };
 }
 
-function createStore(loadCardsExecute: () => Promise<Card[]>) {
-  const catalogs = catalogsFor(loadCardsExecute);
+// A store with the variant loaded from these cards, through the real use case, so card views and choice descriptions are built as in the app.
+async function createStore(loadCardsExecute: () => Promise<Card[]>) {
+  const store = createAppStore(
+    {
+      // Scanning is covered by the component tests.
+      recogniseHand: {
+        execute: () => Promise.reject(new Error("Not used in these tests")),
+      },
+    },
+    TEST_VARIANT_ID,
+  );
 
-  return createAppStore({
-    loadAppInfo: {
-      execute: async () => ({ version: null, buildNumber: null }),
-    },
-    // The real use case, so card views and choice descriptions are built as in the app.
-    loadVariant: new LoadVariantUseCase(catalogs),
-    // Scanning is covered by the component tests.
-    recogniseHand: {
-      execute: () => Promise.reject(new Error("Not used in these tests")),
-    },
-  });
+  await new LoadVariantUseCase({
+    ...reduxStores(store),
+    ...catalogsFor(loadCardsExecute),
+    // These tests save the score themselves.
+    rescore: { execute: async () => {} },
+  }).execute();
+
+  return store;
 }
 
 // The choice sheet's options for a card, across its groups.
 const sheetOptions = (
-  store: ReturnType<typeof createStore>,
+  store: Awaited<ReturnType<typeof createStore>>,
   chooserId: CardId,
 ) =>
   selectChoiceSheet(store.getState(), chooserId, null)?.groups.flatMap(
     ({ options }) => options,
   );
 
-async function createLoadedStore() {
-  const store = createStore(async () => [king, queen, knights]);
-  await store.dispatch(loadVariant());
-  return store;
-}
+const createLoadedStore = () => createStore(async () => [king, queen, knights]);
 
 describe("breaking down the score", () => {
   const scored = (
@@ -157,8 +162,7 @@ describe("breaking down the score", () => {
   });
 
   async function createScoredStore(handScore: HandScore) {
-    const store = createStore(async () => [king, queen, knights]);
-    await store.dispatch(loadVariant());
+    const store = await createLoadedStore();
     store.dispatch(handOf("queen", "king", "knights"));
     store.dispatch(scoreSaved(handScore));
     return store;
@@ -265,8 +269,12 @@ describe("choosing a card", () => {
   });
 
   async function createStoreWithHand(cardIds: readonly CardId[]) {
-    const store = createStore(async () => [island, swamp, candle, knights]);
-    await store.dispatch(loadVariant());
+    const store = await createStore(async () => [
+      island,
+      swamp,
+      candle,
+      knights,
+    ]);
     store.dispatch(handOf(...cardIds));
     return store;
   }
