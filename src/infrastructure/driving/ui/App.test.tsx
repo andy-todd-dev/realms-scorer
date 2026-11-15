@@ -157,12 +157,13 @@ const sumStrengths = async ({ cardIds, choices }: Hand) => {
 function catalogsFor(
   loadCards: () => Promise<Card[]>,
   preScoring: readonly CardId[],
+  handSize: number,
 ) {
   const variant: Variant = {
     id: BASE_VARIANT_ID,
     name: "Test variant",
     deckId: "deck",
-    handSize: 7,
+    handSize,
     preScoring,
   };
 
@@ -187,6 +188,7 @@ async function renderApp({
   scoreHand = sumStrengths,
   scoreByTheRules = false,
   preScoring = [],
+  handSize = 7,
   loadCards = async () => cards,
   chooseCard,
   recogniseHand = () => Promise.reject(new Error("No scan expected")),
@@ -197,6 +199,7 @@ async function renderApp({
   // Scores with the real use case, so the options and any added cards come from the rules.
   scoreByTheRules?: boolean;
   preScoring?: readonly CardId[];
+  handSize?: number;
   loadCards?: () => Promise<Card[]>;
   chooseCard?: (
     hand: Hand,
@@ -208,7 +211,7 @@ async function renderApp({
   replaceHand?: (cardIds: readonly CardId[]) => Promise<Hand>;
   loadAppInfo?: () => Promise<AppInfoView>;
 } = {}) {
-  const catalogs = catalogsFor(loadCards, preScoring);
+  const catalogs = catalogsFor(loadCards, preScoring, handSize);
   const store = createAppStore({
     addCardToHand: new AddCardToHandUseCase(catalogs),
     // Checks choices against the same cards that loading serves, unless faked.
@@ -255,6 +258,11 @@ async function renderApp({
 const expectScore = (score: string) =>
   waitFor(() =>
     expect(screen.getByTestId("hand-score")).toHaveTextContent(score),
+  );
+
+const expectCount = (text: string) =>
+  waitFor(() =>
+    expect(screen.getByTestId("hand-count")).toHaveTextContent(text),
   );
 
 describe("scoring", () => {
@@ -453,6 +461,55 @@ describe("the home screen", () => {
     });
 
     expect(screen.getByText("Loading cards...")).toBeOnTheScreen();
+    // The hand size comes with the variant, so there's no target to count towards yet.
+    expect(screen.getByTestId("hand-pips")).toHaveProp(
+      "accessibilityLabel",
+      "0 cards. Show breakdown",
+    );
+  });
+
+  it("takes the hand size from the variant", async () => {
+    const { tapCard } = await renderApp({ handSize: 2 });
+
+    await tapCard("king");
+    await tapCard("queen");
+
+    expect(screen.getByTestId("hand-count")).toHaveTextContent("2 cards ✓");
+    expect(screen.getByTestId("card-tile-knights")).toBeDisabled();
+  });
+
+  it("lists suits, and cards within each suit, alphabetically rather than in the catalogue's order", async () => {
+    const mirage: Card = {
+      id: "mirage",
+      name: "Mirage",
+      suit: "wild",
+      baseStrength: 0,
+    };
+    const collector: Card = {
+      id: "collector",
+      name: "Collector",
+      suit: "wizard",
+      baseStrength: 7,
+    };
+    await renderApp({
+      loadCards: async () => [collector, mirage, queen, king, knights],
+    });
+
+    const grid = within(await screen.findByTestId("card-grid"));
+    expect(
+      grid.getAllByRole("header").map((heading) => heading.props.children),
+    ).toEqual(["Army", "Leader", "Wild", "Wizard"]);
+    expect(
+      grid
+        .getAllByTestId(/^card-tile-/)
+        .map((tile) => tile.props.testID as string),
+    ).toEqual([
+      "card-tile-knights",
+      "card-tile-king",
+      "card-tile-queen",
+      "card-tile-mirage",
+      "card-tile-collector",
+    ]);
   });
 });
 
@@ -464,6 +521,16 @@ describe("the app version", () => {
 
     expect(await screen.findByTestId("app-version")).toHaveTextContent(
       "Version 0.3.0 (42)",
+    );
+  });
+
+  it("shows the version alone when there is no build number", async () => {
+    await renderApp({
+      loadAppInfo: async () => ({ version: "0.3.0", buildNumber: null }),
+    });
+
+    expect(await screen.findByTestId("app-version")).toHaveTextContent(
+      /^Version 0\.3\.0$/,
     );
   });
 
@@ -700,11 +767,6 @@ describe("choosing a card", () => {
     options: Omit<Parameters<typeof renderApp>[0], "loadCards"> = {},
   ) => renderApp({ ...options, loadCards: async () => withIsland });
 
-  const expectCount = (text: string) =>
-    waitFor(() =>
-      expect(screen.getByTestId("hand-count")).toHaveTextContent(text),
-    );
-
   it("shows a pending strip under a selected card that needs a choice, and flags it on the bar", async () => {
     const { tapCard } = await renderWithIsland();
 
@@ -914,6 +976,92 @@ describe("choosing a card", () => {
     expect(screen.queryByTestId("breakdown-total")).toBeNull();
     expect(screen.getByTestId("choice-strip-island")).toBeOnTheScreen();
   });
+
+  it("forgets the choices when the hand is cleared", async () => {
+    const scoreHand = jest.fn(sumStrengths);
+    const { press, tapCard } = await renderWithIsland({ scoreHand });
+
+    await tapCard("island");
+    await tapCard("swamp");
+    await expectScore("32");
+    await press("choice-strip-island");
+    await press("choice-option-swamp");
+    await expectCount("2 of 7 cards");
+    await press("clear-hand");
+    await tapCard("island");
+    await tapCard("swamp");
+
+    expect(screen.getByTestId("choice-strip-island")).toHaveTextContent(
+      "Choose…",
+    );
+    await waitFor(() =>
+      expect(scoreHand).toHaveBeenLastCalledWith(handOf("island", "swamp")),
+    );
+  });
+
+  describe("with two cards that need a choice", () => {
+    // Makes the same choice as the Island, and comes after it in the grid.
+    const mirage: Card = { ...island, id: "mirage", name: "Mirage" };
+    const renderWithTwoChoosers = () =>
+      renderApp({ loadCards: async () => [...withIsland, mirage] });
+
+    it("counts every pending choice", async () => {
+      const { tapCard } = await renderWithTwoChoosers();
+
+      await tapCard("mirage");
+      await tapCard("island");
+
+      await expectCount("2 choices needed ›");
+    });
+
+    it("shows the made choice and the pending one on the breakdown", async () => {
+      const { press, showBreakdown, tapCard } = await renderWithTwoChoosers();
+
+      await tapCard("island");
+      await tapCard("mirage");
+      await tapCard("swamp");
+      // The fake scores only the cards it knows, which leaves out the Mirage.
+      await expectScore("32");
+      await press("choice-strip-island");
+      await press("choice-option-swamp");
+      await expectCount("1 choice needed ›");
+      await showBreakdown();
+
+      expect(screen.getByTestId("chosen-card-island")).toHaveTextContent(
+        "Swamp",
+      );
+      expect(screen.queryByTestId("choice-needed-island")).toBeNull();
+      expect(screen.queryByTestId("chosen-card-mirage")).toBeNull();
+      expect(screen.getByTestId("choice-needed-mirage")).toBeOnTheScreen();
+      expect(screen.getByTestId("breakdown-warning")).toHaveTextContent(
+        "1 choice needed",
+      );
+    });
+  });
+
+  it("names the cards the choice's targets mention", async () => {
+    const picky: Card = {
+      ...island,
+      id: "picky",
+      name: "Picky",
+      choice: {
+        kind: "cardInHand",
+        from: [{ suit: "flood", except: ["swamp"] }, { cardId: "king" }],
+      },
+    };
+    const { press, tapCard } = await renderApp({
+      loadCards: async () => [...withIsland, picky],
+    });
+
+    await tapCard("picky");
+    await press("choice-strip-picky");
+
+    expect(
+      await screen.findByTestId("choice-sheet-instruction"),
+    ).toHaveTextContent(
+      "Choose one Flood other than Swamp or King in your hand.",
+    );
+  });
 });
 
 describe("choosing a card from the discard area", () => {
@@ -988,6 +1136,101 @@ describe("choosing a card from the discard area", () => {
       "Knights",
     );
   });
+
+  it("asks again once the chosen card is added to the hand, counting it once", async () => {
+    const { press, tapCard } = await renderWithNecromancer();
+
+    await tapCard("necromancer");
+    await expectScore("3");
+    await press("choice-strip-necromancer");
+    await press("choice-option-knights");
+    await expectScore("23");
+    await tapCard("knights");
+
+    expect(screen.getByTestId("choice-strip-necromancer")).toHaveTextContent(
+      "Choose…",
+    );
+    await expectCount("1 choice needed ›");
+    // 3 + Knights 20
+    await expectScore("23");
+  });
+});
+
+describe("choosing a card from the game", () => {
+  // Before scoring, takes the name and suit of any one Leader or Beast in the game.
+  const shapeshifter: Card = {
+    id: "shapeshifter",
+    name: "Shapeshifter",
+    suit: "wild",
+    baseStrength: 0,
+    preScoring: [
+      { kind: "take", from: { chosen: true }, attributes: ["name", "suit"] },
+    ],
+    choice: {
+      kind: "cardInGame",
+      from: [{ suit: "leader" }, { suit: "beast" }],
+    },
+  };
+  const dragon: Card = {
+    id: "dragon",
+    name: "Dragon",
+    suit: "beast",
+    baseStrength: 30,
+  };
+
+  const renderWithShapeshifter = () =>
+    renderApp({
+      loadCards: async () => [...cards, shapeshifter, dragon],
+      scoreByTheRules: true,
+      preScoring: ["shapeshifter"],
+    });
+
+  it("offers matching cards in the hand and out of it, under their suits", async () => {
+    const { press, tapCard } = await renderWithShapeshifter();
+
+    await tapCard("shapeshifter");
+    await tapCard("king");
+    await expectScore("8");
+    await press("choice-strip-shapeshifter");
+
+    const sheet = within(await screen.findByTestId("choice-sheet"));
+    expect(
+      sheet
+        .getAllByRole("header")
+        .map((heading) => heading.props.children)
+        // After the sheet's own title
+        .slice(1),
+    ).toEqual(["Beast", "Leader"]);
+    expect(screen.getByTestId("choice-option-dragon")).toBeOnTheScreen();
+    expect(screen.getByTestId("choice-option-king")).toBeOnTheScreen();
+    expect(screen.getByTestId("choice-option-queen")).toBeOnTheScreen();
+    expect(screen.queryByTestId("choice-option-knights")).toBeNull();
+  });
+
+  it("shows the suit it took on the breakdown, with no row to go to for a card not in the hand", async () => {
+    const { press, showBreakdown, tapCard } = await renderWithShapeshifter();
+
+    await tapCard("shapeshifter");
+    await expectScore("0");
+    await press("choice-strip-shapeshifter");
+    await press("choice-option-dragon");
+    await waitFor(() =>
+      expect(screen.getByTestId("choice-strip-shapeshifter")).toHaveTextContent(
+        "Dragon",
+      ),
+    );
+    await showBreakdown();
+
+    await waitFor(() =>
+      expect(
+        screen.getByTestId("breakdown-card-shapeshifter"),
+      ).toHaveTextContent(/Beast/),
+    );
+    expect(screen.getByTestId("chosen-card-shapeshifter")).toHaveProp(
+      "accessibilityLabel",
+      expect.stringMatching(/chose Dragon$/),
+    );
+  });
 });
 
 describe("choosing a card and a suit", () => {
@@ -1003,7 +1246,8 @@ describe("choosing a card and a suit", () => {
     choice: {
       kind: "cardInHand",
       from: [{ suit: "leader" }, { suit: "army" }],
-      suits: ["army", "leader", "wild"],
+      // Out of grid order, which the sheet puts them in.
+      suits: ["wild", "leader", "army"],
     },
   };
   // +5 for each Army.
@@ -1051,6 +1295,42 @@ describe("choosing a card and a suit", () => {
 
     expect(await screen.findByTestId("choice-option-king")).toBeOnTheScreen();
     expect(screen.queryByTestId("choice-suit-army")).toBeNull();
+  });
+
+  it("offers the picked card's suits in grid order, leaving out its own", async () => {
+    const { press, tapCard } = await renderWithBook();
+
+    await tapCard("book");
+    await tapCard("king");
+    await expectScore("11");
+    await press("choice-strip-book");
+    await press("choice-option-king");
+    await screen.findByTestId("choice-suit-army");
+
+    expect(
+      screen
+        .getAllByTestId(/^choice-suit-/)
+        .map((option) => option.props.testID as string),
+    ).toEqual(["choice-suit-army", "choice-suit-wild"]);
+  });
+
+  it("ticks the current suit when the same card is picked again", async () => {
+    const { press, tapCard } = await renderWithBook();
+
+    await tapCard("book");
+    await tapCard("king");
+    await expectScore("11");
+    await press("choice-strip-book");
+    await press("choice-option-king");
+    await press("choice-suit-wild");
+    await waitFor(() =>
+      expect(screen.queryByTestId("choice-sheet-title")).toBeNull(),
+    );
+    await press("choice-strip-book");
+    await press("choice-option-king");
+
+    expect(await screen.findByTestId("choice-suit-wild")).toBeSelected();
+    expect(screen.getByTestId("choice-suit-army")).not.toBeSelected();
   });
 
   it("starts again from the cards when the sheet is reopened", async () => {
