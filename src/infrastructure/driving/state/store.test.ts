@@ -1,4 +1,3 @@
-import { AddCardToHandUseCase } from "../../../application/add-card-to-hand.usecase";
 import { ChooseCardUseCase } from "../../../application/choose-card.usecase";
 import { ClearHandUseCase } from "../../../application/clear-hand.usecase";
 import { LoadVariantUseCase } from "../../../application/load-variant.usecase";
@@ -8,7 +7,7 @@ import type { Card, CardId } from "../../../domain/card";
 import type { DeckId } from "../../../domain/deck";
 import type { CardScore, HandScore } from "../../../domain/score";
 import type { Variant, VariantId } from "../../../domain/variant";
-import { addCardToHand, removeCardFromHand } from "./hand-slice";
+import { handSaved, removeCardFromHand } from "./hand-slice";
 import { scoreSaved } from "./score-slice";
 import { selectBreakdown, selectChoiceSheet } from "./selectors";
 import { createAppStore } from "./store";
@@ -37,6 +36,9 @@ const knights: Card = {
   suit: "army",
   baseStrength: 20,
 };
+
+// Saves a hand of these cards, with no choices made.
+const handOf = (...cardIds: CardId[]) => handSaved({ cardIds, choices: {} });
 
 // A score with only a total, for tests that don't look at the breakdown.
 const totalOnly = (total: number): HandScore => ({
@@ -78,7 +80,6 @@ function createStore(loadCardsExecute: () => Promise<Card[]>) {
   const catalogs = catalogsFor(loadCardsExecute);
 
   return createAppStore({
-    addCardToHand: new AddCardToHandUseCase(catalogs),
     // Checks choices against the same cards that loading serves.
     chooseCard: new ChooseCardUseCase(catalogs),
     clearHand: new ClearHandUseCase(),
@@ -166,9 +167,7 @@ describe("breaking down the score", () => {
   async function createScoredStore(handScore: HandScore) {
     const store = createStore(async () => [king, queen, knights]);
     await store.dispatch(loadVariant());
-    await store.dispatch(addCardToHand("queen"));
-    await store.dispatch(addCardToHand("king"));
-    await store.dispatch(addCardToHand("knights"));
+    store.dispatch(handOf("queen", "king", "knights"));
     store.dispatch(scoreSaved(handScore));
     return store;
   }
@@ -195,8 +194,7 @@ describe("breaking down the score", () => {
 
   it("lists cards without figures, in hand order, before there is a score", async () => {
     const store = await createLoadedStore();
-    await store.dispatch(addCardToHand("queen"));
-    await store.dispatch(addCardToHand("king"));
+    store.dispatch(handOf("queen", "king"));
 
     const { rows } = selectBreakdown(store.getState());
 
@@ -277,9 +275,7 @@ describe("choosing a card", () => {
   async function createStoreWithHand(cardIds: readonly CardId[]) {
     const store = createStore(async () => [island, swamp, candle, knights]);
     await store.dispatch(loadVariant());
-    for (const cardId of cardIds) {
-      await store.dispatch(addCardToHand(cardId));
-    }
+    store.dispatch(handOf(...cardIds));
     return store;
   }
 

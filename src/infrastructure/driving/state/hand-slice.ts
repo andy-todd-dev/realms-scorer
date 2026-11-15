@@ -1,4 +1,4 @@
-import { createSlice } from "@reduxjs/toolkit";
+import { createSlice, PayloadAction } from "@reduxjs/toolkit";
 import type { CardId, Suit } from "../../../domain/card";
 import type { Hand } from "../../../domain/hand";
 import { createAppAsyncThunk } from "./create-app-async-thunk";
@@ -7,12 +7,6 @@ const initialState: Hand = {
   cardIds: [],
   choices: {},
 };
-
-export const addCardToHand = createAppAsyncThunk(
-  "hand/addCard",
-  (cardId: CardId, { extra, getState }) =>
-    extra.addCardToHand.execute(getState().variant.id, getState().hand, cardId),
-);
 
 export const removeCardFromHand = createAppAsyncThunk(
   "hand/removeCard",
@@ -55,14 +49,16 @@ export const chooseCard = createAppAsyncThunk(
     ),
 );
 
-// Each use case returns the whole new hand, which replaces the old one.
+// Each use case returns or saves the whole new hand, which replaces the old one.
 const handSlice = createSlice({
   name: "hand",
   initialState,
-  reducers: {},
+  reducers: {
+    // Returns the payload as the new state, as an Immer draft can't hold the hand's readonly arrays.
+    handSaved: (_, action: PayloadAction<Hand>) => action.payload,
+  },
   extraReducers: (builder) => {
     builder
-      .addCase(addCardToHand.fulfilled, (_, action) => action.payload)
       .addCase(removeCardFromHand.fulfilled, (_, action) => action.payload)
       .addCase(clearHand.fulfilled, (_, action) => action.payload)
       .addCase(replaceHand.fulfilled, (_, action) => action.payload)
@@ -70,4 +66,5 @@ const handSlice = createSlice({
   },
 });
 
+export const { handSaved } = handSlice.actions;
 export const handReducer = handSlice.reducer;

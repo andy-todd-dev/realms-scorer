@@ -1,4 +1,3 @@
-import { AddCardToHand } from "./add-card-to-hand.usecase";
 import { ChooseCard } from "./choose-card.usecase";
 import { ClearHand } from "./clear-hand.usecase";
 import { LoadAppInfo } from "./load-app-info.usecase";
@@ -8,7 +7,6 @@ import { RemoveCardFromHand } from "./remove-card-from-hand.usecase";
 import { ReplaceHand } from "./replace-hand.usecase";
 
 export interface UseCases {
-  addCardToHand: AddCardToHand;
   chooseCard: ChooseCard;
   clearHand: ClearHand;
   loadAppInfo: LoadAppInfo;
