@@ -19,15 +19,12 @@ export function Screens() {
   // A scan being checked shows over whichever screen it started from, and leaves it as it was.
   const reviewingScan = useAppSelector(selectScanReview) !== null;
 
+  // Each change to the hand rescores it, so only the starting hand needs scoring here.
   useEffect(() => {
     dispatch(loadVariant());
     dispatch(loadAppInfo());
-  }, [dispatch]);
-
-  // Lives above the screens so it follows the hand, not which screen is showing.
-  useEffect(() => {
     rescore.execute();
-  }, [rescore, hand]);
+  }, [dispatch, rescore]);
 
   useNavigationFollowsHand(hand.cardIds);
 

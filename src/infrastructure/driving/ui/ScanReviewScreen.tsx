@@ -2,10 +2,9 @@ import Check from "lucide-react-native/icons/check";
 import ChevronLeft from "lucide-react-native/icons/chevron-left";
 import Info from "lucide-react-native/icons/info";
 import type { LucideProps } from "lucide-react-native";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { BackHandler, ScrollView, View } from "react-native";
 import type { CardId } from "../../../domain/card";
-import { replaceHand } from "../state/hand-slice";
 import { useAppDispatch, useAppSelector } from "../state/hooks";
 import { scanSheetOpened } from "./navigation";
 import { useNavigation } from "./NavigationProvider";
@@ -25,6 +24,7 @@ import { Text } from "./gluestack/text";
 import { VStack } from "./gluestack/vstack";
 import { Screen } from "./Screen";
 import { SUITS } from "./theme";
+import { useUseCases } from "./UseCasesProvider";
 
 // Gluestack's Icon doesn't type strokeWidth, so this heavier weight from the design is set here.
 const HeavyCheck = (props: LucideProps) => (
@@ -39,6 +39,10 @@ export function ScanReviewScreen() {
   const dispatch = useAppDispatch();
   const { navigate } = useNavigation();
   const review = useAppSelector(selectScanReview);
+  const { replaceHand } = useUseCases();
+  // Set while the checked cards are being added to the hand, and when that fails.
+  const [confirming, setConfirming] = useState(false);
+  const [confirmFailed, setConfirmFailed] = useState(false);
 
   useEffect(() => {
     const subscription = BackHandler.addEventListener(
@@ -56,8 +60,23 @@ export function ScanReviewScreen() {
     return null;
   }
 
-  const addToHand = (cardIds: readonly CardId[]) =>
-    dispatch(cardIds.length > 0 ? replaceHand(cardIds) : scanDismissed());
+  // Replaces the hand with the checked cards, then leaves the scan. With none, it only leaves.
+  const addToHand = async (cardIds: readonly CardId[]) => {
+    if (cardIds.length > 0) {
+      setConfirming(true);
+      setConfirmFailed(false);
+
+      try {
+        await replaceHand.execute(cardIds);
+      } catch {
+        setConfirming(false);
+        setConfirmFailed(true);
+        return;
+      }
+    }
+
+    dispatch(scanDismissed());
+  };
 
   return (
     <Screen>
@@ -136,7 +155,7 @@ export function ScanReviewScreen() {
               {review.replaceWarning}
             </Text>
           )}
-          {review.confirmFailed && (
+          {confirmFailed && (
             <Text
               testID="scan-confirm-failed"
               size="sm"
@@ -148,11 +167,11 @@ export function ScanReviewScreen() {
           <Button
             testID="scan-confirm"
             size="lg"
-            isDisabled={review.confirming}
+            isDisabled={confirming}
             onPress={() => addToHand(review.picks)}
           >
             <ButtonText>
-              {review.confirming ? "Adding…" : "Looks right: add to hand"}
+              {confirming ? "Adding…" : "Looks right: add to hand"}
             </ButtonText>
           </Button>
         </VStack>

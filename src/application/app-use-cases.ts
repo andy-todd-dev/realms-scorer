@@ -1,4 +1,8 @@
 import { AddCardToHand } from "./add-card-to-hand.usecase";
+import { ChooseCard } from "./choose-card.usecase";
+import { ClearHand } from "./clear-hand.usecase";
+import { RemoveCardFromHand } from "./remove-card-from-hand.usecase";
+import { ReplaceHand } from "./replace-hand.usecase";
 import { Rescore } from "./rescore.usecase";
 
 /*
@@ -7,5 +11,9 @@ import { Rescore } from "./rescore.usecase";
 */
 export interface AppUseCases {
   addCardToHand: AddCardToHand;
+  chooseCard: ChooseCard;
+  clearHand: ClearHand;
+  removeCardFromHand: RemoveCardFromHand;
+  replaceHand: ReplaceHand;
   rescore: Rescore;
 }

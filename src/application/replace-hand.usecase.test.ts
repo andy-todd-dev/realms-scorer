@@ -2,6 +2,7 @@ import { Card, CardId } from "../domain/card";
 import { Hand } from "../domain/hand";
 import { Variant } from "../domain/variant";
 import { ReplaceHandUseCase } from "./replace-hand.usecase";
+import { catalogOf, handState } from "./testing/hand-state";
 
 const card = (id: string, suit: Card["suit"]): Card => ({
   id,
@@ -25,50 +26,56 @@ const variant: Variant = {
   preScoring: [],
 };
 
-const useCase = new ReplaceHandUseCase({
-  cardCatalog: {
-    getAll: async () => deck,
-    getByIds: async (_, cardIds) =>
-      cardIds.map((id) => {
-        const found = deck.find((deckCard) => deckCard.id === id);
-        if (!found) {
-          throw new Error(`Unknown card: ${id}`);
-        }
-        return found;
-      }),
-  },
-  variantCatalog: { getById: async () => variant },
-});
-
 const handOf = (...cardIds: CardId[]): Hand => ({ cardIds, choices: {} });
 
+function setUp(hand = handOf()) {
+  const state = handState({ cardCatalog: catalogOf(deck), variant, hand });
+
+  return { ...state, useCase: new ReplaceHandUseCase(state.ports) };
+}
+
 describe("ReplaceHandUseCase", () => {
-  it("makes a hand of just the given cards", async () => {
-    await expect(useCase.execute("variant", ["a", "swamp"])).resolves.toEqual(
-      handOf("a", "swamp"),
-    );
+  it("makes a hand of just the given cards, and rescores it", async () => {
+    const { hands, scores, useCase } = setUp(handOf("island"));
+
+    await useCase.execute(["a", "swamp"]);
+
+    expect(hands.get()).toEqual(handOf("a", "swamp"));
+    expect(scores.get()).toMatchObject({ total: 2 });
   });
 
   it("leaves a card that needs a choice pending", async () => {
-    await expect(
-      useCase.execute("variant", ["island", "swamp"]),
-    ).resolves.toEqual(handOf("island", "swamp"));
+    const { hands, useCase } = setUp({
+      cardIds: ["island", "swamp"],
+      choices: { island: { cardId: "swamp" } },
+    });
+
+    await useCase.execute(["island", "swamp"]);
+
+    expect(hands.get()).toEqual(handOf("island", "swamp"));
   });
 
   it("takes each card once", async () => {
-    await expect(useCase.execute("variant", ["a", "a"])).resolves.toEqual(
-      handOf("a"),
-    );
+    const { hands, useCase } = setUp();
+
+    await useCase.execute(["a", "a"]);
+
+    expect(hands.get()).toEqual(handOf("a"));
   });
 
-  it("rejects more cards than the variant's hand size", async () => {
-    await expect(
-      useCase.execute("variant", ["a", "swamp", "island"]),
-    ).rejects.toThrow("The hand is full, so island can't be added");
+  it("rejects more cards than the variant's hand size, leaving the hand as it was", async () => {
+    const { hands, useCase } = setUp(handOf("a"));
+
+    await expect(useCase.execute(["a", "swamp", "island"])).rejects.toThrow(
+      "The hand is full, so island can't be added",
+    );
+    expect(hands.get()).toEqual(handOf("a"));
   });
 
   it("rejects a card that isn't in the variant's deck", async () => {
-    await expect(useCase.execute("variant", ["unknown"])).rejects.toThrow(
+    const { useCase } = setUp();
+
+    await expect(useCase.execute(["unknown"])).rejects.toThrow(
       "Unknown card: unknown",
     );
   });

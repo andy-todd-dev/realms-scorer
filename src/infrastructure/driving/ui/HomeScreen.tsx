@@ -6,8 +6,7 @@ import type { LucideProps } from "lucide-react-native";
 import { useEffect, useRef } from "react";
 import { View } from "react-native";
 import Animated from "react-native-reanimated";
-import { clearHand, removeCardFromHand } from "../state/hand-slice";
-import { useAppDispatch, useAppSelector } from "../state/hooks";
+import { useAppSelector } from "../state/hooks";
 import { cardRevealed, choiceSheetOpened, scanSheetOpened } from "./navigation";
 import { useNavigation } from "./NavigationProvider";
 import {
@@ -68,8 +67,8 @@ export function HomeScreen() {
 }
 
 function Header() {
-  const dispatch = useAppDispatch();
   const { navigate } = useNavigation();
+  const { clearHand } = useUseCases();
   const { isEmpty } = useAppSelector(selectHandProgress);
 
   return (
@@ -82,7 +81,7 @@ function Header() {
         variant="ghost"
         size="sm"
         isDisabled={isEmpty}
-        onPress={() => dispatch(clearHand())}
+        onPress={() => clearHand.execute()}
       >
         <ButtonIcon as={RotateCcw} className="h-4 w-4 text-subtle-foreground" />
         <ButtonText className="text-subtle-foreground">Clear</ButtonText>
@@ -230,12 +229,15 @@ function Section({
 }
 
 function CardTile({ card }: { card: CardTileData }) {
-  const dispatch = useAppDispatch();
   const { navigate } = useNavigation();
-  const { addCardToHand } = useUseCases();
+  const { addCardToHand, removeCardFromHand } = useUseCases();
   const { id, name, selected, disabled, choice } = card;
-  // A card the hand can't take, such as one past its size, leaves the hand as it was.
-  const add = () => addCardToHand.execute(id).catch(() => undefined);
+  // A change the hand can't take, such as a card past its size, leaves it as it was.
+  const toggle = () =>
+    (selected
+      ? removeCardFromHand.execute(id)
+      : addCardToHand.execute(id)
+    ).catch(() => undefined);
 
   return (
     <VStack>
@@ -244,7 +246,7 @@ function CardTile({ card }: { card: CardTileData }) {
         accessibilityRole="checkbox"
         accessibilityState={{ checked: selected, disabled }}
         disabled={disabled}
-        onPress={() => (selected ? dispatch(removeCardFromHand(id)) : add())}
+        onPress={toggle}
         className={
           choice
             ? "min-h-12 justify-center rounded-t-lg border-[1.5px] border-primary bg-accent px-2 py-1.5"

@@ -2,6 +2,7 @@ import { Card, CardId } from "../domain/card";
 import { Hand } from "../domain/hand";
 import { Variant } from "../domain/variant";
 import { RemoveCardFromHandUseCase } from "./remove-card-from-hand.usecase";
+import { catalogOf, handState } from "./testing/hand-state";
 
 const card = (id: string, suit: Card["suit"]): Card => ({
   id,
@@ -23,75 +24,76 @@ const deck = [
   card("b", "land"),
   card("c", "land"),
 ];
-
-const createUseCase = (handSize: number) => {
-  const variant: Variant = {
-    id: "variant",
-    name: "Variant",
-    deckId: "deck",
-    handSize,
-    preScoring: ["adder"],
-  };
-
-  return new RemoveCardFromHandUseCase({
-    cardCatalog: {
-      getAll: async () => deck,
-      getByIds: async (_, cardIds) =>
-        cardIds.map((id) => {
-          const found = deck.find((deckCard) => deckCard.id === id);
-          if (!found) {
-            throw new Error(`Unknown card: ${id}`);
-          }
-          return found;
-        }),
-    },
-    variantCatalog: {
-      getById: async (variantId) => {
-        if (variantId !== variant.id) {
-          throw new Error(`Unknown variant: ${variantId}`);
-        }
-        return variant;
-      },
-    },
-  });
+const variant: Variant = {
+  id: "variant",
+  name: "Variant",
+  deckId: "deck",
+  handSize: 7,
+  preScoring: ["adder"],
 };
 
 const handOf = (...cardIds: CardId[]): Hand => ({ cardIds, choices: {} });
 
+function setUp(hand: Hand, variantId = variant.id) {
+  const state = handState({
+    cardCatalog: catalogOf(deck),
+    variant,
+    hand,
+    variantId,
+  });
+
+  return { ...state, useCase: new RemoveCardFromHandUseCase(state.ports) };
+}
+
 describe("RemoveCardFromHandUseCase", () => {
-  it("removes the card, keeping the order of the rest", async () => {
-    await expect(
-      createUseCase(7).execute("variant", handOf("a", "b", "c"), "b"),
-    ).resolves.toEqual(handOf("a", "c"));
+  it("removes the card, keeping the order of the rest, and rescores", async () => {
+    const { hands, scores, useCase } = setUp(handOf("a", "b", "c"));
+
+    await useCase.execute("b");
+
+    expect(hands.get()).toEqual(handOf("a", "c"));
+    expect(scores.get()).toMatchObject({ total: 2 });
   });
 
   it("drops the removed card's own choice", async () => {
-    await expect(
-      createUseCase(7).execute(
-        "variant",
-        { cardIds: ["adder", "a"], choices: { adder: { cardId: "army" } } },
-        "adder",
-      ),
-    ).resolves.toEqual(handOf("a"));
+    const { hands, useCase } = setUp({
+      cardIds: ["adder", "a"],
+      choices: { adder: { cardId: "army" } },
+    });
+
+    await useCase.execute("adder");
+
+    expect(hands.get()).toEqual(handOf("a"));
   });
 
   it("keeps choices the removal leaves valid", async () => {
-    const hand: Hand = {
+    const { hands, useCase } = setUp({
       cardIds: ["adder", "a"],
       choices: { adder: { cardId: "army" } },
-    };
+    });
 
-    await expect(
-      createUseCase(7).execute("variant", hand, "a"),
-    ).resolves.toEqual({
+    await useCase.execute("a");
+
+    expect(hands.get()).toEqual({
       cardIds: ["adder"],
       choices: { adder: { cardId: "army" } },
     });
   });
 
-  it("fails for an unknown variant", async () => {
-    await expect(
-      createUseCase(7).execute("unknown", handOf("a"), "a"),
-    ).rejects.toThrow("Unknown variant: unknown");
+  it("keeps both removals when two cards are removed at once", async () => {
+    const { hands, useCase } = setUp(handOf("a", "b", "c"));
+
+    await Promise.all([useCase.execute("a"), useCase.execute("b")]);
+
+    expect(hands.get()).toEqual(handOf("c"));
+  });
+
+  it("fails for an unknown variant, leaving the hand as it was", async () => {
+    const { hands, useCase } = setUp(handOf("a"), "unknown");
+
+    await expect(useCase.execute("a")).rejects.toThrow(
+      "Unknown variant: unknown",
+    );
+    expect(hands.get()).toEqual(handOf("a"));
   });
 });

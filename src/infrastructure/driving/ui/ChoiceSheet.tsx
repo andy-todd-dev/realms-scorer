@@ -4,8 +4,7 @@ import type { CardId, Suit } from "../../../domain/card";
 import X from "lucide-react-native/icons/x";
 import type { LucideProps } from "lucide-react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { chooseCard } from "../state/hand-slice";
-import { useAppDispatch, useAppSelector } from "../state/hooks";
+import { useAppSelector } from "../state/hooks";
 import {
   choiceSheetCardPicked,
   choiceSheetCardUnpicked,
@@ -43,6 +42,7 @@ import { Text } from "./gluestack/text";
 import { VStack } from "./gluestack/vstack";
 import { SuitDot } from "./SuitDot";
 import { SUITS } from "./theme";
+import { useUseCases } from "./UseCasesProvider";
 
 // Gluestack's Icon doesn't type strokeWidth, so this heavier weight from the design is set here.
 const HeavyCheck = (props: LucideProps) => <Check {...props} strokeWidth={3} />;
@@ -89,12 +89,12 @@ function SheetBody({
   sheet: ChoiceSheetData;
   onClose: () => void;
 }) {
-  const dispatch = useAppDispatch();
   const { navigate } = useNavigation();
+  const { chooseCard } = useUseCases();
   // Closes the sheet once the choice is made. A rejected choice leaves it open, still pending.
   const choose = async (targetId: CardId, suit?: Suit) => {
     try {
-      await dispatch(chooseCard({ chooserId, targetId, suit })).unwrap();
+      await chooseCard.execute(chooserId, targetId, suit);
       navigate(choiceSheetClosed());
     } catch {}
   };

@@ -1,11 +1,8 @@
-import { Mutex } from "async-mutex";
 import { Card, CardId } from "../domain/card";
 import { Hand } from "../domain/hand";
-import { HandScore } from "../domain/score";
 import { Variant, VariantId } from "../domain/variant";
 import { AddCardToHandUseCase } from "./add-card-to-hand.usecase";
-import { RescoreUseCase } from "./rescore.usecase";
-import { InMemoryStore } from "./testing/in-memory-store";
+import { catalogOf, handState } from "./testing/hand-state";
 
 const card = (id: string, suit: Card["suit"]): Card => ({
   id,
@@ -30,7 +27,6 @@ const deck = [
 
 const handOf = (...cardIds: CardId[]): Hand => ({ cardIds, choices: {} });
 
-// Holds the hand, variant and score in memory, and adds cards from the deck to a hand of the given size.
 function setUp({
   hand = handOf(),
   handSize = 7,
@@ -43,45 +39,14 @@ function setUp({
     handSize,
     preScoring: ["adder"],
   };
-  const catalogs = {
-    cardCatalog: {
-      getAll: async () => deck,
-      getByIds: async (_: string, cardIds: readonly CardId[]) =>
-        cardIds.map((id) => {
-          const found = deck.find((deckCard) => deckCard.id === id);
-          if (!found) {
-            throw new Error(`Unknown card: ${id}`);
-          }
-          return found;
-        }),
-    },
-    variantCatalog: {
-      getById: async (id: VariantId) => {
-        if (id !== variant.id) {
-          throw new Error(`Unknown variant: ${id}`);
-        }
-        return variant;
-      },
-    },
-  };
-  const hands = new InMemoryStore(hand);
-  const scores = new InMemoryStore<HandScore | null>(null);
-  const currentVariant = new InMemoryStore(variantId);
-  const rescore = new RescoreUseCase({
-    hands,
-    scores,
-    variant: currentVariant,
-    ...catalogs,
-  });
-  const useCase = new AddCardToHandUseCase({
-    hands,
-    variant: currentVariant,
-    handLock: new Mutex(),
-    rescore,
-    ...catalogs,
+  const state = handState({
+    cardCatalog: catalogOf(deck),
+    variant,
+    hand,
+    variantId,
   });
 
-  return { hands, scores, useCase };
+  return { ...state, useCase: new AddCardToHandUseCase(state.ports) };
 }
 
 describe("AddCardToHandUseCase", () => {
