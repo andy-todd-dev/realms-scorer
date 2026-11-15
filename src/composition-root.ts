@@ -1,3 +1,4 @@
+import { Mutex } from "async-mutex";
 import { asFunction, asValue, createContainer, InjectionMode } from "awilix";
 import { AppUseCases } from "./application/app-use-cases";
 import {
@@ -45,6 +46,7 @@ type Cradle = {
   cardRecognizer: MlKitCardRecognizer;
   chooseCard: ChooseCard;
   clearHand: ClearHand;
+  handLock: Mutex;
   loadAppInfo: LoadAppInfo;
   loadVariant: LoadVariant;
   recogniseHand: RecogniseHand;
@@ -62,9 +64,6 @@ export function createApp(): { store: AppStore; useCases: AppUseCases } {
   });
 
   container.register({
-    addCardToHand: asFunction(
-      (deps: Cradle) => new AddCardToHandUseCase(deps),
-    ).singleton(),
     appInfo: asFunction(() => new ExpoApplicationAppInfo()).singleton(),
     cardCatalog: asFunction(() => new InMemoryCardCatalog()).singleton(),
     cardRecognizer: asFunction(() => new MlKitCardRecognizer()).singleton(),
@@ -91,7 +90,6 @@ export function createApp(): { store: AppStore; useCases: AppUseCases } {
   });
 
   const {
-    addCardToHand,
     chooseCard,
     clearHand,
     loadAppInfo,
@@ -101,7 +99,6 @@ export function createApp(): { store: AppStore; useCases: AppUseCases } {
     replaceHand,
   } = container.cradle;
   const thunkUseCases: UseCases = {
-    addCardToHand,
     chooseCard,
     clearHand,
     loadAppInfo,
@@ -117,8 +114,15 @@ export function createApp(): { store: AppStore; useCases: AppUseCases } {
     hands: asValue(hands),
     scores: asValue(scores),
     variant: asValue(variant),
+    // One lock for every use case that changes the hand.
+    handLock: asValue(new Mutex()),
+    addCardToHand: asFunction(
+      (deps: Cradle) => new AddCardToHandUseCase(deps),
+    ).singleton(),
     rescore: asFunction((deps: Cradle) => new RescoreUseCase(deps)).singleton(),
   });
 
-  return { store, useCases: { rescore: container.cradle.rescore } };
+  const { addCardToHand, rescore } = container.cradle;
+
+  return { store, useCases: { addCardToHand, rescore } };
 }

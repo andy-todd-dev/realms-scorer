@@ -1,32 +1,53 @@
 import { CardId } from "../domain/card";
-import { addCardToHand, Hand } from "../domain/hand";
-import { VariantId } from "../domain/variant";
+import { addCardToHand } from "../domain/hand";
 import { AddCardToHandPorts } from "./add-card-to-hand.ports";
 import { withValidChoices } from "./hand-rules";
 
 export interface AddCardToHand {
-  execute(variantId: VariantId, hand: Hand, cardId: CardId): Promise<Hand>;
+  execute(cardId: CardId): Promise<void>;
 }
 
 export class AddCardToHandUseCase implements AddCardToHand {
   private readonly ports: AddCardToHandPorts;
 
-  constructor({ cardCatalog, variantCatalog }: AddCardToHandPorts) {
-    this.ports = { cardCatalog, variantCatalog };
+  constructor({
+    hands,
+    variant,
+    handLock,
+    rescore,
+    cardCatalog,
+    variantCatalog,
+  }: AddCardToHandPorts) {
+    this.ports = {
+      hands,
+      variant,
+      handLock,
+      rescore,
+      cardCatalog,
+      variantCatalog,
+    };
   }
 
-  // Rejects a card the variant's hand size has no room for, or that isn't in its deck. Drops choices the card leaves invalid, such as a choice of it from the discard area.
-  async execute(
-    variantId: VariantId,
-    hand: Hand,
-    cardId: CardId,
-  ): Promise<Hand> {
-    const { handSize } = await this.ports.variantCatalog.getById(variantId);
+  /*
+    Adds the card to the hand and rescores it. Rejects a card the variant's hand size has no room for, or that isn't in
+    its deck, leaving the hand as it was. Drops choices the card leaves invalid, such as a choice of it from the discard
+    area.
+  */
+  async execute(cardId: CardId): Promise<void> {
+    const { hands, variant, handLock, rescore, variantCatalog } = this.ports;
 
-    return withValidChoices(
-      this.ports,
-      variantId,
-      addCardToHand(hand, cardId, handSize),
-    );
+    await handLock.runExclusive(async () => {
+      const variantId = variant.get();
+      const { handSize } = await variantCatalog.getById(variantId);
+
+      hands.save(
+        await withValidChoices(
+          this.ports,
+          variantId,
+          addCardToHand(hands.get(), cardId, handSize),
+        ),
+      );
+    });
+    await rescore.execute();
   }
 }

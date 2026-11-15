@@ -6,11 +6,7 @@ import type { LucideProps } from "lucide-react-native";
 import { useEffect, useRef } from "react";
 import { View } from "react-native";
 import Animated from "react-native-reanimated";
-import {
-  addCardToHand,
-  clearHand,
-  removeCardFromHand,
-} from "../state/hand-slice";
+import { clearHand, removeCardFromHand } from "../state/hand-slice";
 import { useAppDispatch, useAppSelector } from "../state/hooks";
 import { cardRevealed, choiceSheetOpened, scanSheetOpened } from "./navigation";
 import { useNavigation } from "./NavigationProvider";
@@ -38,6 +34,7 @@ import { ScoreBar } from "./ScoreBar";
 import { SuitDot } from "./SuitDot";
 import { SUITS } from "./theme";
 import { useHideOnScroll } from "./useHideOnScroll";
+import { useUseCases } from "./UseCasesProvider";
 
 // Gluestack's Icon doesn't type strokeWidth, so this heavier weight from the design is set here.
 const HeavyCheck = (props: LucideProps) => <Check {...props} strokeWidth={3} />;
@@ -235,7 +232,10 @@ function Section({
 function CardTile({ card }: { card: CardTileData }) {
   const dispatch = useAppDispatch();
   const { navigate } = useNavigation();
+  const { addCardToHand } = useUseCases();
   const { id, name, selected, disabled, choice } = card;
+  // A card the hand can't take, such as one past its size, leaves the hand as it was.
+  const add = () => addCardToHand.execute(id).catch(() => undefined);
 
   return (
     <VStack>
@@ -244,9 +244,7 @@ function CardTile({ card }: { card: CardTileData }) {
         accessibilityRole="checkbox"
         accessibilityState={{ checked: selected, disabled }}
         disabled={disabled}
-        onPress={() =>
-          dispatch(selected ? removeCardFromHand(id) : addCardToHand(id))
-        }
+        onPress={() => (selected ? dispatch(removeCardFromHand(id)) : add())}
         className={
           choice
             ? "min-h-12 justify-center rounded-t-lg border-[1.5px] border-primary bg-accent px-2 py-1.5"

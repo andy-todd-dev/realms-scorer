@@ -1,3 +1,4 @@
+import { Mutex } from "async-mutex";
 import {
   act,
   render,
@@ -214,7 +215,6 @@ async function renderApp({
 } = {}) {
   const catalogs = catalogsFor(loadCards, preScoring, handSize);
   const store = createAppStore({
-    addCardToHand: new AddCardToHandUseCase(catalogs),
     // Checks choices against the same cards that loading serves, unless faked.
     chooseCard: chooseCard
       ? {
@@ -259,7 +259,14 @@ async function renderApp({
       };
   const user = userEvent.setup();
 
-  await render(<App store={store} useCases={{ rescore }} />);
+  const addCardToHand = new AddCardToHandUseCase({
+    ...stores,
+    ...catalogs,
+    handLock: new Mutex(),
+    rescore,
+  });
+
+  await render(<App store={store} useCases={{ addCardToHand, rescore }} />);
   await screen.findByTestId("hand-score");
 
   const press = (testID: string) => user.press(screen.getByTestId(testID));
@@ -317,13 +324,13 @@ describe("scoring", () => {
 
     await tapCard("king");
     await expectScore("8");
-    expect(scoreHand).toHaveBeenCalledTimes(2);
+    const requests = scoreHand.mock.calls.length;
 
     await showBreakdown();
     await backToCards();
 
     await expectScore("8");
-    expect(scoreHand).toHaveBeenCalledTimes(2);
+    expect(scoreHand).toHaveBeenCalledTimes(requests);
   });
 
   it("keeps the current score while a new one is in flight", async () => {

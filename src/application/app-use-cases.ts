@@ -1,3 +1,4 @@
+import { AddCardToHand } from "./add-card-to-hand.usecase";
 import { Rescore } from "./rescore.usecase";
 
 /*
@@ -5,5 +6,6 @@ import { Rescore } from "./rescore.usecase";
   stateless ones the Redux thunks still call, until each has moved here.
 */
 export interface AppUseCases {
+  addCardToHand: AddCardToHand;
   rescore: Rescore;
 }
