@@ -10,6 +10,7 @@
     "@reduxjs/toolkit": "^2.13.0",
     "async-mutex": "^0.5.0",
     "awilix": "^13.0.5",
+    "constate": "^4.0.0",
     "expo": "~57.0.32",
     "expo-application": "~57.0.3",
     "expo-dev-client": "~57.0.21",
@@ -80,10 +81,11 @@
     ],
     "moduleNameMapper": {
       "\\.css$": "<rootDir>/jest/style-stub.js",
-      "^lucide-react-native/icons/(.*)$": "<rootDir>/node_modules/lucide-react-native/dist/cjs/icons/$1.js"
+      "^lucide-react-native/icons/(.*)$": "<rootDir>/node_modules/lucide-react-native/dist/cjs/icons/$1.js",
+      "^constate$": "<rootDir>/node_modules/constate/dist/index.js"
     },
     "transformIgnorePatterns": [
-      "/node_modules/(?!(.pnpm|react-native|@react-native|@react-native-community|expo|@expo|@expo-google-fonts|react-navigation|@react-navigation|@sentry/react-native|native-base|standard-navigation|immer|redux|react-redux|redux-thunk|reselect|@reduxjs/toolkit|nativewind|@gluestack-ui|@legendapp|tailwind-variants))",
+      "/node_modules/(?!(.pnpm|react-native|@react-native|@react-native-community|expo|@expo|@expo-google-fonts|react-navigation|@react-navigation|@sentry/react-native|native-base|standard-navigation|immer|redux|react-redux|redux-thunk|reselect|@reduxjs/toolkit|nativewind|@gluestack-ui|@legendapp|tailwind-variants|constate))",
       "/node_modules/react-native-reanimated/plugin/",
       "/node_modules/@react-native/babel-preset/"
     ]
