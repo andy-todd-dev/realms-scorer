@@ -10,7 +10,8 @@ import { createAppStore } from "./store";
 
 /*
   Only the selector details too fine to drive through the UI: breakdown ordering at the edges, and choice options
-  against a score that hasn't caught up with the hand. Everything the player sees is tested in App.test.tsx.
+  against a score that hasn't caught up with the hand. Everything the player sees is tested in
+  ui/__tests__/.
 */
 import { BASE_VARIANT_ID, loadVariant } from "./variant-slice";
 

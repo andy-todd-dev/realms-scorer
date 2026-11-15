@@ -24,7 +24,7 @@ npm run test:e2e:build:release       # build and install the release app, then r
 
 Do not install the app on the phone or run Maestro flows unless explicitly told to.
 
-Component tests use React Native Testing Library: render the real components and store with fake use cases, as in `App.test.tsx`. Use them for UI behaviour, including failure and in-flight states, and keep Maestro for flows through the real wiring. Jest doesn't run the CSS, so passing tests say nothing about styling: check that on a device.
+Component tests use React Native Testing Library: render the real components and store with fake use cases. They live in `ui/__tests__/`, one file per feature, and share `renderApp` (`ui/testing/render-app.tsx`) and common cards and scores (`ui/testing/fixtures.ts`). Fixtures only one feature uses stay in its file. Mocks every component test needs go in `jest/setup-after-env.js`; a mock only one feature needs, such as the photo picker for scanning, stays in its file. Use them for UI behaviour, including failure and in-flight states, and keep Maestro for flows through the real wiring. Jest doesn't run the CSS, so passing tests say nothing about styling: check that on a device.
 
 Test UI code through what the player sees: component tests and Maestro flows, not unit tests of UI state such as the navigation reducer or a hook. Isolated tests of UI internals repeat what those already cover and break when the implementation changes. Unit-test UI code only where the detail would make component tests unwieldy, such as wording rules with many cases (`choice-wording.test.ts`, `score-wording.test.ts`).
 
