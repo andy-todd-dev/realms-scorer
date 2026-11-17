@@ -1,12 +1,13 @@
 import { useEffect } from "react";
 import { StatusBar, View } from "react-native";
 import { useAppSelector } from "../state/hooks";
-import { selectHand, selectScanReview } from "../state/selectors";
+import { selectHand } from "../state/selectors";
 import { BreakdownScreen } from "./BreakdownScreen";
 import { HomeScreen } from "./HomeScreen";
 import { useNavigation, useNavigationFollowsHand } from "./NavigationProvider";
 import { ScanProgress } from "./ScanProgress";
 import { ScanReviewScreen } from "./ScanReviewScreen";
+import { useScan } from "./ScanProvider";
 import { useUseCases } from "./UseCasesProvider";
 
 export function Screens() {
@@ -14,7 +15,7 @@ export function Screens() {
   const { screen } = useNavigation().navigation;
   const hand = useAppSelector(selectHand);
   // A scan being checked shows over whichever screen it started from, and leaves it as it was.
-  const reviewingScan = useAppSelector(selectScanReview) !== null;
+  const reviewingScan = useScan().scan.status === "review";
 
   // Loading the variant scores the starting hand under it. Without app info, the version just isn't shown.
   useEffect(() => {

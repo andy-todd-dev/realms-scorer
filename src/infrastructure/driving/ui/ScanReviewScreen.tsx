@@ -5,10 +5,9 @@ import type { LucideProps } from "lucide-react-native";
 import { useEffect, useState } from "react";
 import { BackHandler, ScrollView, View } from "react-native";
 import type { CardId } from "../../../domain/card";
-import { useAppDispatch, useAppSelector } from "../state/hooks";
+import { useAppSelector } from "../state/hooks";
 import { scanSheetOpened } from "./navigation";
 import { useNavigation } from "./NavigationProvider";
-import { scanCandidatePicked, scanDismissed } from "../state/scan-slice";
 import {
   ScanReview,
   ScanUnsureMatch,
@@ -24,6 +23,7 @@ import { Text } from "./gluestack/text";
 import { VStack } from "./gluestack/vstack";
 import { Screen } from "./Screen";
 import { SUITS } from "./theme";
+import { useScan } from "./ScanProvider";
 import { useUseCases } from "./UseCasesProvider";
 
 // Gluestack's Icon doesn't type strokeWidth, so this heavier weight from the design is set here.
@@ -36,10 +36,17 @@ const HeavyCheck = (props: LucideProps) => (
   offer their likeliest matches, best first and preselected.
 */
 export function ScanReviewScreen() {
-  const dispatch = useAppDispatch();
   const { navigate } = useNavigation();
-  const review = useAppSelector(selectScanReview);
   const { replaceHand } = useUseCases();
+  const { scan, dismiss } = useScan();
+  const result = scan.status === "review" ? scan.result : null;
+  // For each match, the card the player has settled on: the best candidate until they pick another.
+  const [picks, setPicks] = useState<readonly CardId[]>(
+    () => result?.matches.map((match) => match.candidates[0]) ?? [],
+  );
+  const review = useAppSelector((state) =>
+    selectScanReview(state, result, picks),
+  );
   // Set while the checked cards are being added to the hand, and when that fails.
   const [confirming, setConfirming] = useState(false);
   const [confirmFailed, setConfirmFailed] = useState(false);
@@ -48,13 +55,13 @@ export function ScanReviewScreen() {
     const subscription = BackHandler.addEventListener(
       "hardwareBackPress",
       () => {
-        dispatch(scanDismissed());
+        dismiss();
         return true;
       },
     );
 
     return () => subscription.remove();
-  }, [dispatch]);
+  }, [dismiss]);
 
   if (review === null) {
     return null;
@@ -75,7 +82,7 @@ export function ScanReviewScreen() {
       }
     }
 
-    dispatch(scanDismissed());
+    dismiss();
   };
 
   return (
@@ -88,7 +95,7 @@ export function ScanReviewScreen() {
             variant="ghost"
             size="icon"
             onPress={() => {
-              dispatch(scanDismissed());
+              dismiss();
               navigate(scanSheetOpened());
             }}
           >
@@ -127,13 +134,15 @@ export function ScanReviewScreen() {
               key={match.matchIndex}
               match={match}
               onPick={(cardId) =>
-                dispatch(
-                  scanCandidatePicked({ matchIndex: match.matchIndex, cardId }),
+                setPicks((current) =>
+                  current.map((pick, matchIndex) =>
+                    matchIndex === match.matchIndex ? cardId : pick,
+                  ),
                 )
               }
               onNoneOfThese={() =>
                 addToHand(
-                  review.picks.filter(
+                  picks.filter(
                     (_, matchIndex) => matchIndex !== match.matchIndex,
                   ),
                 )
@@ -168,7 +177,7 @@ export function ScanReviewScreen() {
             testID="scan-confirm"
             size="lg"
             isDisabled={confirming}
-            onPress={() => addToHand(review.picks)}
+            onPress={() => addToHand(picks)}
           >
             <ButtonText>
               {confirming ? "Adding…" : "Looks right: add to hand"}

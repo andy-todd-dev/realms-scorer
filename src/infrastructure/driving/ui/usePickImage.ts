@@ -1,9 +1,8 @@
 import * as ImagePicker from "expo-image-picker";
 import { useCallback } from "react";
-import { useAppDispatch } from "../state/hooks";
 import { scanSheetClosed } from "./navigation";
 import { useNavigation } from "./NavigationProvider";
-import { scanFailed, scanHand } from "../state/scan-slice";
+import { useScan } from "./ScanProvider";
 
 export type PhotoSource = "camera" | "library";
 
@@ -17,7 +16,7 @@ const OPTIONS: ImagePicker.ImagePickerOptions = {
   so it happens here rather than behind a port. Cancelling leaves everything as it was.
 */
 export function usePickImage() {
-  const dispatch = useAppDispatch();
+  const { scanPhoto, fail } = useScan();
   const { navigate } = useNavigation();
 
   return useCallback(
@@ -29,7 +28,7 @@ export function usePickImage() {
           const { granted } = await ImagePicker.requestCameraPermissionsAsync();
 
           if (!granted) {
-            dispatch(scanFailed("cameraDenied"));
+            fail("cameraDenied");
             return;
           }
         }
@@ -41,12 +40,12 @@ export function usePickImage() {
         const photo = result.canceled ? undefined : result.assets[0];
 
         if (photo) {
-          dispatch(scanHand(photo.uri));
+          await scanPhoto(photo.uri);
         }
       } catch {
-        dispatch(scanFailed("unreadable"));
+        fail("unreadable");
       }
     },
-    [dispatch, navigate],
+    [fail, navigate, scanPhoto],
   );
 }

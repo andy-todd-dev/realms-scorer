@@ -1,6 +1,9 @@
 import { Card, CardId } from "../domain/card";
 import { DeckId } from "../domain/deck";
 import { Variant, VariantId } from "../domain/variant";
+export interface CurrentVariant {
+  get(): VariantId;
+}
 
 export interface CardCatalog {
   getAll(deckId: DeckId): Promise<Card[]>;
@@ -29,6 +32,7 @@ export interface CardRecognizer {
 }
 
 export interface RecogniseHandPorts {
+  variant: CurrentVariant;
   cardCatalog: CardCatalog;
   cardRecognizer: CardRecognizer;
   variantCatalog: VariantCatalog;

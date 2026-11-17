@@ -1,5 +1,6 @@
 import { createSelector } from "@reduxjs/toolkit";
 import type { CardView } from "../../../application/load-variant.usecase";
+import type { ScanResult } from "../../../application/recognise-hand.usecase";
 import type { CardId, Suit } from "../../../domain/card";
 import type { BlankReason } from "../../../domain/blanking";
 import type { ConditionFacts } from "../../../domain/conditions";
@@ -507,47 +508,24 @@ export const selectBreakdown = createSelector(
 
 export type BreakdownRow = ReturnType<typeof selectBreakdown>["rows"][number];
 
-const selectScan = (state: RootState) => state.scan;
-
 const cardsText = (count: number) =>
   count === 1 ? "1 card" : `${count} cards`;
 
-const SCAN_FAILURES = {
-  unreadable: {
-    title: "Couldn't read the photo",
-    detail: "Try again, or pick your cards by hand.",
-  },
-  noCards: {
-    title: "Couldn't find any cards",
-    detail:
-      "Lay the cards flat with their names showing, and take the photo from above.",
-  },
-  cameraDenied: {
-    title: "The camera isn't allowed",
-    detail:
-      "Allow Realms Scorer to use the camera in your phone's settings, or choose a saved photo.",
-  },
-} as const;
-
-// What to show over the home screen while a photo is read, or when reading it failed. Null otherwise.
-export const selectScanProgress = createSelector([selectScan], (scan) =>
-  scan.status === "recognising"
-    ? { reading: true as const }
-    : scan.status === "failed" && scan.failure !== null
-      ? { reading: false as const, ...SCAN_FAILURES[scan.failure] }
-      : null,
-);
-
 /*
   The check screen for a scan, or null when there's nothing to check. Cards the scan was sure of are listed as matched;
-  each unsure one offers its candidates, with the player's pick selected, which starts as the best.
+  each unsure one offers its candidates, with the player's pick selected. The scan's result and the picks, one card per
+  match, are UI state, so they're passed in.
 */
 export const selectScanReview = createSelector(
-  [selectScan, selectCards, selectHandCardIds],
-  (scan, cards, handCardIds) => {
-    const { status, result, picks } = scan;
-
-    if (status !== "review" || result === null) {
+  [
+    (_: RootState, result: ScanResult | null) => result,
+    selectCards,
+    selectHandCardIds,
+    (_: RootState, _result: ScanResult | null, picks: readonly CardId[]) =>
+      picks,
+  ],
+  (result, cards, handCardIds, picks) => {
+    if (result === null) {
       return null;
     }
 
@@ -601,8 +579,6 @@ export const selectScanReview = createSelector(
         .filter((match) => match.confident)
         .map((match) => cardView(match.candidates[0]))
         .filter(isDefined),
-      // The card settled on for each match, in match order, for adding to the hand.
-      picks,
     };
   },
 );

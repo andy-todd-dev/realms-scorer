@@ -29,9 +29,9 @@ export class ReplaceHandUseCase implements ReplaceHand {
   }
 
   /*
-    Makes these cards the hand, as from a scan, and rescores it. The new hand has no choices, so any card that needs one
-    is pending until the player makes it. Rejects more cards than the variant's hand size, or a card that isn't in its
-    deck, leaving the hand as it was.
+    Makes these cards the hand, as when the player confirms a scan, and rescores it. The new hand has no choices, so any
+    card that needs one is pending until the player makes it. Rejects more cards than the variant's hand size, or a card
+    that isn't in its deck, leaving the hand as it was.
   */
   async execute(cardIds: readonly CardId[]): Promise<void> {
     const { hands, variant, handLock, rescore, variantCatalog } = this.ports;
