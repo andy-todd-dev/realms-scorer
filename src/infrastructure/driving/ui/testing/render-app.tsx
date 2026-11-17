@@ -17,8 +17,11 @@ import {
   LoadAppInfoUseCase,
 } from "../../../../application/load-app-info.usecase";
 import { LoadVariantUseCase } from "../../../../application/load-variant.usecase";
-import type { ScanResult } from "../../../../application/recognise-hand.usecase";
 import { RemoveCardFromHandUseCase } from "../../../../application/remove-card-from-hand.usecase";
+import {
+  RecogniseHandUseCase,
+  ScanResult,
+} from "../../../../application/recognise-hand.usecase";
 import {
   ReplaceHand,
   ReplaceHandUseCase,
@@ -95,15 +98,13 @@ export async function renderApp({
   loadCards?: () => Promise<Card[]>;
   // In place of the real use cases, for holding a change in flight or failing it.
   chooseCard?: ChooseCard["execute"];
+  // What the recognizer finds in a photo. Only the matches are used: the hand size comes from the variant.
   recogniseHand?: (imageUri: string) => Promise<ScanResult>;
   replaceHand?: ReplaceHand["execute"];
   loadAppInfo?: () => Promise<AppInfoView>;
 } = {}) {
   const catalogs = catalogsFor(loadCards, preScoring, handSize);
-  const store = createAppStore(
-    { recogniseHand: { execute: (_, imageUri) => recogniseHand(imageUri) } },
-    TEST_VARIANT_ID,
-  );
+  const store = createAppStore(TEST_VARIANT_ID);
   const stores = reduxStores(store);
   /*
     Scores with the real use case, or saves the score the test gives in its place, keeping a score only while the hand
@@ -129,7 +130,17 @@ export async function renderApp({
         },
       };
   // The real use cases, which change the hand with the same cards that loading serves.
-  const ports = { ...stores, ...catalogs, handLock: new Mutex(), rescore };
+  const ports = {
+    ...stores,
+    ...catalogs,
+    handLock: new Mutex(),
+    rescore,
+    cardRecognizer: {
+      recognise: async (imageUri: string) => [
+        ...(await recogniseHand(imageUri)).matches,
+      ],
+    },
+  };
   const useCases: AppUseCases = {
     addCardToHand: new AddCardToHandUseCase(ports),
     chooseCard: chooseCard
@@ -142,6 +153,7 @@ export async function renderApp({
     }),
     // The real use case, so card views and choice descriptions are built as in the app.
     loadVariant: new LoadVariantUseCase(ports),
+    recogniseHand: new RecogniseHandUseCase(ports),
     removeCardFromHand: new RemoveCardFromHandUseCase(ports),
     replaceHand: replaceHand
       ? { execute: replaceHand }

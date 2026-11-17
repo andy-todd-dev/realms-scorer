@@ -1,10 +1,10 @@
 import { Mutex } from "async-mutex";
 import { asFunction, asValue, createContainer, InjectionMode } from "awilix";
-import { AppUseCases } from "./application/app-use-cases";
 import {
   AddCardToHand,
   AddCardToHandUseCase,
 } from "./application/add-card-to-hand.usecase";
+import { AppUseCases } from "./application/app-use-cases";
 import {
   ChooseCard,
   ChooseCardUseCase,
@@ -31,34 +31,27 @@ import {
   ReplaceHandUseCase,
 } from "./application/replace-hand.usecase";
 import { Rescore, RescoreUseCase } from "./application/rescore.usecase";
-import { UseCases } from "./application/use-cases";
 import { ExpoApplicationAppInfo } from "./infrastructure/driven/expo-application-app-info";
 import { InMemoryCardCatalog } from "./infrastructure/driven/in-memory-card-catalog";
 import { InMemoryVariantCatalog } from "./infrastructure/driven/in-memory-variant-catalog";
-import { BASE_VARIANT } from "./infrastructure/driven/variants/base.variant";
 import { MlKitCardRecognizer } from "./infrastructure/driven/ml-kit-card-recognizer/ml-kit-card-recognizer";
+import { BASE_VARIANT } from "./infrastructure/driven/variants/base.variant";
 import { reduxStores } from "./infrastructure/driving/state/redux-stores";
 import { AppStore, createAppStore } from "./infrastructure/driving/state/store";
 
-type Cradle = {
-  addCardToHand: AddCardToHand;
+type Cradle = AppUseCases & {
   appInfo: ExpoApplicationAppInfo;
   cardCatalog: InMemoryCardCatalog;
   cardRecognizer: MlKitCardRecognizer;
-  chooseCard: ChooseCard;
-  clearHand: ClearHand;
   handLock: Mutex;
-  loadAppInfo: LoadAppInfo;
-  loadVariant: LoadVariant;
-  recogniseHand: RecogniseHand;
-  removeCardFromHand: RemoveCardFromHand;
-  replaceHand: ReplaceHand;
-  rescore: Rescore;
   variantCatalog: InMemoryVariantCatalog;
 } & ReturnType<typeof reduxStores>;
 
-// Builds the store and the use cases. The thunks' use cases come first, as the store needs them, then the store's state is registered for the use cases that orchestrate through it.
+// Builds the store, then the use cases, which reach its state through the adapters in redux-stores.ts.
 export function createApp(): { store: AppStore; useCases: AppUseCases } {
+  // The app plays the base game until there is a way to pick another variant.
+  const store = createAppStore(BASE_VARIANT.id);
+  const stores = reduxStores(store);
   const container = createContainer<Cradle>({
     injectionMode: InjectionMode.PROXY,
     strict: true,
@@ -68,73 +61,57 @@ export function createApp(): { store: AppStore; useCases: AppUseCases } {
     appInfo: asFunction(() => new ExpoApplicationAppInfo()).singleton(),
     cardCatalog: asFunction(() => new InMemoryCardCatalog()).singleton(),
     cardRecognizer: asFunction(() => new MlKitCardRecognizer()).singleton(),
-    recogniseHand: asFunction(
-      (deps: Cradle) => new RecogniseHandUseCase(deps),
-    ).singleton(),
     variantCatalog: asFunction(() => new InMemoryVariantCatalog()).singleton(),
-  });
-
-  const { recogniseHand } = container.cradle;
-  const thunkUseCases: UseCases = { recogniseHand };
-  // The app plays the base game until there is a way to pick another variant.
-  const store = createAppStore(thunkUseCases, BASE_VARIANT.id);
-  const { hands, scores, variant, loadedVariant, appVersion } =
-    reduxStores(store);
-
-  container.register({
-    hands: asValue(hands),
-    scores: asValue(scores),
-    variant: asValue(variant),
-    loadedVariant: asValue(loadedVariant),
-    appVersion: asValue(appVersion),
+    hands: asValue(stores.hands),
+    scores: asValue(stores.scores),
+    variant: asValue(stores.variant),
+    loadedVariant: asValue(stores.loadedVariant),
+    appVersion: asValue(stores.appVersion),
     // One lock for every use case that changes the hand.
     handLock: asValue(new Mutex()),
     addCardToHand: asFunction(
-      (deps: Cradle) => new AddCardToHandUseCase(deps),
+      (deps: Cradle): AddCardToHand => new AddCardToHandUseCase(deps),
     ).singleton(),
     chooseCard: asFunction(
-      (deps: Cradle) => new ChooseCardUseCase(deps),
+      (deps: Cradle): ChooseCard => new ChooseCardUseCase(deps),
     ).singleton(),
     clearHand: asFunction(
-      (deps: Cradle) => new ClearHandUseCase(deps),
+      (deps: Cradle): ClearHand => new ClearHandUseCase(deps),
     ).singleton(),
     loadAppInfo: asFunction(
-      (deps: Cradle) => new LoadAppInfoUseCase(deps),
+      (deps: Cradle): LoadAppInfo => new LoadAppInfoUseCase(deps),
     ).singleton(),
     loadVariant: asFunction(
-      (deps: Cradle) => new LoadVariantUseCase(deps),
+      (deps: Cradle): LoadVariant => new LoadVariantUseCase(deps),
+    ).singleton(),
+    recogniseHand: asFunction(
+      (deps: Cradle): RecogniseHand => new RecogniseHandUseCase(deps),
     ).singleton(),
     removeCardFromHand: asFunction(
-      (deps: Cradle) => new RemoveCardFromHandUseCase(deps),
+      (deps: Cradle): RemoveCardFromHand => new RemoveCardFromHandUseCase(deps),
     ).singleton(),
     replaceHand: asFunction(
-      (deps: Cradle) => new ReplaceHandUseCase(deps),
+      (deps: Cradle): ReplaceHand => new ReplaceHandUseCase(deps),
     ).singleton(),
-    rescore: asFunction((deps: Cradle) => new RescoreUseCase(deps)).singleton(),
+    rescore: asFunction(
+      (deps: Cradle): Rescore => new RescoreUseCase(deps),
+    ).singleton(),
   });
 
-  const {
-    addCardToHand,
-    chooseCard,
-    clearHand,
-    loadAppInfo,
-    loadVariant,
-    removeCardFromHand,
-    replaceHand,
-    rescore,
-  } = container.cradle;
+  const { cradle } = container;
 
   return {
     store,
     useCases: {
-      addCardToHand,
-      chooseCard,
-      clearHand,
-      loadAppInfo,
-      loadVariant,
-      removeCardFromHand,
-      replaceHand,
-      rescore,
+      addCardToHand: cradle.addCardToHand,
+      chooseCard: cradle.chooseCard,
+      clearHand: cradle.clearHand,
+      loadAppInfo: cradle.loadAppInfo,
+      loadVariant: cradle.loadVariant,
+      recogniseHand: cradle.recogniseHand,
+      removeCardFromHand: cradle.removeCardFromHand,
+      replaceHand: cradle.replaceHand,
+      rescore: cradle.rescore,
     },
   };
 }

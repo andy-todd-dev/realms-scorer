@@ -1,15 +1,14 @@
 import { styled } from "nativewind";
-import { useEffect } from "react";
+import { useEffect, useMemo } from "react";
 import { ActivityIndicator, BackHandler, View } from "react-native";
-import { useAppDispatch, useAppSelector } from "../state/hooks";
 import { scanSheetOpened } from "./navigation";
 import { useNavigation } from "./NavigationProvider";
-import { scanDismissed } from "../state/scan-slice";
-import { selectScanProgress } from "../state/selectors";
 import { Button, ButtonText } from "./gluestack/button";
 import { Heading } from "./gluestack/heading";
 import { Text } from "./gluestack/text";
 import { VStack } from "./gluestack/vstack";
+import { scanProgress } from "./scan";
+import { useScan } from "./ScanProvider";
 
 // ActivityIndicator takes its colour as a prop, so NativeWind is told to pass the text colour class through as one.
 const Spinner = styled(ActivityIndicator, {
@@ -18,9 +17,9 @@ const Spinner = styled(ActivityIndicator, {
 
 // Covers the home screen while a photo is read, and explains when reading it failed.
 export function ScanProgress() {
-  const dispatch = useAppDispatch();
+  const { scan, dismiss } = useScan();
   const { navigate } = useNavigation();
-  const progress = useAppSelector(selectScanProgress);
+  const progress = useMemo(() => scanProgress(scan), [scan]);
   const failed = progress !== null && !progress.reading;
 
   // Back leaves a failed scan for the cards. While reading, it does nothing, as the result is on its way.
@@ -33,14 +32,14 @@ export function ScanProgress() {
       "hardwareBackPress",
       () => {
         if (failed) {
-          dispatch(scanDismissed());
+          dismiss();
         }
         return true;
       },
     );
 
     return () => subscription.remove();
-  }, [dispatch, progress, failed]);
+  }, [dismiss, progress, failed]);
 
   if (progress === null) {
     return null;
@@ -75,7 +74,7 @@ export function ScanProgress() {
             testID="scan-try-again"
             size="lg"
             onPress={() => {
-              dispatch(scanDismissed());
+              dismiss();
               navigate(scanSheetOpened());
             }}
           >
@@ -85,7 +84,7 @@ export function ScanProgress() {
             testID="scan-pick-by-hand"
             variant="ghost"
             size="lg"
-            onPress={() => dispatch(scanDismissed())}
+            onPress={dismiss}
           >
             <ButtonText>Pick cards by hand</ButtonText>
           </Button>

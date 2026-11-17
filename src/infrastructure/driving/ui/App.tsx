@@ -6,6 +6,7 @@ import type { AppUseCases } from "../../../application/app-use-cases";
 import { AppStore } from "../state/store";
 import { GluestackUIProvider } from "./gluestack/gluestack-ui-provider";
 import { NavigationProvider } from "./NavigationProvider";
+import { ScanProvider } from "./ScanProvider";
 import { Screens } from "./Screens";
 import { UseCasesProvider } from "./UseCasesProvider";
 
@@ -21,11 +22,13 @@ export function App({
     <Provider store={store}>
       <UseCasesProvider useCases={useCases}>
         <NavigationProvider>
-          <SafeAreaProvider>
-            <GluestackUIProvider mode="dark">
-              <Screens />
-            </GluestackUIProvider>
-          </SafeAreaProvider>
+          <ScanProvider>
+            <SafeAreaProvider>
+              <GluestackUIProvider mode="dark">
+                <Screens />
+              </GluestackUIProvider>
+            </SafeAreaProvider>
+          </ScanProvider>
         </NavigationProvider>
       </UseCasesProvider>
     </Provider>

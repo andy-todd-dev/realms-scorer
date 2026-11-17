@@ -78,15 +78,7 @@ function catalogsFor(loadCardsExecute: () => Promise<Card[]>) {
 
 // A store with the variant loaded from these cards, through the real use case, so card views and choice descriptions are built as in the app.
 async function createStore(loadCardsExecute: () => Promise<Card[]>) {
-  const store = createAppStore(
-    {
-      // Scanning is covered by the component tests.
-      recogniseHand: {
-        execute: () => Promise.reject(new Error("Not used in these tests")),
-      },
-    },
-    TEST_VARIANT_ID,
-  );
+  const store = createAppStore(TEST_VARIANT_ID);
 
   await new LoadVariantUseCase({
     ...reduxStores(store),

@@ -2,6 +2,7 @@ import { Card } from "../domain/card";
 import { Variant } from "../domain/variant";
 import { CardMatch, CardRecognizer } from "./recognise-hand.ports";
 import { RecogniseHandUseCase } from "./recognise-hand.usecase";
+import { InMemoryStore } from "./testing/in-memory-store";
 
 const card = (id: string, name: string): Card => ({
   id,
@@ -26,6 +27,7 @@ const sure = (cardId: string): CardMatch => ({
 
 const createUseCase = (recognise: CardRecognizer["recognise"]) =>
   new RecogniseHandUseCase({
+    variant: new InMemoryStore("variant"),
     cardCatalog: {
       getAll: async (deckId) => (deckId === variant.deckId ? deck : []),
     },
@@ -41,10 +43,10 @@ const createUseCase = (recognise: CardRecognizer["recognise"]) =>
   });
 
 describe("RecogniseHandUseCase", () => {
-  it("looks for the variant's cards by name, up to its hand size", async () => {
+  it("looks for the current variant's cards by name, up to its hand size", async () => {
     const recognise = jest.fn(async () => [sure("king")]);
 
-    await createUseCase(recognise).execute("variant", "file:///hand.jpg");
+    await createUseCase(recognise).execute("file:///hand.jpg");
 
     expect(recognise).toHaveBeenCalledWith(
       "file:///hand.jpg",
@@ -64,7 +66,6 @@ describe("RecogniseHandUseCase", () => {
 
     await expect(
       createUseCase(async () => [sure("king"), unsure]).execute(
-        "variant",
         "file:///hand.jpg",
       ),
     ).resolves.toEqual({ matches: [sure("king"), unsure], handSize: 2 });
@@ -75,7 +76,7 @@ describe("RecogniseHandUseCase", () => {
       sure("king"),
       sure("queen"),
       sure("jester"),
-    ]).execute("variant", "file:///hand.jpg");
+    ]).execute("file:///hand.jpg");
 
     expect(result.matches).toEqual([sure("king"), sure("queen")]);
   });
@@ -83,7 +84,6 @@ describe("RecogniseHandUseCase", () => {
   it("fails when the photo can't be read", async () => {
     await expect(
       createUseCase(() => Promise.reject(new Error("unreadable"))).execute(
-        "variant",
         "file:///hand.jpg",
       ),
     ).rejects.toThrow("unreadable");
